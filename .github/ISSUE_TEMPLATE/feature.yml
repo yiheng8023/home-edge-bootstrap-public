@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a bounded user need without sharing live network data.
+title: "[Feature]: "
+labels:
+  - "type: feature"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the user need, not just a preferred implementation. Do not include subscription URLs, node lists, credentials, public IPs, or raw logs. Review every redacted support bundle before attaching it, including every file inside the bundle.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What cannot be done safely or clearly today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior and how it could be verified.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Project area
+      description: New adapter proposals remain external until the governance admission conditions are met.
+      options:
+        - Framework or common workflow
+        - Current Merlin reference adapter
+        - New adapter proposal
+        - Offline release or source compliance
+        - Documentation or community process
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Note existing workflows or smaller changes that may address the need.
+    validations:
+      required: true
+  - type: checkboxes
+    id: sensitive_review
+    attributes:
+      label: Sensitive-data review
+      options:
+        - label: I removed subscription URLs, node lists, credentials, public IPs, and raw logs, and I reviewed every redacted support bundle before attaching it.
+          required: true
+        - label: This request does not contain undisclosed vulnerability or exploit details.
+          required: true

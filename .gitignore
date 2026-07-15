@@ -1,0 +1,13 @@
+/dist/
+/logs/
+/config/cache/
+/config/backups/
+/config/temp/
+/support-bundle-*/
+SUBSCRIPTION.local
+*.local
+*.key
+*.pem
+.env
+.DS_Store
+Thumbs.db

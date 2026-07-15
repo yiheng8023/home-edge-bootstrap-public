@@ -1,0 +1,36 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux local verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify
+        run: sh scripts/verify-local.sh
+
+  macos:
+    name: macOS local verification
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify
+        run: sh scripts/verify-local.sh
+
+  windows:
+    name: Windows local verification
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1

@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a reproducible defect using synthetic, secret-safe evidence.
+title: "[Bug]: "
+labels:
+  - "type: bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not include subscription URLs, node lists, credentials, public IPs, or raw logs. Review every redacted support bundle before attaching it, including every file inside the bundle.
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: Select the affected release line.
+      options:
+        - v0.1.x
+        - Unreleased main branch
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment class
+      description: Describe the operating system, shell, architecture, and router class without hostnames, addresses, or account details.
+      placeholder: Windows 11, PowerShell 7, arm64 router class
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Project area
+      description: Classify the affected surface without broadening its support or maturity claim.
+      options:
+        - Framework or common workflow
+        - Current Merlin reference adapter
+        - Offline release or source compliance
+        - Documentation or community process
+        - Other or unknown
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use synthetic values and the smallest repeatable sequence.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: support_bundle
+    attributes:
+      label: Redacted support bundle (optional)
+      description: Attach the generated redacted support bundle here only after you review every file. Do not attach it if any subscription URL, node list, credential, public IP, raw log, or other identifying or access-bearing data remains.
+      placeholder: Drag the reviewed bundle here, or explain why it is unavailable.
+  - type: checkboxes
+    id: sensitive_review
+    attributes:
+      label: Sensitive-data review
+      options:
+        - label: I removed subscription URLs, node lists, credentials, public IPs, and raw logs, and I reviewed every redacted support bundle before attaching it.
+          required: true
+        - label: This report does not contain undisclosed vulnerability or exploit details.
+          required: true

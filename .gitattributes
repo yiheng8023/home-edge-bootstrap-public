@@ -1,0 +1,13 @@
+# Router runs BusyBox ash + reads YAML; everything that touches the router MUST be LF,
+# even when authored/committed from Windows (CRLF would break the shell scripts).
+* text=auto eol=lf
+*.sh   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.conf text eol=lf
+*.md   text eol=lf
+# treat vendored kernel binaries as binary (no eol munging)
+bundle/** binary
+bundle/README.md -binary text eol=lf diff
+bundle/MANIFEST.json -binary text eol=lf diff
+bundle/SHA256SUMS -binary text eol=lf diff

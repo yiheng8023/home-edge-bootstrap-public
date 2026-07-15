@@ -1,0 +1,1 @@
+Architecture card showing framework policy flowing through a verified adapter to an edge runtime.

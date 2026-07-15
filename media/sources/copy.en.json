@@ -1,0 +1,12 @@
+{
+  "language": "en",
+  "project": "Home Edge Bootstrap",
+  "tagline": "Bootstrap. Recover. Verify.",
+  "cards": {
+    "architecture": {"title": "Capability-driven edge lifecycle", "body": "A stable framework, thin adapters, and evidence kept separate from assumptions.", "alt": "Architecture card showing framework policy flowing through a verified adapter to an edge runtime."},
+    "recovery": {"title": "Recovery without a working proxy", "body": "Verified offline inputs keep the recovery path independent from proxy-only downloads.", "alt": "Recovery card showing an offline cache feeding a router edge while endpoint fallback remains independent."},
+    "safety": {"title": "Bounded automation", "body": "Plan, confirm, apply, verify, and roll back. Human trust decisions stay human.", "alt": "Safety card showing plan, confirmation, apply, verification, and rollback as a bounded loop."},
+    "evidence": {"title": "Evidence before claims", "body": "Linux, macOS, and Windows checks cover local behavior, release integrity, and public boundaries.", "alt": "Evidence card listing Linux, macOS, Windows, release integrity, and boundary verification."}
+  },
+  "summary": {"title": "A recoverable home edge", "body": "Router-primary, endpoint fallback, adapter-ready, and explicit about what is not proven.", "alt": "Square summary connecting a router-primary edge to independent endpoint fallback and verification evidence."}
+}

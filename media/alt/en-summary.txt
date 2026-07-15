@@ -1,0 +1,1 @@
+Square summary connecting a router-primary edge to independent endpoint fallback and verification evidence.

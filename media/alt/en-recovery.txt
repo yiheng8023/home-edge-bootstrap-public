@@ -1,0 +1,1 @@
+Recovery card showing an offline cache feeding a router edge while endpoint fallback remains independent.

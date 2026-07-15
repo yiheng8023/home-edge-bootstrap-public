@@ -1,0 +1,1 @@
+Safety card showing plan, confirmation, apply, verification, and rollback as a bounded loop.

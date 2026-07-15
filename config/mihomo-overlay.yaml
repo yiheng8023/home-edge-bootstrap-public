@@ -1,0 +1,14 @@
+# Mihomo overlay fragment, not a standalone config.
+# Merge this into a generated provider config when you want a region-neutral,
+# provider-name-independent health group. Refer to Edge-Auto from site-local rules
+# only when that behavior is desired; this fragment does not redirect domains.
+
+proxy-groups:
+  - name: Edge-Auto
+    type: url-test
+    include-all: true
+    filter: "(?i).+"
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true

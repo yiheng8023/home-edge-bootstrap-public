@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "format": "home-edge-public-compatibility/v1",
+  "authority_boundary": "Capability declarations are policy inputs, not observations of a specific device, firmware build, provider, or network.",
+  "certification_policy": "The field_evidence array is intentionally empty; fixtures are not field certification and cannot support hardware, firmware, provider, or live-network certification claims.",
+  "adapter_maturity_model": {
+    "independent_from_target_support": true,
+    "stages": [
+      "external-integration",
+      "experimental-adapter",
+      "community-maintained-adapter",
+      "verified-adapter"
+    ],
+    "current_reference": {
+      "id": "merlin",
+      "role": "implemented-reference",
+      "assigned_stage": null,
+      "claim_boundary": "Reference status does not assign a verified maturity stage."
+    }
+  },
+  "capability_requirements": [
+    {
+      "id": "host-guided-shell",
+      "description": "Windows PowerShell 5.1+ or a POSIX sh host on macOS/Linux with SSH, archive tools, and Python 3 available as python3 or as python pointing to Python 3",
+      "required_for": ["guided-flow", "local-verification"]
+    },
+    {
+      "id": "official-asuswrt-merlin-router",
+      "description": "ASUS gateway running official Asuswrt-Merlin with SSH, persistent /jffs storage, and required POSIX utilities",
+      "required_for": ["router-bootstrap", "router-recovery"]
+    },
+    {
+      "id": "shellcrash-mihomo-runtime",
+      "description": "ShellCrash/ShellClash with a Mihomo-compatible runtime and a discoverable health or controller surface",
+      "required_for": ["router-bootstrap", "router-recovery"]
+    },
+    {
+      "id": "supported-runtime-architecture",
+      "description": "A runtime payload and CPU architecture combination declared by the concrete offline release artifact",
+      "required_for": ["fresh-offline-runtime-install"]
+    },
+    {
+      "id": "independent-fallback",
+      "description": "A separately managed soft-router or endpoint path for recovery access",
+      "required_for": ["recommended-safe-apply"]
+    }
+  ],
+  "support_levels": [
+    {
+      "id": "supported",
+      "meaning": "All required capabilities and applicable evidence gates are satisfied for the evaluated target."
+    },
+    {
+      "id": "supported_needs_manual",
+      "meaning": "The target is suitable, but a named manual action must be completed before automation proceeds."
+    },
+    {
+      "id": "accepted_modified",
+      "meaning": "The operator explicitly accepts a compatible modified baseline and its provenance and support risk."
+    },
+    {
+      "id": "unknown",
+      "meaning": "Evidence is insufficient to determine one or more required target capabilities; do not apply."
+    },
+    {
+      "id": "unsupported",
+      "meaning": "A required capability is absent or conflicts with the documented boundary; do not apply."
+    }
+  ],
+  "declared_targets": [
+    {
+      "path": "router",
+      "adapter_id": "merlin",
+      "adapter_role": "implemented-reference",
+      "platform": "ASUS gateway running official Asuswrt-Merlin",
+      "runtime": "ShellCrash/ShellClash with a Mihomo-compatible runtime",
+      "support_level": "unknown",
+      "classification_basis": "No target-specific field evidence is published; run read-only target capability checks."
+    },
+    {
+      "path": "soft-router-or-endpoint-fallback",
+      "adapter_id": null,
+      "adapter_role": "independent-fallback",
+      "platform": "independently managed soft router or endpoint",
+      "runtime": "managed outside this adapter framework",
+      "support_level": "unknown",
+      "classification_basis": "The fallback is independently managed and does not provide evidence for the router path."
+    }
+  ],
+  "field_evidence": []
+}

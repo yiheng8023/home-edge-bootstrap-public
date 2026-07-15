@@ -1,0 +1,101 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux local verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/verify-local.sh
+
+  macos:
+    name: macOS local verification
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/verify-local.sh
+
+  windows:
+    name: Windows local verification
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1
+
+  release-candidate:
+    name: Verified v0.1.0 release candidate
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Acquire pinned runtime payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/home-edge-payload"
+          curl --fail --location --retry 3 \
+            --output "$RUNNER_TEMP/mihomo.gz" \
+            https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-arm64-v1.19.28.gz
+          gzip -dc "$RUNNER_TEMP/mihomo.gz" >"$RUNNER_TEMP/home-edge-payload/mihomo-linux-arm64"
+          curl --fail --location --retry 3 \
+            --output "$RUNNER_TEMP/home-edge-payload/ShellCrash.tar.gz" \
+            https://github.com/juewuy/ShellCrash/releases/download/1.9.4/ShellCrash.tar.gz
+          python3 - "$RUNNER_TEMP/home-edge-payload" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          def digest(name):
+              return hashlib.sha256((root / name).read_bytes()).hexdigest()
+          manifest = {
+              "schema": 1,
+              "payloads": [
+                  {"id": "mihomo-linux-arm64", "path": "mihomo-linux-arm64", "version": "v1.19.28", "sourceRepository": "MetaCubeX/mihomo", "sha256": digest("mihomo-linux-arm64")},
+                  {"id": "shellcrash", "path": "ShellCrash.tar.gz", "version": "1.9.4", "sourceRepository": "juewuy/ShellCrash", "sha256": digest("ShellCrash.tar.gz")},
+              ],
+          }
+          (root / "MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Prepare complete corresponding source
+        run: |
+          curl --fail --location --retry 3 \
+            --output "$RUNNER_TEMP/go1.26.5.linux-amd64.tar.gz" \
+            https://go.dev/dl/go1.26.5.linux-amd64.tar.gz
+          sh scripts/prepare-public-sources.sh \
+            --output "$RUNNER_TEMP/home-edge-prepared" \
+            --payload-dir "$RUNNER_TEMP/home-edge-payload" \
+            --go-archive "$RUNNER_TEMP/go1.26.5.linux-amd64.tar.gz"
+
+      - name: Build and verify exact release set
+        run: |
+          sh scripts/build-public-release.sh \
+            --repo . \
+            --version v0.1.0 \
+            --prepared-dir "$RUNNER_TEMP/home-edge-prepared" \
+            --output "$RUNNER_TEMP/home-edge-dist" \
+            --commit "$GITHUB_SHA"
+          sh scripts/verify-public-release.sh \
+            --repo . \
+            --version v0.1.0 \
+            --dist "$RUNNER_TEMP/home-edge-dist" \
+            --commit "$GITHUB_SHA"
+
+      - name: Upload verified candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-edge-bootstrap-v0.1.0-${{ github.sha }}
+          path: ${{ runner.temp }}/home-edge-dist/
+          if-no-files-found: error
+          retention-days: 14

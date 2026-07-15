@@ -1,0 +1,1 @@
+Evidence card listing Linux, macOS, Windows, release integrity, and boundary verification.
