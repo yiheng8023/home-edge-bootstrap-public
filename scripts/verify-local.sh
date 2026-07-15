@@ -125,6 +125,14 @@ required = [
 ]
 for rel in required:
     if not (root / rel).is_file(): raise SystemExit(f"missing public closeout path: {rel}")
+language_navigation = {
+    "README.md": "English | [简体中文](README.zh-CN.md)",
+    "README.zh-CN.md": "[English](README.md) | 简体中文",
+}
+for rel, expected in language_navigation.items():
+    lines = (root / rel).read_text(encoding="utf-8").splitlines()
+    if len(lines) < 3 or lines[2] != expected:
+        raise SystemExit(f"invalid README language navigation: {rel}")
 link_re = re.compile(r"\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)")
 for doc in root.rglob("*.md"):
     for target in link_re.findall(doc.read_text(encoding="utf-8")):
@@ -132,6 +140,7 @@ for doc in root.rglob("*.md"):
         if not (doc.parent / target).exists(): raise SystemExit(f"broken documentation link: {doc} -> {target}")
 if (root / ".github/FUNDING.yml").exists(): raise SystemExit("unexpected funding configuration")
 PY
+echo 'readme_language_navigation_state=ready'
 echo 'sbom_structure_state=ready'
 echo 'release_fixture_state=ready'
 echo 'public_media_kit_state=ready'

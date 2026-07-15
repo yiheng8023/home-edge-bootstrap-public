@@ -1,6 +1,6 @@
 # Home Edge Bootstrap
 
-[English](README.md)
+[English](README.md) | 简体中文
 
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 

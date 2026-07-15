@@ -153,6 +153,15 @@ $RequiredPaths = @(
 foreach ($Path in $RequiredPaths) {
   if (-not (Test-Path -LiteralPath (Join-Path $Repo $Path) -PathType Leaf)) { throw "missing public closeout path: $Path" }
 }
+$LanguageNavigation = [ordered]@{
+  "README.md" = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("RW5nbGlzaCB8IFvnroDkvZPkuK3mloddKFJFQURNRS56aC1DTi5tZCk="))
+  "README.zh-CN.md" = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("W0VuZ2xpc2hdKFJFQURNRS5tZCkgfCDnroDkvZPkuK3mloc="))
+}
+foreach ($Entry in $LanguageNavigation.GetEnumerator()) {
+  $Lines = [System.IO.File]::ReadAllLines((Join-Path $Repo $Entry.Key))
+  if ($Lines.Count -lt 3 -or $Lines[2] -cne $Entry.Value) { throw "invalid README language navigation: $($Entry.Key)" }
+}
+Write-Host "readme_language_navigation_state=ready"
 Get-ChildItem -LiteralPath $Repo -Filter "*.md" -File -Recurse | ForEach-Object {
   $Text = [System.IO.File]::ReadAllText($_.FullName)
   foreach ($Match in [regex]::Matches($Text, '\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)')) {
