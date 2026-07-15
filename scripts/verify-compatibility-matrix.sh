@@ -12,10 +12,12 @@ esac
 policy="$repo/config/compatibility-matrix.json"
 [ -f "$policy" ] || { echo 'compatibility_policy_state=failed'; echo 'compatibility_policy_failure=missing_file'; exit 1; }
 
-if command -v python3 >/dev/null 2>&1; then py=python3
-elif command -v python >/dev/null 2>&1; then py=python
-else echo 'compatibility_policy_state=failed'; echo 'compatibility_policy_failure=python_required'; exit 1
-fi
+py=
+for candidate in python3 python; do
+  if command -v "$candidate" >/dev/null 2>&1 &&
+    "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then py=$candidate; break; fi
+done
+if [ -z "$py" ]; then echo 'compatibility_policy_state=failed'; echo 'compatibility_policy_failure=python3_required'; exit 1; fi
 
 "$py" - "$policy" <<'PY'
 import json

@@ -28,6 +28,18 @@ Before `proxy_state=verified`, required operations must not require these source
 
 ## Consequences
 
+- Firmware acquisition and flashing happen before this bootstrap when the router is new or still
+  runs stock Asuswrt. If official Asuswrt-Merlin is already installed, skip this preparation. From
+  a trusted reachable network, select the exact model and hardware revision on the
+  [official supported-model list](https://www.asuswrt-merlin.net/about), obtain the matching build
+  through the [official download page](https://www.asuswrt-merlin.net/download) or its official
+  [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/), and follow the
+  [official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation).
+  Transfer the verified archive offline if necessary. This project does not download or flash router
+  firmware. A third-party community or support site may serve only one country or region and may
+  distribute a modified firmware family; do not assume that a corresponding site exists elsewhere
+  or that it is an official source.
+  If no trusted source is reachable, stop rather than substituting an unverified download.
 - `prepare-bundle` is not a required pre-proxy step. It downloads release assets from GitHub. GitHub
   may work directly in mainland China, but it can be slow or temporarily unreachable during sensitive
   periods, so the main no-wall path must not depend on it.
@@ -56,10 +68,12 @@ runtime bundle.
 
 ## Practical Flow
 
-1. Use router Web GUI and LAN SSH for initial setup.
-2. Run `check-no-wall-readiness`.
-3. Run `guide-router`.
-4. If ShellCrash/Mihomo already exists, deploy policy/scripts and import the provider profile.
-5. If runtime is missing, use `-InstallRuntime` only when `bundle/` is verified.
-6. Only after the route is verified should optional online preparation tasks be treated as convenient
+1. If the router does not already run official Asuswrt-Merlin, complete the official manual download
+   and installation preparation above from a trusted reachable network.
+2. Use router Web GUI and LAN SSH for initial setup.
+3. Run `check-no-wall-readiness`.
+4. Run `guide-router`.
+5. If ShellCrash/Mihomo already exists, deploy policy/scripts and import the provider profile.
+6. If runtime is missing, use `-InstallRuntime` only when `bundle/` is verified.
+7. Only after the route is verified should optional online preparation tasks be treated as convenient
    rather than blocking.

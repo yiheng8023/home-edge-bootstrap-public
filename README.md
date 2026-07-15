@@ -21,6 +21,20 @@ defined and verified.
 
 ## Start here
 
+Before choosing or flashing a router, verify the exact model and hardware revision against the
+[official Asuswrt-Merlin supported-model list](https://www.asuswrt-merlin.net/about), confirm that a
+current build exists on the [official download page](https://www.asuswrt-merlin.net/download), and
+use the [ASUS Download Center](https://www.asus.com/global/support/download-center/) for the
+model-specific manual, stock firmware, and recovery tools. ASUS availability alone does not prove
+current Asuswrt-Merlin support. Review the [router baseline](docs/ROUTER_BASELINE.md) before making
+settings changes, and follow the
+[official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation). This
+project does not download or flash router firmware. If the project website is unreachable, use the
+official [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) or another
+official download endpoint currently listed by the official download page. A third-party community
+or support site may exist for a particular country or region and may distribute a modified firmware
+family; do not assume that a corresponding site exists elsewhere or that it is an official source.
+
 Clone the repository and open the numbered guided interface:
 
 ```powershell
@@ -205,6 +219,31 @@ capability check, a field observation, or the release-specific gates described i
 
 Community support is best effort. Sponsorship does not create a service-level commitment, warranty,
 response priority, release promise, or feature entitlement.
+
+## Sponsor
+
+If Home Edge Bootstrap is useful to you and you would like to support its continued maintenance,
+documentation, testing, and community work, voluntary sponsorships of any amount are sincerely
+appreciated. Sponsorship is optional and does not purchase support priority, features, release
+decisions, or technical influence.
+
+- For CNY sponsorships, scan the WeChat Pay or Alipay code below.
+- For cross-border sponsorships or other supported currencies, use the
+  [PayPal payment link](https://www.paypal.com/ncp/payment/LNTF8KXGJXMZY). Available currencies,
+  payment methods, conversion, and fees are determined by the PayPal checkout page and may vary by
+  country or region.
+
+Please verify the displayed recipient before confirming a payment. Thank you for supporting the
+project.
+
+<table>
+  <tr>
+    <td align="center"><strong>WeChat Pay (CNY)</strong><br><img src="docs/assets/sponsoring/wechat-pay.png" alt="WeChat Pay sponsorship QR code" width="280"></td>
+    <td align="center"><strong>Alipay (CNY)</strong><br><img src="docs/assets/sponsoring/alipay.png" alt="Alipay sponsorship QR code" width="280"></td>
+  </tr>
+</table>
+
+See [Sponsoring](SPONSORING.md) for the complete voluntary-sponsorship and governance boundary.
 
 ## Repository layout
 

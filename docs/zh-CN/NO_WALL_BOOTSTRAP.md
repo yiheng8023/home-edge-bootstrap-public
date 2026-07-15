@@ -25,6 +25,16 @@
 
 ## 推论
 
+- 全新路由器或仍运行原厂 Asuswrt 时，固件取得与人工刷写发生在本 bootstrap 之前；已经运行
+  官方 Asuswrt-Merlin 时跳过这项准备。应在可信且可达的网络中，按准确型号和硬件修订版核对
+  [官方支持型号页](https://www.asuswrt-merlin.net/about)，通过
+  [官方下载页](https://www.asuswrt-merlin.net/download)或其官方
+  [SourceForge 发布区](https://sourceforge.net/projects/asuswrt-merlin/files/)取得对应构建，并遵循
+  [梅林官方安装指南](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation)。必要时通过离线方式
+  带回已经校验的压缩包。本项目不会下载或刷写路由器固件。第三方社区或支持网站可能只面向某个
+  国家或地区，也可能分发改版固件；不假定其他国家或地区存在对应站点，也不要把它当作官方来源。
+  可信来源均不可达时应停止，
+  不应换成未核验下载继续。
 - `prepare-bundle` 不是代理建立前的必需步骤。它会从 GitHub 下载发布资产；GitHub 在中国大陆通常并非完全不可访问，但可能较慢，也可能在敏感时期阶段性不可达。因此，无代理主流程不能依赖它一定可用。
 - 全新无代理运行时安装要求 `bundle/` 中已有经过校验的文件。
 - 如果 `bundle/` 缺失，本工具仍可配置和监管已有 ShellCrash/Mihomo 运行时，但不得声称可以完成全新离线安装。
@@ -48,9 +58,10 @@ sh scripts/check-no-wall-readiness.sh
 
 ## 实际流程
 
-1. 使用路由器 Web GUI 和局域网 SSH 完成初始设置。
-2. 运行 `check-no-wall-readiness`。
-3. 运行 `guide-router`。
-4. 如果 ShellCrash/Mihomo 已存在，则部署策略和脚本，并导入服务商配置。
-5. 如果运行时缺失，只有在 `bundle/` 已校验时才使用 `-InstallRuntime`。
-6. 只有路线验证通过后，在线准备任务才可以作为便利项，而不是阻塞项。
+1. 如果路由器尚未运行官方 Asuswrt-Merlin，先在可信且可达的网络中完成上述官方人工下载与安装准备。
+2. 使用路由器 Web GUI 和局域网 SSH 完成初始设置。
+3. 运行 `check-no-wall-readiness`。
+4. 运行 `guide-router`。
+5. 如果 ShellCrash/Mihomo 已存在，则部署策略和脚本，并导入服务商配置。
+6. 如果运行时缺失，只有在 `bundle/` 已校验时才使用 `-InstallRuntime`。
+7. 只有路线验证通过后，在线准备任务才可以作为便利项，而不是阻塞项。

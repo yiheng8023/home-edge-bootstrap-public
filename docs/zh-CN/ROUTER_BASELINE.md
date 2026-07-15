@@ -32,7 +32,15 @@
 
 推荐默认项：
 
-- 使用官方 Asuswrt-Merlin 支持的华硕路由器型号；
+- 选择或刷写路由器前，先按准确型号和硬件修订版核对
+  [Asuswrt-Merlin 官方支持型号页](https://www.asuswrt-merlin.net/about)，再到
+  [官方下载页](https://www.asuswrt-merlin.net/download)确认当前确有对应构建；型号专属的
+  ASUS 手册、原厂固件和恢复工具以[华硕官方下载中心](https://www.asus.com/global/support/download-center/)
+  为准。华硕仍提供该型号资料，并不等于 Asuswrt-Merlin 当前仍支持。刷写步骤应遵循
+  [梅林官方安装指南](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation)，不使用本仓库
+  另写的刷机教程；项目官网不可达时，使用下载页所链接的官方
+  [SourceForge 发布区](https://sourceforge.net/projects/asuswrt-merlin/files/)。第三方支持网站可能只面向
+  某个国家或地区；不假定其他国家或地区存在对应站点，也不要把它当作官方来源；
 - SSH 可用后保持 JFFS custom scripts/configs 开启；
 - 管理后台仅面向 LAN，不向 WAN 暴露；
 - 关闭 WPS；

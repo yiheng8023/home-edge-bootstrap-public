@@ -52,11 +52,25 @@ firmware build, provider, or network.
 Before declaring a target:
 
 - Read [Compatibility](docs/COMPATIBILITY.md).
+- Read the [router baseline](docs/ROUTER_BASELINE.md).
 - Keep a separately managed recovery or fallback path.
 - Confirm that you can verify the SSH host key.
 - Do not place a subscription URL in a command history, issue, or support archive.
 - If the runtime is absent, obtain a separately verified offline release artifact rather than making
   the unverified proxy path a prerequisite for its own installation.
+
+Verify the exact model and hardware revision against the
+[official Asuswrt-Merlin supported-model list](https://www.asuswrt-merlin.net/about), confirm that a
+current build exists on the [official download page](https://www.asuswrt-merlin.net/download), and
+use the [ASUS Download Center](https://www.asus.com/global/support/download-center/) for the
+model-specific manual, stock firmware, and recovery tools. ASUS availability alone does not prove
+current Asuswrt-Merlin support. Follow the
+[official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation); this
+project does not download or flash router firmware. If the project website is unreachable, use the
+official [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) or another
+official download endpoint currently listed by the official download page. A third-party community
+or support site may exist for a particular country or region and may distribute a modified firmware
+family; do not assume that a corresponding site exists elsewhere or that it is an official source.
 
 ## 5. Start a guided target session
 

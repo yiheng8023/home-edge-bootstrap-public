@@ -51,11 +51,24 @@ sh scripts/verify-local.sh
 声明目标前：
 
 - 阅读[兼容性](docs/zh-CN/COMPATIBILITY.md)。
+- 阅读[路由器基线](docs/zh-CN/ROUTER_BASELINE.md)。
 - 保留单独管理的恢复或回退路径。
 - 确认能够自行核验 SSH 主机密钥。
 - 不要把订阅 URL 放入命令历史、issue 或支持归档。
 - 如果运行时不存在，应使用经过单独校验的离线发布物，不能让尚未验证的代理路径成为
   自身安装的前置条件。
+
+先按准确型号和硬件修订版核对
+[Asuswrt-Merlin 官方支持型号页](https://www.asuswrt-merlin.net/about)，再到
+[官方下载页](https://www.asuswrt-merlin.net/download)确认当前确有对应构建；型号专属的
+手册、原厂固件和恢复工具以[华硕官方下载中心](https://www.asus.com/global/support/download-center/)
+为准。华硕仍提供该型号资料，并不等于 Asuswrt-Merlin 当前仍支持。
+
+刷写步骤遵循[梅林官方安装指南](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation)；本项目
+不会下载或刷写路由器固件。项目官网不可达时，使用官方
+[SourceForge 发布区](https://sourceforge.net/projects/asuswrt-merlin/files/)，或梅林官方下载页当前
+列出的其他官方下载入口。第三方社区或支持网站可能只面向某个国家或地区，也可能分发改版固件；
+不假定其他国家或地区存在对应站点，也不要把它当作官方来源。
 
 ## 5. 启动目标引导会话
 

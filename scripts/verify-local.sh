@@ -110,6 +110,7 @@ echo 'license_material_state=ready'
 verify_sbom "$sbom_path"
 
 "$py" - "$repo" <<'PY'
+import hashlib
 import json
 import pathlib
 import re
@@ -133,14 +134,69 @@ for rel, expected in language_navigation.items():
     lines = (root / rel).read_text(encoding="utf-8").splitlines()
     if len(lines) < 3 or lines[2] != expected:
         raise SystemExit(f"invalid README language navigation: {rel}")
+official_references = (
+    "https://www.asuswrt-merlin.net/about",
+    "https://www.asuswrt-merlin.net/download",
+    "https://www.asus.com/global/support/download-center/",
+    "https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation",
+    "https://sourceforge.net/projects/asuswrt-merlin/files/",
+)
+router_references = {
+    "README.md": "docs/ROUTER_BASELINE.md",
+    "README.zh-CN.md": "docs/zh-CN/ROUTER_BASELINE.md",
+    "QUICKSTART.md": "docs/ROUTER_BASELINE.md",
+    "QUICKSTART.zh-CN.md": "docs/zh-CN/ROUTER_BASELINE.md",
+}
+for rel, baseline in router_references.items():
+    text = (root / rel).read_text(encoding="utf-8")
+    for expected in (*official_references, baseline):
+        if expected not in text:
+            raise SystemExit(f"missing router reference in {rel}: {expected}")
+for rel in ("docs/ROUTER_BASELINE.md", "docs/zh-CN/ROUTER_BASELINE.md"):
+    text = (root / rel).read_text(encoding="utf-8")
+    for expected in official_references:
+        if expected not in text:
+            raise SystemExit(f"missing official router reference in {rel}: {expected}")
+prebootstrap_references = (
+    "https://www.asuswrt-merlin.net/about",
+    "https://www.asuswrt-merlin.net/download",
+    "https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation",
+    "https://sourceforge.net/projects/asuswrt-merlin/files/",
+)
+for rel in ("docs/NO_WALL_BOOTSTRAP.md", "docs/zh-CN/NO_WALL_BOOTSTRAP.md"):
+    text = (root / rel).read_text(encoding="utf-8")
+    for expected in prebootstrap_references:
+        if expected not in text:
+            raise SystemExit(f"missing pre-bootstrap firmware reference in {rel}: {expected}")
 link_re = re.compile(r"\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)")
 for doc in root.rglob("*.md"):
     for target in link_re.findall(doc.read_text(encoding="utf-8")):
         if re.match(r"^(?:https?://|mailto:|#)", target): continue
         if not (doc.parent / target).exists(): raise SystemExit(f"broken documentation link: {doc} -> {target}")
-if (root / ".github/FUNDING.yml").exists(): raise SystemExit("unexpected funding configuration")
+if (root / ".github/FUNDING.yml").exists():
+    raise SystemExit("unexpected funding configuration")
+sponsorship_refs = (
+    "https://www.paypal.com/ncp/payment/LNTF8KXGJXMZY",
+    "docs/assets/sponsoring/wechat-pay.png",
+    "docs/assets/sponsoring/alipay.png",
+)
+for rel in ("README.md", "README.zh-CN.md"):
+    text = (root / rel).read_text(encoding="utf-8")
+    for expected in sponsorship_refs:
+        if expected not in text:
+            raise SystemExit(f"missing sponsorship reference in {rel}: {expected}")
+expected_assets = {
+    "docs/assets/sponsoring/wechat-pay.png": "d8c213f1539cad6c9fd23099736aecd06c722129af24f77fe9f26563bbb9a05e",
+    "docs/assets/sponsoring/alipay.png": "491ee27d52797818f1cca756560bc239cf6150fe3327b0fd31728f7ce53327cd",
+}
+for rel, expected in expected_assets.items():
+    path = root / rel
+    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+        raise SystemExit(f"invalid sponsorship asset: {rel}")
 PY
 echo 'readme_language_navigation_state=ready'
+echo 'router_reference_discoverability_state=ready'
+echo 'sponsorship_surface_state=ready'
 echo 'sbom_structure_state=ready'
 echo 'release_fixture_state=ready'
 echo 'public_media_kit_state=ready'

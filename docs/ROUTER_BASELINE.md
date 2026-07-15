@@ -33,7 +33,17 @@ setting in the web UI, rerun the audit before making the next decision.
 
 Recommended defaults:
 
-- Use an ASUS router model supported by official Asuswrt-Merlin.
+- Before choosing or flashing a router, verify the exact model and hardware revision against the
+  [official Asuswrt-Merlin supported-model list](https://www.asuswrt-merlin.net/about), then confirm
+  that a current build exists on the [official download page](https://www.asuswrt-merlin.net/download).
+  Use the [ASUS Download Center](https://www.asus.com/global/support/download-center/) for the
+  model-specific ASUS manual, stock firmware, and recovery tools. ASUS availability alone does not
+  establish current Asuswrt-Merlin support. Follow the
+  [official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation) rather
+  than a repository-local flashing tutorial. If the project website is unreachable, use the official
+  [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) linked by the
+  download page. A third-party support site may serve only one country or region; do not assume that
+  a corresponding site exists elsewhere or that it is an official source.
 - Keep JFFS custom scripts/configs enabled after SSH is available.
 - Keep router administration LAN-side; do not expose the web UI to WAN.
 - Disable WPS.

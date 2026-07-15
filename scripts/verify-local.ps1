@@ -162,6 +162,44 @@ foreach ($Entry in $LanguageNavigation.GetEnumerator()) {
   if ($Lines.Count -lt 3 -or $Lines[2] -cne $Entry.Value) { throw "invalid README language navigation: $($Entry.Key)" }
 }
 Write-Host "readme_language_navigation_state=ready"
+$OfficialRouterReferences = @(
+  "https://www.asuswrt-merlin.net/about",
+  "https://www.asuswrt-merlin.net/download",
+  "https://www.asus.com/global/support/download-center/",
+  "https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation",
+  "https://sourceforge.net/projects/asuswrt-merlin/files/"
+)
+$RouterReferences = [ordered]@{
+  "README.md" = "docs/ROUTER_BASELINE.md"
+  "README.zh-CN.md" = "docs/zh-CN/ROUTER_BASELINE.md"
+  "QUICKSTART.md" = "docs/ROUTER_BASELINE.md"
+  "QUICKSTART.zh-CN.md" = "docs/zh-CN/ROUTER_BASELINE.md"
+}
+foreach ($Entry in $RouterReferences.GetEnumerator()) {
+  $Text = [System.IO.File]::ReadAllText((Join-Path $Repo $Entry.Key))
+  foreach ($Expected in $OfficialRouterReferences + @($Entry.Value)) {
+    if (-not $Text.Contains($Expected)) { throw "missing router reference in $($Entry.Key): $Expected" }
+  }
+}
+foreach ($Path in @("docs/ROUTER_BASELINE.md", "docs/zh-CN/ROUTER_BASELINE.md")) {
+  $Text = [System.IO.File]::ReadAllText((Join-Path $Repo $Path))
+  foreach ($Expected in $OfficialRouterReferences) {
+    if (-not $Text.Contains($Expected)) { throw "missing official router reference in ${Path}: $Expected" }
+  }
+}
+$PreBootstrapReferences = @(
+  "https://www.asuswrt-merlin.net/about",
+  "https://www.asuswrt-merlin.net/download",
+  "https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation",
+  "https://sourceforge.net/projects/asuswrt-merlin/files/"
+)
+foreach ($Path in @("docs/NO_WALL_BOOTSTRAP.md", "docs/zh-CN/NO_WALL_BOOTSTRAP.md")) {
+  $Text = [System.IO.File]::ReadAllText((Join-Path $Repo $Path))
+  foreach ($Expected in $PreBootstrapReferences) {
+    if (-not $Text.Contains($Expected)) { throw "missing pre-bootstrap firmware reference in ${Path}: $Expected" }
+  }
+}
+Write-Host "router_reference_discoverability_state=ready"
 Get-ChildItem -LiteralPath $Repo -Filter "*.md" -File -Recurse | ForEach-Object {
   $Text = [System.IO.File]::ReadAllText($_.FullName)
   foreach ($Match in [regex]::Matches($Text, '\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)')) {
@@ -171,6 +209,27 @@ Get-ChildItem -LiteralPath $Repo -Filter "*.md" -File -Recurse | ForEach-Object 
     if (-not (Test-Path -LiteralPath $Resolved)) { throw "broken documentation link: $($_.FullName) -> $Target" }
   }
 }
-if (Test-Path -LiteralPath (Join-Path $Repo ".github\FUNDING.yml")) { throw "unexpected funding configuration" }
+$FundingPath = Join-Path $Repo ".github\FUNDING.yml"
+if (Test-Path -LiteralPath $FundingPath) { throw "unexpected funding configuration" }
+$SponsorshipReferences = @(
+  "https://www.paypal.com/ncp/payment/LNTF8KXGJXMZY",
+  "docs/assets/sponsoring/wechat-pay.png",
+  "docs/assets/sponsoring/alipay.png"
+)
+foreach ($Path in @("README.md", "README.zh-CN.md")) {
+  $Text = [System.IO.File]::ReadAllText((Join-Path $Repo $Path))
+  foreach ($Expected in $SponsorshipReferences) {
+    if (-not $Text.Contains($Expected)) { throw "missing sponsorship reference in ${Path}: $Expected" }
+  }
+}
+$ExpectedSponsorshipAssets = [ordered]@{
+  "docs/assets/sponsoring/wechat-pay.png" = "d8c213f1539cad6c9fd23099736aecd06c722129af24f77fe9f26563bbb9a05e"
+  "docs/assets/sponsoring/alipay.png" = "491ee27d52797818f1cca756560bc239cf6150fe3327b0fd31728f7ce53327cd"
+}
+foreach ($Entry in $ExpectedSponsorshipAssets.GetEnumerator()) {
+  $Path = Join-Path $Repo $Entry.Key
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf) -or (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant() -cne $Entry.Value) { throw "invalid sponsorship asset: $($Entry.Key)" }
+}
+Write-Host "sponsorship_surface_state=ready"
 Write-Host "public_closeout_structure_state=ready"
 Write-Host "local_verification_state=ready"
