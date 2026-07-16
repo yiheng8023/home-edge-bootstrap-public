@@ -2,115 +2,177 @@
 
 [简体中文](QUICKSTART.zh-CN.md) · [Home](README.md)
 
-This path introduces the framework progressively. The current implemented reference adapter targets
-an ASUS gateway running official Asuswrt-Merlin with ShellCrash/ShellClash and a Mihomo-compatible
-runtime. It is not a verified-adapter maturity claim.
+This is the shortest executable path through Home Edge Bootstrap. The current implemented reference
+adapter targets an ASUS gateway running official Asuswrt-Merlin with ShellCrash/ShellClash and a
+Mihomo-compatible runtime. That does not assign it a verified maturity stage.
 
-## 1. Clone the source checkout
+Help and operator preflight normally take seconds to a few minutes. Firmware installation, runtime
+preparation, deployment, and recovery vary by device, network, and offline-transfer needs; there is
+no fixed completion-time promise. The full local verification suite is optional for a first read-only
+probe and may take several minutes or substantially longer.
+
+## 1. Clone and inspect locally
 
 ```powershell
 git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
 cd home-edge-bootstrap-public
-```
-
-The source checkout contains scripts, documentation, and synthetic fixtures. It may not contain the
-runtime payloads required for a fresh offline installation.
-
-## 2. Inspect the guide locally
-
-Windows PowerShell:
-
-```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1 -Help
 ```
 
-macOS or Linux:
-
-On macOS and Linux, local verification requires Python 3. The `python3` command is accepted; `python` is accepted only when it points to Python 3. Python 2 is unsupported.
-
 ```sh
+git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
+cd home-edge-bootstrap-public
 sh scripts/tui.sh --help
 ```
 
-Help is local-only and does not contact a router.
+Expected help starts with a `usage:` line. Help is local-only and does not contact a router.
 
-## 3. Verify the checkout
+On macOS and Linux, local verification requires Python 3. The `python3` command is accepted; `python` is accepted only when it points to Python 3. Python 2 is unsupported.
+
+Run the short operator preflight:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\doctor.ps1
 ```
 
 ```sh
-sh scripts/verify-local.sh
+sh scripts/doctor.sh
 ```
 
-Local verification is offline and fixture-based. It is not field certification for a router,
-firmware build, provider, or network.
+Fix a reported required tool before touching the router. For an optional deep, offline,
+fixture-based checkout check, run `scripts\verify-local.ps1` or `sh scripts/verify-local.sh`.
+Success ends with `local_verification_state=ready`; a failure names the first gate to inspect. These
+fixtures are not field certification for a router, firmware build, provider, or network.
 
-## 4. Prepare the safety boundary
+## 2. Prepare the router and recovery boundary
 
 Before declaring a target:
 
-- Read [Compatibility](docs/COMPATIBILITY.md).
-- Read the [router baseline](docs/ROUTER_BASELINE.md).
-- Keep a separately managed recovery or fallback path.
-- Confirm that you can verify the SSH host key.
-- Do not place a subscription URL in a command history, issue, or support archive.
-- If the runtime is absent, obtain a separately verified offline release artifact rather than making
-  the unverified proxy path a prerequisite for its own installation.
+- Read [Compatibility](docs/COMPATIBILITY.md) and the [router baseline](docs/ROUTER_BASELINE.md).
+- Keep an independent soft-router or endpoint fallback and the vendor recovery route.
+- Finish the router's first login, enable LAN SSH and JFFS custom scripts/configs, and keep management on the intended LAN.
+- Never place a subscription URL in command history, an issue, or a support archive; it is a credential.
+- If the runtime is absent, obtain a separately verified offline release artifact instead of making an unverified proxy path a prerequisite for its own installation.
 
 Verify the exact model and hardware revision against the
-[official Asuswrt-Merlin supported-model list](https://www.asuswrt-merlin.net/about), confirm that a
-current build exists on the [official download page](https://www.asuswrt-merlin.net/download), and
-use the [ASUS Download Center](https://www.asus.com/global/support/download-center/) for the
-model-specific manual, stock firmware, and recovery tools. ASUS availability alone does not prove
-current Asuswrt-Merlin support. Follow the
-[official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation); this
-project does not download or flash router firmware. If the project website is unreachable, use the
-official [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) or another
-official download endpoint currently listed by the official download page. A third-party community
-or support site may exist for a particular country or region and may distribute a modified firmware
-family; do not assume that a corresponding site exists elsewhere or that it is an official source.
+[official Asuswrt-Merlin supported-model list](https://www.asuswrt-merlin.net/about), confirm a
+current build on the [official download page](https://www.asuswrt-merlin.net/download), and use the
+[ASUS Download Center](https://www.asus.com/global/support/download-center/) for model-specific
+manuals, stock firmware, and recovery tools. ASUS availability alone does not prove current Merlin
+support. Follow the [official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation).
+This project does not download or flash router firmware.
 
-## 5. Start a guided target session
+If the official site is unreachable before the proxy works, use the official
+[SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) or another official
+endpoint currently listed by the download page. A third-party community or support site may be
+country- or region-specific and may distribute modified firmware; do not assume it is official or
+available elsewhere. If no trusted source is reachable, obtain and verify the archive on another
+trusted network and transfer it offline, or stop.
 
-Use a generic SSH target such as `router-user@router.lan`:
+## 3. Set the actual target and verify SSH identity
+
+Use the router's configured administrative/SSH account and actual LAN IP. The placeholder below is
+not an account created by this project:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1 -Router router-user@router.lan
+$Router = "<router-admin-user>@192.168.50.1"
 ```
 
 ```sh
-sh scripts/tui.sh --router router-user@router.lan
+router="<router-admin-user>@192.168.50.1"
 ```
 
-After a target is supplied, the guide can run read-only capability probes over SSH. Verify the SSH
-host key yourself; do not disable host-key checking.
+Before the first probe, obtain the router's SSH host-key fingerprint through an independent trusted
+channel, such as a local console, firmware-provided display, or trusted operator record. Interfaces
+vary; stop if no trustworthy fingerprint is available. `ssh-keyscan -t ed25519 192.168.50.1` may
+collect the network-presented key for comparison, but by itself it does not verify identity. Stop on
+a mismatch. Never delete the saved key or disable host-key checking merely to continue.
 
-## 6. Review before writing
+## 4. Start a resumable, read-first session
 
-The guide prepares a dry-run before deployment. Review the exact target, managed paths, backup,
-rollback command, capability mismatches, and accepted boundaries. A write requires the exact
-`APPLY` confirmation. EOF, interruption, invalid input, or any other response cancels the action.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-bootstrap.ps1 -Router $Router -NoPause
+```
 
-## 7. Verify before enabling self-heal
+```sh
+sh scripts/run-bootstrap.sh --no-pause "$router"
+```
 
-After apply:
+The loop stores `state.env`, logs, and a dedicated `known_hosts` record below
+`logs/bootstrap/<router-id>/`. Keep this target session until closeout. Expected terminal or pause
+markers are:
 
-1. Confirm the runtime profile and health endpoint.
-2. Confirm the intended router/client topology.
-3. Retain the reported backup and rollback route.
-4. Enable live self-heal only after its dry-run behavior is understood; the write requires the exact
-   `ENABLE` confirmation.
+- `bootstrap_state=waiting_prerequisite`: fix the named host/router prerequisite, then rerun the same command.
+- `bootstrap_state=waiting_manual`: complete the named manual action, then rerun it.
+- `bootstrap_state=pass`: final installation closeout passed.
+- `bootstrap_state=accepted_boundary`: reviewed manual exceptions remain; this is weaker than a full pass.
 
-If the applied state is unhealthy, use the reported rollback path. A prompted rollback requires the
-exact `ROLLBACK` confirmation.
+The loop prints `next_action_code`. It begins with read-only capability probes and prepares
+`--dry-run` behavior before write-capable actions.
 
-## 8. Close out or request support
+## 5. Review every write and retain rollback
 
-Run the final installation gate for the declared target. If diagnosis must be shared, generate a
-redacted support bundle and review every file before attaching it. A subscription URL is a credential
-and must never appear in an issue or support archive.
+Review the exact target, managed paths, capability mismatches, accepted boundaries, backup, and
+rollback command. A deployment write requires the exact `APPLY` confirmation. Live self-heal
+requires `ENABLE`; a prompted rollback requires `ROLLBACK`. EOF, interruption, invalid input, or any
+other response cancels the action.
 
-Return to the [full README](README.md) for architecture, adapter maturity, no-wall recovery, and
-contribution guidance.
+The current project kit is `/jffs/home-edge-bootstrap`; when an older kit exists, deployment keeps it
+at `/jffs/home-edge-bootstrap.prev` and reports `rollback_available=0|1` plus the exact rollback
+command. Runtime-configuration backups are separate and default to
+`/jffs/home-edge-bootstrap/backups/runtime`. Do not enable self-heal while apply health is failing.
+
+## 6. Run the final gate
+
+From a client that uses the router:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check-client-topology.ps1 -Router $Router
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check-installation-closeout.ps1 -Router $Router -RunClientCheck
+```
+
+```sh
+sh scripts/check-client-topology.sh "$router"
+sh scripts/check-installation-closeout.sh "$router" --run-client-check
+```
+
+A pure router-primary pass reports `client_topology_mode=router_primary` and
+`installation_closeout_state=pass`. A local proxy/TUN can produce `client_runtime_present`; accept it
+only when fallback or hybrid mode is deliberate.
+
+## 7. Export support evidence only when needed
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\export-support-bundle.ps1 -Router $Router
+```
+
+```sh
+sh scripts/export-support-bundle.sh "$router"
+```
+
+Success reports `support_bundle_state=ready` and `support_bundle_archive=<path>`. The default archive
+root is `C:\tmp\home-edge-support-bundles` on Windows and `/tmp/home-edge-support-bundles` on
+macOS/Linux. The bundle is redacted, but you must review every file before attaching it.
+
+## Glossary
+
+- **Target**: the router account and address being inspected or changed.
+- **Capability**: an observed ability needed by a step, such as SSH, JFFS, or a runtime endpoint.
+- **Managed path**: a path the framework is allowed to create, replace, back up, or remove.
+- **Target session**: resumable state and evidence under `logs/bootstrap/<router-id>/`.
+- **Support classification**: the declared evidence level for a target; it does not certify every device.
+- **Accepted boundary**: an explicit reviewed manual exception; it is not a strong pass.
+
+## Quick troubleshooting
+
+| Symptom | First action |
+|---|---|
+| Missing Python 3 or another local tool | Install the named tool and rerun `doctor` |
+| SSH unreachable or authentication failed | Check the actual LAN IP, configured SSH account, LAN SSH setting, and reachability |
+| Host fingerprint unavailable or mismatched | Stop and verify through an independent trusted channel; do not bypass checking |
+| JFFS missing | Enable custom scripts/configs, reboot if firmware requires it, and rerun the same session |
+| Runtime unhealthy after apply | Do not enable self-heal; use the reported rollback and inspect the session log |
+| Self-heal registration incomplete | Run status first, then repair only project-owned lifecycle entries |
+
+Return to the [full README](README.md) for detailed diagnosis, architecture, adapter maturity,
+no-wall recovery, and contribution guidance.
