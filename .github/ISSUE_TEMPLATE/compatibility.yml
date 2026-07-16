@@ -1,0 +1,81 @@
+name: Compatibility report
+description: Share secret-safe target evidence from a real or synthetic environment.
+title: "[Compatibility]: "
+labels:
+  - "type: compatibility"
+  - "status: needs-evidence"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve compatibility evidence. Reports may be written in English or Chinese. Do not include serial numbers, MAC addresses, hostnames, subscription URLs, node lists, credentials, public IPs, or raw logs. Review every redacted support bundle before attaching it, including every file inside the bundle.
+  - type: dropdown
+    id: version
+    attributes:
+      label: Project version
+      options:
+        - v0.1.x
+        - Unreleased main branch
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: Device and firmware
+      description: Give the exact public model name and firmware family/version, but no serial number, MAC address, hostname, or address.
+      placeholder: ASUS RT-AX86U Pro, official Asuswrt-Merlin 3004.388.x
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and architecture
+      description: Identify the proxy runtime, installation method, and CPU architecture when known.
+      placeholder: ShellCrash 1.9.4, Mihomo-compatible runtime, aarch64
+    validations:
+      required: true
+  - type: input
+    id: operator_host
+    attributes:
+      label: Operator host
+      description: State the operating system and shell used to run the project.
+      placeholder: Windows 11 with PowerShell 7
+    validations:
+      required: true
+  - type: dropdown
+    id: observed_stage
+    attributes:
+      label: Furthest observed stage
+      options:
+        - Documentation or preflight only
+        - Plan completed
+        - Apply completed
+        - Recovery or rollback completed
+        - Failed before a stage completed
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Observed result
+      description: Describe what worked, what did not, and the smallest reproducible sequence using synthetic or redacted values.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence (optional)
+      description: Paste minimal redacted verifier output or attach a support bundle only after reviewing every file. A report is evidence input, not an automatic support certification.
+      placeholder: Relevant state keys, checks run, or a reviewed support bundle.
+  - type: checkboxes
+    id: sensitive_review
+    attributes:
+      label: Evidence and sensitive-data review
+      options:
+        - label: I removed serial numbers, MAC addresses, hostnames, subscription URLs, node lists, credentials, public IPs, and raw logs, and I reviewed every redacted support bundle before attaching it.
+          required: true
+        - label: I understand that this report does not by itself establish a supported target or verified adapter maturity.
+          required: true
+        - label: This report does not contain undisclosed vulnerability or exploit details.
+          required: true

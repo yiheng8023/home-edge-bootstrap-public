@@ -1,0 +1,72 @@
+name: Adapter proposal
+description: Propose a maintainable adapter for another device, firmware, or runtime family.
+title: "[Adapter]: "
+labels:
+  - "type: adapter-proposal"
+  - "area: adapter-proposal"
+  - "status: needs-evidence"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals may be written in English or Chinese. A proposal starts an admission discussion; it does not create a support claim or commit maintainers to implementation. Do not include subscription URLs, node lists, credentials, public IPs, or raw logs. Review every redacted support bundle before attaching it, including every file inside the bundle.
+  - type: textarea
+    id: user_need
+    attributes:
+      label: User need and target boundary
+      description: Identify the device, firmware, runtime, filesystem, service manager, and the user problem this adapter would solve.
+    validations:
+      required: true
+  - type: textarea
+    id: capabilities
+    attributes:
+      label: Required capabilities
+      description: Describe detection, persistent storage, shell/tooling, runtime control, health checks, backup, and recovery surfaces.
+    validations:
+      required: true
+  - type: textarea
+    id: ownership
+    attributes:
+      label: Maintenance ownership
+      description: Identify the proposed maintainer or maintenance model and the target range they can responsibly test.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety, rollback, and recovery
+      description: Explain fail-closed probes, plan mode, write boundaries, backup, rollback, and recovery when a step fails.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Synthetic fixtures and verification
+      description: Describe secret-safe fixtures, target evidence, compatibility classification, and the checks that would gate admission.
+    validations:
+      required: true
+  - type: textarea
+    id: licensing
+    attributes:
+      label: Licensing and dependencies
+      description: Identify third-party code, firmware/runtime dependencies, redistribution constraints, source obligations, and SBOM impact.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and incremental scope
+      description: Explain existing workflows considered and the smallest useful first increment. Avoid proposing an empty compatibility claim.
+    validations:
+      required: true
+  - type: checkboxes
+    id: admission_review
+    attributes:
+      label: Admission boundary
+      options:
+        - label: I understand that the implementation remains external or experimental until ownership, capability, safety, rollback, privacy, licensing, and verification requirements are met.
+          required: true
+        - label: I removed subscription URLs, node lists, credentials, public IPs, raw logs, and unreviewed support bundles.
+          required: true
+        - label: This proposal does not contain undisclosed vulnerability or exploit details.
+          required: true

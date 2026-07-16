@@ -15,6 +15,9 @@ Thank you for helping improve Home Edge Bootstrap. Contributions should be focus
 
 ## Adapter proposals
 
+Start the discussion with the repository's structured adapter proposal form so ownership, boundaries,
+and verification evidence remain reviewable.
+
 A new adapter or material adapter expansion must identify:
 
 1. the device, firmware, runtime, and filesystem/service-manager boundary;

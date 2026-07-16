@@ -190,6 +190,8 @@ sh scripts/verify-local.sh
 ## 支持、安全与贡献
 
 - 使用与设计问题：[支持说明](SUPPORT.zh-CN.md)
+- 兼容性证据与未来适配器提案：
+  [结构化 Issue 表单](https://github.com/yiheng8023/home-edge-bootstrap-public/issues/new/choose)
 - 机密漏洞报告：[安全政策](SECURITY.zh-CN.md)
 - 聚焦且可复现的变更：[贡献指南](CONTRIBUTING.zh-CN.md)
 - 维护者权责与证据规则：[治理](GOVERNANCE.zh-CN.md)

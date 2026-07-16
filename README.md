@@ -211,6 +211,8 @@ capability check, a field observation, or the release-specific gates described i
 ## Support, security, and contribution
 
 - Usage and design questions: [Support](SUPPORT.md)
+- Compatibility evidence and future adapter proposals:
+  [Structured issue forms](https://github.com/yiheng8023/home-edge-bootstrap-public/issues/new/choose)
 - Confidential vulnerability reports: [Security policy](SECURITY.md)
 - Focused, reproducible changes: [Contributing](CONTRIBUTING.md)
 - Maintainer authority and evidence rules: [Governance](GOVERNANCE.md)
