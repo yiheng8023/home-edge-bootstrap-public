@@ -185,6 +185,14 @@ if ! (cd "$remote_dir" && HOME_EDGE_WRITE_LOCK_HELD=1 __MODE__ sh bootstrap.sh);
   echo "deploy-merlin: bootstrap failed; previous kit restored" >&2
   exit 1
 fi
+state_schema=/jffs/home-edge-bootstrap-state/lifecycle/state.env
+if [ ! -f "$state_schema" ] ||
+  ! grep -Fxq "state_schema_version=1" "$state_schema" ||
+  ! grep -Fxq "stable_state_root=/jffs/home-edge-bootstrap-state" "$state_schema"; then
+  rollback_deploy
+  echo "deploy-merlin: stable state schema verification failed; previous kit restored" >&2
+  exit 1
+fi
 echo "deploy_state=applied"
 echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 '@

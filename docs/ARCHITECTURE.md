@@ -20,6 +20,22 @@ convention.
 | Offline payload | `bundle/` | Medium | Kernel/plugin binaries are architecture and platform specific |
 | Physical setup | none | Manual | Flashing firmware, enabling SSH, and initial credentials remain human steps |
 
+### Merlin lifecycle ownership
+
+| Class | Surface | Upgrade / rollback | Project decommission |
+|---|---|---|---|
+| Replaceable kit | `/jffs/home-edge-bootstrap` and validated project transaction variants | Replace atomically; a prior kit may be restored | Remove |
+| Project helpers | Fixed `home-edge-*` helper allowlist under `/jffs/scripts` | Replace or reapply from the restored kit | Remove only the allowlist |
+| Shared registration | Exact managed `services-start` block and cron name `home_edge_selfheal` | Reconcile exact project entries | Remove exact entries only |
+| Operator state | Subscription and local policy under `/jffs/home-edge-bootstrap-state` | Preserve | Preserve |
+| Recovery state | Subscription/runtime backups and lifecycle evidence under the stable root | Preserve; consume only through explicit recovery | Preserve and report |
+| Regenerable state | Default subscription cache under the stable root | Regenerate | Remove |
+| External runtime | `/jffs/ShellCrash`, Mihomo core, and runtime-owned configuration | Touch only through a separate authorized runtime operation | Do not touch |
+| Firmware/unrelated state | Asuswrt-Merlin, unrelated scripts, jobs, services, and user files | Not owned | Do not touch |
+
+The fixed delete boundary is reviewed adapter code. Provenance may corroborate ownership, but target
+metadata cannot provide arbitrary paths to remove.
+
 Runtime presence, controller authentication, dashboard configuration, dashboard reachability,
 subscription credential/cache, live subscription consumption, route verification, scheduler
 registration, boot-hook registration, and endpoint topology are separate evidence dimensions. No
@@ -60,7 +76,14 @@ similar proxy core. Each adapter must:
 - expose health, provenance, and recovery evidence without leaking credentials;
 - keep target-specific paths, service management, firewall, DNS, and runtime conventions inside the
   adapter boundary;
+- provide a versioned, idempotent migration path that preserves divergent operator state and fails
+  closed on conflicts;
+- provide a plan-first decommission path with a fixed ownership boundary and retained-state report;
 - provide offline fixtures, a declared compatibility surface, and a named maintenance owner.
+
+Future device, firmware, and runtime work enters only through these capability, safety, recovery,
+evidence, maintenance, migration, and decommission contracts. An unimplemented adapter is not a
+supported target and must not appear as one in operator guidance.
 
 The framework reuses mature proxy runtimes and device management interfaces. It does not require an
 adapter to reimplement a proxy core, firmware dashboard, or client UI.

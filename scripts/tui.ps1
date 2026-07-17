@@ -48,7 +48,7 @@ function Test-Startup {
     Write-Host "missing_prerequisite=powershell"
     return $false
   }
-  foreach ($Name in @("doctor.ps1", "run-bootstrap.ps1", "check-no-wall-readiness.ps1", "export-support-bundle.ps1")) {
+  foreach ($Name in @("doctor.ps1", "run-bootstrap.ps1", "check-no-wall-readiness.ps1", "export-support-bundle.ps1", "decommission-merlin.ps1")) {
     if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $Name) -PathType Leaf)) {
       Write-Host "startup_state=failed"
       Write-Host "missing_prerequisite=scripts/$Name"
@@ -67,6 +67,7 @@ $Zh = @{
   Bundle = Decode-Text "NC4g6aqM6K+B56a757q/6L+Q6KGM5pe2IGJ1bmRsZQ=="
   Support = Decode-Text "NS4g5a+85Ye66ISx5pWP5pSv5oyB5YyF"
   Help = Decode-Text "Ni4g5p+l55yL5biu5Yqp5LiO5a6J5YWo6L6555WM"
+  Decommission = Decode-Text "Ny4g5a6h5p+l6aG555uu6YCA5Ye6"
   Exit = Decode-Text "MC4g5LiN5YGa5L+u5pS55bm26YCA5Ye6"
   Prompt = Decode-Text "6K+36YCJ5oupOiA="
   Invalid = Decode-Text "5peg5pWI6YCJ5oup44CC"
@@ -87,10 +88,11 @@ function Show-Menu {
     Write-Host "4. Verify offline runtime bundle"
     Write-Host "5. Export a redacted support bundle"
     Write-Host "6. Show help and safety boundaries"
+    Write-Host "7. Review project decommission"
     Write-Host "0. Exit without changes"
     return "Select: "
   }
-  foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Exit")) { Write-Host $Zh[$Key] }
+  foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Decommission", "Exit")) { Write-Host $Zh[$Key] }
   return $Zh.Prompt
 }
 
@@ -283,7 +285,31 @@ function Export-SupportBundle {
 }
 function Show-SafetyHelp {
   $script:LastActionStatus = 0; Show-Usage
-  if ($Language -eq "en") { Write-Host "Read-only actions may run directly. Deploy and live self-heal require confirmation tokens." } else { Write-Host $Zh.Safety }
+  if ($Language -eq "en") { Write-Host "Read-only actions may run directly. Deploy, live self-heal, and decommission apply require their exact confirmation tokens." }
+  else { Write-Host (Decode-Text "5biu5Yqp5LiO5a6J5YWo6L6555WM77ya5Y+q6K+75pON5L2c5Y+v55u05o6l6L+Q6KGM77yb6YOo572y44CB55yf5a6e6Ieq5oSI5ZKM6aG555uu6YCA5Ye65omn6KGM5b+F6aG76L6T5YWl5ZCE6Ieq55qE57K+56Gu56Gu6K6k5Luk54mM44CC") }
+}
+function Review-Decommission {
+  $script:LastActionStatus = 0
+  if (-not (Ensure-Router)) { return }
+  $Wrapper = Join-Path $PSScriptRoot "decommission-merlin.ps1"
+  $PlanArguments = @("-NoPause", "-Router", $script:Router)
+  $PlanResume = "powershell -File scripts\decommission-merlin.ps1 -NoPause -Router $($script:Router)"
+  $PlanResult = Invoke-ChildScript -Action "decommission_plan" -SafeResumeCommand $PlanResume -WriteStarted $false -Script $Wrapper -Arguments $PlanArguments
+  if ($PlanResult.Status -ne 0) { return }
+  if ($Language -eq "en") {
+    [Console]::Write("The project decommission plan is shown above. Type DECOMMISSION to confirm; anything else cancels: ")
+  }
+  else {
+    [Console]::Write((Decode-Text "6aG555uu6YCA5Ye66K6h5YiS5bey5pi+56S644CC6L6T5YWlIERFQ09NTUlTU0lPTiDnoa7orqTvvIzlhbbku5bovpPlhaXlj5bmtog6IA=="))
+  }
+  $Confirmation = [Console]::In.ReadLine()
+  if ($Confirmation -cne "DECOMMISSION") {
+    if ($Language -eq "en") { Write-Host "Action cancelled." } else { Write-Host $Zh.Cancelled }
+    return
+  }
+  $ApplyArguments = @("-NoPause", "-Apply", "-Confirmation", "DECOMMISSION", "-Router", $script:Router)
+  $ApplyResume = "powershell -File scripts\decommission-merlin.ps1 -NoPause -Apply -Confirmation DECOMMISSION -Router $($script:Router)"
+  [void](Invoke-ChildScript -Action "decommission_apply" -SafeResumeCommand $ApplyResume -WriteStarted $true -Script $Wrapper -Arguments $ApplyArguments)
 }
 
 try {
@@ -304,6 +330,7 @@ while ($true) {
     "4" { Verify-OfflineBundle }
     "5" { Export-SupportBundle }
     "6" { Show-SafetyHelp }
+    "7" { Review-Decommission }
     default { if ($Language -eq "en") { Write-Host "Invalid selection." } else { Write-Host $Zh.Invalid } }
   }
   if ($script:Interrupted) { exit 130 }

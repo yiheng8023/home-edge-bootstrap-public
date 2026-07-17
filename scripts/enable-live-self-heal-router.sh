@@ -17,17 +17,21 @@ path_in_root() {
 }
 
 policy_rel="${ENABLE_POLICY_PATH:-/jffs/scripts/home-edge-policy.env}"
-local_policy_rel="${ENABLE_LOCAL_POLICY_PATH:-/jffs/scripts/home-edge-policy.local}"
+local_policy_rel="${ENABLE_LOCAL_POLICY_PATH:-/jffs/home-edge-bootstrap-state/policy.local}"
 cron_wrapper_rel="${ENABLE_CRON_WRAPPER_PATH:-/jffs/scripts/home-edge-self-heal-cron.sh}"
 reconciler_rel="${ENABLE_RECONCILER_PATH:-/jffs/scripts/home-edge-reconcile-self-heal.sh}"
 services_start_rel="${ENABLE_SERVICES_START_PATH:-/jffs/scripts/services-start}"
-for managed_path in "$policy_rel" "$local_policy_rel" "$cron_wrapper_rel" "$reconciler_rel" "$services_start_rel"; do
+for managed_path in "$policy_rel" "$cron_wrapper_rel" "$reconciler_rel" "$services_start_rel"; do
   case "$managed_path" in
     /jffs/scripts/?*) ;;
     *) echo "enable-live-self-heal: ERROR: managed paths must remain below /jffs/scripts" >&2; exit 1 ;;
   esac
   case "$managed_path" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) echo "enable-live-self-heal: ERROR: unsafe managed path" >&2; exit 1 ;; esac
 done
+case "$local_policy_rel" in
+  /jffs/home-edge-bootstrap-state/policy.local) ;;
+  *) echo "enable-live-self-heal: ERROR: local policy must use the stable state root" >&2; exit 1 ;;
+esac
 policy=$(path_in_root "$policy_rel")
 local_policy=$(path_in_root "$local_policy_rel")
 cron_wrapper=$(path_in_root "$cron_wrapper_rel")

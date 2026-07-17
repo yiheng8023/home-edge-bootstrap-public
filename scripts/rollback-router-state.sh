@@ -9,6 +9,7 @@ root="${HOME_EDGE_ROLLBACK_ROOT:-}"
 install_dir="${ROLLBACK_INSTALL_DIR:-/jffs/home-edge-bootstrap}"
 script_dir="${ROLLBACK_SCRIPT_DIR:-/jffs/scripts}"
 shellcrash_dir="${ROLLBACK_SHELLCRASH_DIR:-/jffs/ShellCrash}"
+state_root="${ROLLBACK_STATE_ROOT:-/jffs/home-edge-bootstrap-state}"
 lock_dir="${ROLLBACK_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
 
 log() { echo "home-edge-rollback: $*"; }
@@ -34,6 +35,7 @@ validate_jffs_subpath() {
 validate_jffs_subpath ROLLBACK_INSTALL_DIR "$install_dir"
 validate_jffs_subpath ROLLBACK_SCRIPT_DIR "$script_dir"
 validate_jffs_subpath ROLLBACK_SHELLCRASH_DIR "$shellcrash_dir"
+validate_jffs_subpath ROLLBACK_STATE_ROOT "$state_root"
 case "$lock_dir" in /tmp/?*) ;; *) die "ROLLBACK_LOCK_DIR must be a concrete path under /tmp" ;; esac
 case "$lock_dir" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "ROLLBACK_LOCK_DIR contains unsupported characters or path traversal" ;; esac
 
@@ -48,6 +50,8 @@ current_dir=$(path_in_root "$install_dir")
 prev_dir=$(path_in_root "$install_dir.prev")
 script_dir_path=$(path_in_root "$script_dir")
 shellcrash_path=$(path_in_root "$shellcrash_dir")
+state_root_path=$(path_in_root "$state_root")
+runtime_backup_dir="$state_root_path/backups/runtime"
 
 run() {
   if [ "$apply" = "1" ]; then
@@ -121,8 +125,6 @@ latest_file() {
 }
 
 restore_runtime_backup() {
-  rollback_dir="$1"
-  runtime_backup_dir="$rollback_dir/backups/runtime"
   latest_shellcrash=$(latest_dir "$runtime_backup_dir/ShellCrash.*" || true)
   [ -n "$latest_shellcrash" ] || die "no ShellCrash runtime backup found under $runtime_backup_dir"
   latest_nat_start=$(latest_file "$runtime_backup_dir/nat-start.*" || true)
@@ -190,10 +192,11 @@ reapply_restored_kit() {
 log "mode=$([ "$apply" = "1" ] && echo apply || echo plan)"
 log "install_dir=$install_dir"
 log "restore_runtime=$restore_runtime"
+log "runtime_backup_dir=$state_root/backups/runtime"
 
 [ -d "$prev_dir" ] || die "previous deployment not found: $install_dir.prev"
 if [ "$apply" = "1" ]; then
-  for protected_path in "$current_dir" "$prev_dir" "$script_dir_path" "$shellcrash_path"; do
+  for protected_path in "$current_dir" "$prev_dir" "$script_dir_path" "$shellcrash_path" "$state_root_path"; do
     [ ! -L "$protected_path" ] || die "rollback path must not be a symbolic link: $protected_path"
   done
 fi
@@ -211,8 +214,7 @@ fi
 run mv "$prev_dir" "$current_dir"
 
 if [ "$restore_runtime" = "1" ]; then
-  [ -d "$rollback_dir" ] || die "runtime rollback requires the previous current directory backup"
-  restore_runtime_backup "$rollback_dir"
+  restore_runtime_backup
 fi
 
 reapply_restored_kit

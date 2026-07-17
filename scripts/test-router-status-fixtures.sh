@@ -35,7 +35,15 @@ set -e
 
 [ "$status" -eq 42 ] || { cat "$tmp/output" >&2; fail "shell status helper should propagate SSH exit 42, got $status"; }
 [ ! -e "$tmp/status.log" ] || fail "NO_LOG shell status helper wrote a log"
-grep -q '<configured>' "$repo/scripts/check-router-status.sh" || fail "shell status helper lacks sensitive-value masking"
+for source in "$repo/scripts/check-router-status.sh" "$repo/scripts/audit-router-baseline.sh"; do
+  grep -Fq 'stable_state_root=/jffs/home-edge-bootstrap-state' "$source" || fail "$(basename "$source") omits the stable state root"
+  for field in stable_state_schema stable_subscription_state stable_policy_state compatibility_bridge_state; do
+    grep -Fq "$field" "$source" || fail "$(basename "$source") omits safe state classification: $field"
+  done
+  ! grep -Fq 'subscription_file_bytes' "$source" || fail "$(basename "$source") reports secret-bearing subscription size"
+  ! grep -Fq 'subscription_cache_bytes' "$source" || fail "$(basename "$source") reports secret-bearing cache size"
+done
+! grep -Fq 'emit_policy()' "$repo/scripts/check-router-status.sh" || fail "shell status helper still emits policy content"
 if grep -q '/tmp/home-edge-check-router-status.sh' "$repo/scripts/check-router-status.sh"; then
   fail "shell status helper still uses a fixed remote temp script"
 fi
@@ -52,6 +60,9 @@ grep -q 'SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC' "$tmp/remote-script" || fail
 grep -q 'route_evidence_probe_id' "$tmp/remote-script" || fail "status does not emit fresh machine-readable route evidence"
 grep -q 'cache_apply_path_alias' "$tmp/remote-script" || fail "status does not reject cache/apply path aliasing"
 grep -q 'controller_dashboard_config_state:-unknown' "$tmp/remote-script" || fail "status does not preserve unknown dashboard discovery"
+grep -q '^stable_state_root=/jffs/home-edge-bootstrap-state$' "$tmp/remote-script" || fail "status remote script omits stable state root"
+grep -q 'stable_state_schema' "$tmp/remote-script" || fail "status remote script omits stable state schema classification"
+grep -q 'compatibility_bridge_state' "$tmp/remote-script" || fail "status remote script omits compatibility bridge classification"
 if grep -q 'SUBSCRIPTION.local\|private-marker' "$tmp/success"; then fail "status leaked sensitive provenance content"; fi
 
 echo "router_status_fixture_tests=ok"

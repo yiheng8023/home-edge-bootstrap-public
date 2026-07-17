@@ -11,6 +11,8 @@ jffs_dir="${BOOTSTRAP_JFFS_DIR:-/jffs}"
 install_dir="${BOOTSTRAP_INSTALL_DIR:-/jffs/home-edge-bootstrap}"
 router_script_dir="${BOOTSTRAP_SCRIPT_DIR:-/jffs/scripts}"
 shellcrash_dir="${BOOTSTRAP_SHELLCRASH_DIR:-/jffs/ShellCrash}"
+state_fixture_root="${BOOTSTRAP_STATE_FIXTURE_ROOT:-}"
+state_dir="${BOOTSTRAP_STATE_ROOT:-$jffs_dir/home-edge-bootstrap-state}"
 runtime_install="${BOOTSTRAP_INSTALL_RUNTIME:-0}"
 replace_runtime="${BOOTSTRAP_REPLACE_RUNTIME:-0}"
 replace_core="${BOOTSTRAP_REPLACE_CORE:-0}"
@@ -23,6 +25,7 @@ update_sub_src="$kit_root/scripts/update-sub.sh"
 runtime_evidence_src="$kit_root/scripts/subscription-runtime-evidence.sh"
 verify_bundle_src="$kit_root/scripts/verify-bundle.sh"
 reconcile_src="$kit_root/scripts/reconcile-self-heal-registration.sh"
+migration_src="$kit_root/scripts/migrate-router-state.sh"
 self_heal_dst="$router_script_dir/home-edge-self-heal.sh"
 update_sub_dst="$router_script_dir/home-edge-update-sub.sh"
 runtime_evidence_dst="$router_script_dir/home-edge-subscription-runtime-evidence.sh"
@@ -30,7 +33,7 @@ verify_bundle_dst="$router_script_dir/home-edge-verify-bundle.sh"
 reconcile_dst="$router_script_dir/home-edge-reconcile-self-heal.sh"
 wrapper_dst="$router_script_dir/home-edge-self-heal-cron.sh"
 bundle_dir="$kit_root/bundle"
-runtime_backup_dir="$install_dir/backups/runtime"
+runtime_backup_dir="$state_dir/backups/runtime"
 runtime_tmp="${BOOTSTRAP_RUNTIME_TMP_DIR:-/tmp/home-edge-shellcrash.$$}"
 runtime_max_backups="${BOOTSTRAP_RUNTIME_MAX_BACKUPS:-3}"
 
@@ -142,12 +145,21 @@ validate_jffs_child BOOTSTRAP_INSTALL_DIR "$install_dir"
 validate_jffs_child BOOTSTRAP_SCRIPT_DIR "$router_script_dir"
 [ "$router_script_dir" = "$jffs_dir/scripts" ] || die "BOOTSTRAP_SCRIPT_DIR must equal BOOTSTRAP_JFFS_DIR/scripts"
 validate_jffs_child BOOTSTRAP_SHELLCRASH_DIR "$shellcrash_dir"
+validate_jffs_child BOOTSTRAP_STATE_ROOT "$state_dir"
 reject_overlap BOOTSTRAP_INSTALL_DIR "$install_dir" BOOTSTRAP_SCRIPT_DIR "$router_script_dir"
 reject_overlap BOOTSTRAP_INSTALL_DIR "$install_dir" BOOTSTRAP_SHELLCRASH_DIR "$shellcrash_dir"
+reject_overlap BOOTSTRAP_INSTALL_DIR "$install_dir" BOOTSTRAP_STATE_ROOT "$state_dir"
 reject_overlap BOOTSTRAP_SCRIPT_DIR "$router_script_dir" BOOTSTRAP_SHELLCRASH_DIR "$shellcrash_dir"
+reject_overlap BOOTSTRAP_SCRIPT_DIR "$router_script_dir" BOOTSTRAP_STATE_ROOT "$state_dir"
+reject_overlap BOOTSTRAP_SHELLCRASH_DIR "$shellcrash_dir" BOOTSTRAP_STATE_ROOT "$state_dir"
+
+if [ -n "$state_fixture_root" ]; then
+  case "$state_fixture_root" in /*) ;; *) die "BOOTSTRAP_STATE_FIXTURE_ROOT must be absolute" ;; esac
+  [ -d "$state_fixture_root" ] && [ ! -L "$state_fixture_root" ] || die "BOOTSTRAP_STATE_FIXTURE_ROOT must be a real directory"
+fi
 
 if [ "$apply" = "1" ]; then
-  for protected_path in "$install_dir" "$router_script_dir" "$shellcrash_dir"; do
+  for protected_path in "$install_dir" "$router_script_dir" "$shellcrash_dir" "$state_dir"; do
     [ ! -L "$protected_path" ] || die "managed path must not be a symbolic link: $protected_path"
   done
 fi
@@ -172,6 +184,7 @@ run() {
 [ -r "$runtime_evidence_src" ] || die "missing $runtime_evidence_src"
 [ -r "$verify_bundle_src" ] || die "missing $verify_bundle_src"
 [ -r "$reconcile_src" ] || die "missing $reconcile_src"
+[ -r "$migration_src" ] || die "missing $migration_src"
 
 which curl >/dev/null 2>&1 || log "WARN curl not found; ShellClash usually provides it"
 which jq >/dev/null 2>&1 || log "WARN jq not found; self-heal requires it"
@@ -198,11 +211,27 @@ log "kit_root=$kit_root"
 log "install_dir=$install_dir"
 log "script_dir=$router_script_dir"
 log "shellcrash_dir=$shellcrash_dir"
+log "state_dir=$state_dir"
 log "runtime_install=$runtime_install"
 log "replace_runtime=$replace_runtime"
 log "replace_core=$replace_core"
 
-run mkdir -p "$install_dir" "$router_script_dir" "$install_dir/cache" "$install_dir/backups/subscription"
+migration_state_root=$state_dir
+migration_install_dir=$install_dir
+migration_script_dir=$router_script_dir
+if [ -n "$state_fixture_root" ]; then
+  migration_state_root=/jffs/home-edge-bootstrap-state
+  migration_install_dir=/jffs/home-edge-bootstrap
+  migration_script_dir=/jffs/scripts
+fi
+HOME_EDGE_STATE_APPLY="$apply" \
+HOME_EDGE_STATE_FIXTURE_ROOT="$state_fixture_root" \
+HOME_EDGE_STATE_ROOT="$migration_state_root" \
+HOME_EDGE_INSTALL_DIR="$migration_install_dir" \
+HOME_EDGE_SCRIPT_DIR="$migration_script_dir" \
+sh "$migration_src" || die "stable state migration failed"
+
+run mkdir -p "$install_dir" "$router_script_dir"
 run cp "$policy_src" "$policy_dst"
 run cp "$self_heal_src" "$self_heal_dst"
 run cp "$update_sub_src" "$update_sub_dst"

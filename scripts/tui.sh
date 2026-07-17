@@ -91,7 +91,7 @@ startup_check() {
       return 2
     }
   done
-  for script in doctor.sh run-bootstrap.sh check-no-wall-readiness.sh export-support-bundle.sh; do
+  for script in doctor.sh run-bootstrap.sh check-no-wall-readiness.sh export-support-bundle.sh decommission-merlin.sh; do
     [ -f "$repo/scripts/$script" ] || {
       echo "startup_state=failed"
       echo "missing_prerequisite=scripts/$script"
@@ -112,6 +112,7 @@ show_menu() {
 4. Verify offline runtime bundle
 5. Export a redacted support bundle
 6. Show help and safety boundaries
+7. Review project decommission
 0. Exit without changes
 EOF
     printf 'Select: '
@@ -124,6 +125,7 @@ EOF
 4. 验证离线运行时 bundle
 5. 导出脱敏支持包
 6. 查看帮助与安全边界
+7. 审查项目退出
 0. 不做修改并退出
 EOF
     printf '请选择: '
@@ -363,9 +365,26 @@ export_support() {
 }
 show_safety_help() {
   last_action_status=0; usage
-  if [ "$language" = en ]; then echo "Read-only actions may run directly. Deploy and live self-heal require confirmation tokens."
-  else echo "帮助与安全边界：只读操作可直接运行；部署和真实自愈必须输入确认令牌。"
+  if [ "$language" = en ]; then echo "Read-only actions may run directly. Deploy, live self-heal, and decommission apply require their exact confirmation tokens."
+  else echo "帮助与安全边界：只读操作可直接运行；部署、真实自愈和项目退出执行必须输入各自的精确确认令牌。"
   fi
+}
+review_decommission() {
+  last_action_status=0
+  ensure_router || return 0
+  plan_resume="sh scripts/decommission-merlin.sh $router"
+  run_child decommission_plan "$plan_resume" false sh "$repo/scripts/decommission-merlin.sh" "$router" || return 0
+  if [ "$language" = en ]; then
+    printf 'The project decommission plan is shown above. Type DECOMMISSION to confirm; anything else cancels: '
+  else
+    printf '项目退出计划已显示。输入 DECOMMISSION 确认，其他输入取消: '
+  fi
+  if ! IFS= read -r confirmation || [ "$confirmation" != DECOMMISSION ]; then
+    if [ "$language" = en ]; then echo "Action cancelled."; else echo "操作已取消。"; fi
+    return 0
+  fi
+  apply_resume="sh scripts/decommission-merlin.sh --apply --confirm DECOMMISSION $router"
+  run_child decommission_apply "$apply_resume" true sh "$repo/scripts/decommission-merlin.sh" --apply --confirm DECOMMISSION "$router" || return 0
 }
 
 while :; do
@@ -379,6 +398,7 @@ while :; do
     4) verify_bundle ;;
     5) export_support ;;
     6) show_safety_help ;;
+    7) review_decommission ;;
     *) if [ "$language" = en ]; then echo "Invalid selection."; else echo "无效选择。"; fi ;;
   esac
   echo

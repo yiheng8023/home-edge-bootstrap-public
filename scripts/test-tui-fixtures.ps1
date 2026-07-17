@@ -98,6 +98,16 @@ param([string]$Router = "")
 Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("support-bundle " + $Router)
 Write-Host 'support_bundle_state=ready'
 '@ | Set-Content -LiteralPath (Join-Path $FakeScripts "export-support-bundle.ps1") -Encoding ASCII
+  @'
+param([string]$Router = "", [switch]$Apply, [string]$Confirmation = "", [switch]$NoPause)
+$Parts = @()
+if ($NoPause) { $Parts += "-NoPause" }
+if ($Apply) { $Parts += "-Apply" }
+if ($Confirmation) { $Parts += @("-Confirmation", $Confirmation) }
+if ($Router) { $Parts += @("-Router", $Router) }
+Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("decommission-merlin " + ($Parts -join " "))
+Write-Host 'decommission_state=plan_ready'
+'@ | Set-Content -LiteralPath (Join-Path $FakeScripts "decommission-merlin.ps1") -Encoding ASCII
 
   $SupportStub = Join-Path $FakeScripts "export-support-bundle.ps1"
   $SupportMissing = "$SupportStub.missing"
@@ -115,9 +125,12 @@ Write-Host 'support_bundle_state=ready'
   $Invalid = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "invalid")
 
   $ExpectedChinese = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("MS4g5byA5aeL5oiW5o6l57ut5byV5a+85byP6YWN572u"))
+  $ExpectedChineseDecommission = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("Ny4g5a6h5p+l6aG555uu6YCA5Ye6"))
   if ($Default.Status -ne 0 -or $Default.Output -notmatch [regex]::Escape($ExpectedChinese)) { Fail "default menu is not Chinese" }
   if ($English.Status -ne 0 -or $English.Output -notmatch [regex]::Escape("1. Start or resume guided bootstrap")) { Fail "English menu missing" }
-  foreach ($Number in @(1, 2, 3, 4, 5, 6, 0)) {
+  if ($Default.Output -notmatch [regex]::Escape($ExpectedChineseDecommission)) { Fail "Chinese decommission menu missing" }
+  if ($English.Output -notmatch [regex]::Escape("7. Review project decommission")) { Fail "English decommission menu missing" }
+  foreach ($Number in @(1, 2, 3, 4, 5, 6, 7, 0)) {
     if ($Default.Output -notmatch "(?m)^$Number\. ") { Fail "default menu missing action $Number" }
     if ($English.Output -notmatch "(?m)^$Number\. ") { Fail "English menu missing action $Number" }
   }
@@ -143,6 +156,24 @@ Write-Host 'support_bundle_state=ready'
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $Support = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "5`n0`n" -Environment $CommonEnvironment
   if (([string](Read-CallLog $CallLog)).Trim() -ne "support-bundle") { Fail "support bundle dispatch mismatch" }
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $DecommissionCancel = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`nWRONG`n0`n" -Environment $CommonEnvironment
+  $DecommissionCancelCalls = Get-Content -LiteralPath $CallLog
+  if ($DecommissionCancelCalls -notcontains "decommission-merlin -NoPause -Router user@192.168.50.1") { Fail "PowerShell TUI omitted read-only decommission plan" }
+  if ($DecommissionCancelCalls -match "-Apply") { Fail "PowerShell wrong token enabled decommission" }
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $DecommissionApply = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`nDECOMMISSION`n0`n" -Environment $CommonEnvironment
+  $DecommissionApplyCalls = Get-Content -LiteralPath $CallLog
+  if ($DecommissionApplyCalls -notcontains "decommission-merlin -NoPause -Router user@192.168.50.1") { Fail "PowerShell TUI omitted decommission plan before apply" }
+  if ($DecommissionApplyCalls -notcontains "decommission-merlin -NoPause -Apply -Confirmation DECOMMISSION -Router user@192.168.50.1") { Fail "PowerShell exact token did not enable decommission" }
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $DecommissionEof = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`n" -Environment $CommonEnvironment
+  $DecommissionEofCalls = Get-Content -LiteralPath $CallLog
+  if ($DecommissionEofCalls -notcontains "decommission-merlin -NoPause -Router user@192.168.50.1") { Fail "PowerShell decommission EOF omitted read-only plan" }
+  if ($DecommissionEofCalls -match "-Apply") { Fail "PowerShell EOF enabled decommission" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $InvalidChoice = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "9`n0`n" -Environment $CommonEnvironment

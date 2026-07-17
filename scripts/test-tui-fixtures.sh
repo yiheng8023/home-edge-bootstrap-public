@@ -55,6 +55,11 @@ cat >"$fake_repo/scripts/export-support-bundle.sh" <<'EOF'
 printf 'support-bundle %s\n' "$*" >>"$TUI_FIXTURE_CALL_LOG"
 echo 'support_bundle_state=ready'
 EOF
+cat >"$fake_repo/scripts/decommission-merlin.sh" <<'EOF'
+#!/bin/sh
+printf 'decommission-merlin %s\n' "$*" >>"$TUI_FIXTURE_CALL_LOG"
+echo 'decommission_state=plan_ready'
+EOF
 chmod +x "$fake_repo/scripts/"*.sh
 
 mv "$fake_repo/scripts/export-support-bundle.sh" "$fake_repo/scripts/export-support-bundle.sh.missing"
@@ -75,7 +80,9 @@ sh "$fake_repo/scripts/tui.sh" --version >"$tmp/version.out"
 
 grep -Fq '1. 开始或接续引导式配置' "$tmp/default.out" || fail "default menu is not Chinese"
 grep -Fq '1. Start or resume guided bootstrap' "$tmp/en.out" || fail "English menu missing"
-for number in 1 2 3 4 5 6 0; do
+grep -Fq '7. 审查项目退出' "$tmp/default.out" || fail "Chinese decommission menu missing"
+grep -Fq '7. Review project decommission' "$tmp/en.out" || fail "English decommission menu missing"
+for number in 1 2 3 4 5 6 7 0; do
   grep -Eq "^$number\\. " "$tmp/default.out" || fail "default menu missing action $number"
   grep -Eq "^$number\\. " "$tmp/en.out" || fail "English menu missing action $number"
 done
@@ -112,6 +119,21 @@ grep -Fxq 'check-no-wall ' "$call_log" || fail "bundle verification dispatch mis
 : >"$call_log"
 printf '5\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/support.out"
 grep -Fxq 'support-bundle ' "$call_log" || fail "support bundle dispatch mismatch"
+
+: >"$call_log"
+printf '7\nWRONG\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-cancel.out"
+grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "TUI omitted read-only decommission plan"
+if grep -q -- '--apply' "$call_log"; then fail "wrong token enabled decommission"; fi
+
+: >"$call_log"
+printf '7\nDECOMMISSION\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-apply.out"
+grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "TUI omitted decommission plan before apply"
+grep -Eq '^decommission-merlin --apply --confirm DECOMMISSION user@192\.168\.50\.1$' "$call_log" || fail "exact token did not enable decommission"
+
+: >"$call_log"
+printf '7\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-eof.out"
+grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "decommission EOF omitted read-only plan"
+if grep -q -- '--apply' "$call_log"; then fail "EOF enabled decommission"; fi
 
 : >"$call_log"
 printf '9\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/invalid-choice.out"

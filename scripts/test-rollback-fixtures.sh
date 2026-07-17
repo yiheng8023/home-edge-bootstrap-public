@@ -65,11 +65,12 @@ assert_file "$apply_root/jffs/scripts/bootstrap-applied"
 ls "$apply_root"/jffs/home-edge-bootstrap.rollback.* >/dev/null 2>&1 || fail "missing rollback backup directory"
 
 runtime_root=$(make_fixture runtime)
-mkdir -p "$runtime_root/jffs/home-edge-bootstrap/backups/runtime/ShellCrash.20260101000000"
-printf 'old-runtime\n' > "$runtime_root/jffs/home-edge-bootstrap/backups/runtime/ShellCrash.20260101000000/old-runtime.txt"
+mkdir -p "$runtime_root/jffs/home-edge-bootstrap-state/backups/runtime/ShellCrash.20260101000000"
+printf 'old-runtime\n' > "$runtime_root/jffs/home-edge-bootstrap-state/backups/runtime/ShellCrash.20260101000000/old-runtime.txt"
 HOME_EDGE_ROLLBACK_ROOT="$runtime_root" ROLLBACK_APPLY=1 ROLLBACK_RUNTIME=1 sh "$repo/scripts/rollback-router-state.sh" >"$tmp_root/rollback-runtime.log"
 assert_file "$runtime_root/jffs/ShellCrash/old-runtime.txt"
-ls "$runtime_root"/jffs/home-edge-bootstrap.rollback.*/backups/runtime/ShellCrash.rollback-current.* >/dev/null 2>&1 || fail "missing current runtime backup"
+ls "$runtime_root"/jffs/home-edge-bootstrap-state/backups/runtime/ShellCrash.rollback-current.* >/dev/null 2>&1 || fail "missing current runtime backup"
+grep -Fq 'runtime_backup_dir=/jffs/home-edge-bootstrap-state/backups/runtime' "$tmp_root/rollback-runtime.log" || fail "rollback did not report stable runtime backup root"
 
 if sh "$repo/scripts/rollback-merlin.sh" user@192.0.2.1 --remote-dir /tmp/not-jffs >"$tmp_root/rollback-wrapper.out" 2>"$tmp_root/rollback-wrapper.err"; then
   fail "rollback wrapper should reject remote directories outside /jffs"

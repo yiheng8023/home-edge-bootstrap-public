@@ -43,9 +43,9 @@ chmod 755 "$fakebin/cru"
 
 prepare_case() {
   root=$1
-  mkdir -p "$root/jffs/scripts"
+  mkdir -p "$root/jffs/scripts" "$root/jffs/home-edge-bootstrap-state"
   printf ': "${HEAL_CRON_DRY_RUN:=1}"\n' >"$root/jffs/scripts/home-edge-policy.env"
-  printf 'HEAL_CRON_DRY_RUN=1\nSITE_VALUE=preserved\n' >"$root/jffs/scripts/home-edge-policy.local"
+  printf 'HEAL_CRON_DRY_RUN=1\nSITE_VALUE=preserved\n' >"$root/jffs/home-edge-bootstrap-state/policy.local"
   : >"$root/cru.state"
   cp "$repo/scripts/reconcile-self-heal-registration.sh" "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
   cat >"$root/jffs/scripts/home-edge-self-heal-cron.sh" <<'EOF'
@@ -64,9 +64,9 @@ success_output=$(
   sh "$repo/scripts/enable-live-self-heal-router.sh"
 )
 printf '%s\n' "$success_output" | grep -q 'enable_live_state=enabled' || fail "success state missing"
-grep -q '^HEAL_CRON_DRY_RUN=0$' "$success_root/jffs/scripts/home-edge-policy.local" || fail "live policy was not enabled"
-grep -q '^SITE_VALUE=preserved$' "$success_root/jffs/scripts/home-edge-policy.local" || fail "site-local settings were not preserved"
-ls "$success_root/jffs/scripts/home-edge-policy.local.bak."* >/dev/null 2>&1 || fail "success backup missing"
+grep -q '^HEAL_CRON_DRY_RUN=0$' "$success_root/jffs/home-edge-bootstrap-state/policy.local" || fail "live policy was not enabled"
+grep -q '^SITE_VALUE=preserved$' "$success_root/jffs/home-edge-bootstrap-state/policy.local" || fail "site-local settings were not preserved"
+ls "$success_root/jffs/home-edge-bootstrap-state/policy.local.bak."* >/dev/null 2>&1 || fail "success backup missing"
 printf '%s\n' "$success_output" | grep -q '^self_heal_registration_state=ready$' || fail "success did not verify scheduler registration"
 printf '%s\n' "$success_output" | grep -q '^self_heal_boot_hook_state=ready$' || fail "success did not verify boot registration"
 [ "$(grep -c '#home_edge_selfheal#' "$success_root/cru.state")" -eq 1 ] || fail "success did not leave exactly one cron job"
@@ -86,8 +86,8 @@ if HOME_EDGE_ENABLE_ROOT="$failure_root" ENABLE_FIXTURE_FAIL=1 CRU_STATE="$failu
   fail "initial live run failure should propagate"
 fi
 grep -q 'enable_live_state=rolled_back' "$tmp/failure.out" || fail "rollback state missing"
-grep -q '^HEAL_CRON_DRY_RUN=1$' "$failure_root/jffs/scripts/home-edge-policy.local" || fail "dry-run policy was not restored"
-grep -q '^SITE_VALUE=preserved$' "$failure_root/jffs/scripts/home-edge-policy.local" || fail "site-local settings were not restored"
+grep -q '^HEAL_CRON_DRY_RUN=1$' "$failure_root/jffs/home-edge-bootstrap-state/policy.local" || fail "dry-run policy was not restored"
+grep -q '^SITE_VALUE=preserved$' "$failure_root/jffs/home-edge-bootstrap-state/policy.local" || fail "site-local settings were not restored"
 cmp -s "$failure_root/jffs/scripts/services-start" "$tmp/failure-hook.before" || fail "live wrapper failure did not exactly restore services-start"
 cmp -s "$failure_root/cru.state" "$tmp/failure-cron.before" || fail "live wrapper failure did not exactly restore cron"
 
@@ -98,7 +98,7 @@ if HOME_EDGE_ENABLE_ROOT="$registration_failure_root" CRU_FAIL_ADD=1 CRU_STATE="
   fail "scheduler registration failure should propagate"
 fi
 grep -q 'enable_live_state=rolled_back' "$tmp/registration-failure.out" || fail "scheduler failure rollback state missing"
-grep -q '^HEAL_CRON_DRY_RUN=1$' "$registration_failure_root/jffs/scripts/home-edge-policy.local" || fail "scheduler failure did not restore dry-run policy"
+grep -q '^HEAL_CRON_DRY_RUN=1$' "$registration_failure_root/jffs/home-edge-bootstrap-state/policy.local" || fail "scheduler failure did not restore dry-run policy"
 
 verification_failure_root="$tmp/registration-verification-failure"
 prepare_case "$verification_failure_root"
@@ -119,6 +119,6 @@ cmp -s "$verification_failure_root/cru.state" "$tmp/verification-cron.before" ||
 interrupt_root="$tmp/atomic"
 prepare_case "$interrupt_root"
 HOME_EDGE_ENABLE_ROOT="$interrupt_root" CRU_STATE="$interrupt_root/cru.state" PATH="$fakebin:$PATH" sh "$repo/scripts/enable-live-self-heal-router.sh" >/dev/null
-[ ! -e "$interrupt_root/jffs/scripts/home-edge-policy.local.tmp.$$" ] || fail "temporary policy residue remains"
+[ ! -e "$interrupt_root/jffs/home-edge-bootstrap-state/policy.local.tmp.$$" ] || fail "temporary policy residue remains"
 
 echo "enable_live_self_heal_fixture_tests=ok"

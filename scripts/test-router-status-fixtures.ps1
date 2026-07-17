@@ -113,8 +113,16 @@ try {
   }
 
   $Source = Get-Content -LiteralPath (Join-Path $Repo "scripts\check-router-status.ps1") -Raw
-  if ($Source -notmatch "<configured>") {
-    throw "PowerShell status helper lacks sensitive-value masking"
+  $AuditSource = Get-Content -LiteralPath (Join-Path $Repo "scripts\audit-router-baseline.ps1") -Raw
+  foreach ($Candidate in @($Source, $AuditSource)) {
+    if ($Candidate -notmatch "stable_state_root=/jffs/home-edge-bootstrap-state") { throw "PowerShell status/audit helper omits the stable state root" }
+    foreach ($Field in @("stable_state_schema", "stable_subscription_state", "stable_policy_state", "compatibility_bridge_state")) {
+      if ($Candidate -notmatch $Field) { throw "PowerShell status/audit helper omits safe state classification: $Field" }
+    }
+    if ($Candidate -match "subscription_file_bytes|subscription_cache_bytes") { throw "PowerShell status/audit helper reports secret-bearing state size" }
+  }
+  if ($Source -match "emit_policy\(\)") {
+    throw "PowerShell status helper still emits policy content"
   }
   if ($Source -match "/tmp/home-edge-check-router-status.sh") {
     throw "PowerShell status helper still uses a fixed remote temp script"

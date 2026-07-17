@@ -16,8 +16,8 @@ capability boundaries.
 
 The framework reuses mature proxy runtimes and their existing management interfaces. It does not reimplement a proxy core or dashboard.
 Future device, firmware, and runtime families may join through
-separate adapters after their capability, safety, recovery, evidence, and maintenance contracts are
-defined and verified.
+separate adapters only after their capability, safety, recovery, evidence, maintenance, migration,
+and decommission contracts are defined and verified. No unimplemented adapter is listed as supported.
 
 ## Start here
 
@@ -136,10 +136,21 @@ The public compatibility matrix currently contains policy declarations and synth
 evidence only; its field-evidence set is intentionally empty, so the listed target paths remain
 `unknown` until target-specific evidence establishes another classification.
 
-Future adapters should remain external until they have a named owner, a bounded capability contract,
-synthetic fixtures, rollback behavior, diagnostics that do not expose sensitive information, bilingual operator guidance, and an
+Future adapters should remain external until they have a named owner, bounded capability, safety,
+recovery, evidence, maintenance, migration, and decommission contracts, synthetic fixtures,
+rollback behavior, diagnostics that do not expose sensitive information, bilingual operator guidance, and an
 evidence path suitable for their support claim. Maintainers decide admission and maturity changes
 through review; popularity or similarity to an existing proxy solution is not sufficient evidence.
+
+## Stable state and safe project exit
+
+Replaceable project code lives in `/jffs/home-edge-bootstrap`; retained operator and recovery state
+lives in `/jffs/home-edge-bootstrap-state`. Deployment, rollback, and project decommission preserve
+the stable state. Decommission is plan-first and removes only reviewed project helpers, exact
+registration, validated kit variants, and the default regenerable cache. It does not remove
+subscriptions, local policy, recovery backups, Asuswrt-Merlin firmware, or the external
+ShellCrash/Mihomo runtime. See [Quick start](QUICKSTART.md) for exact commands. Runtime uninstall and
+firmware recovery remain separate maintainer/vendor operations.
 
 ## Source checkout and offline recovery
 

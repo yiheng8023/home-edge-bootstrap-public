@@ -76,6 +76,7 @@ cp "$repo/scripts/update-sub.sh" "$fixture_kit/scripts/update-sub.sh"
 cp "$repo/scripts/subscription-runtime-evidence.sh" "$fixture_kit/scripts/subscription-runtime-evidence.sh"
 cp "$repo/scripts/reconcile-self-heal-registration.sh" "$fixture_kit/scripts/reconcile-self-heal-registration.sh"
 cp "$repo/scripts/verify-bundle.sh" "$fixture_kit/scripts/verify-bundle.sh"
+cp "$repo/scripts/migrate-router-state.sh" "$fixture_kit/scripts/migrate-router-state.sh"
 
 cat >"$fixture_kit/bin/uname" <<'EOF'
 #!/bin/sh
@@ -153,6 +154,7 @@ if ! BOOTSTRAP_JFFS_DIR="$core/jffs" \
 BOOTSTRAP_INSTALL_DIR="$core/jffs/home-edge-bootstrap" \
 BOOTSTRAP_SCRIPT_DIR="$core/jffs/scripts" \
 BOOTSTRAP_SHELLCRASH_DIR="$core/jffs/ShellCrash" \
+BOOTSTRAP_STATE_FIXTURE_ROOT="$core" \
 BOOTSTRAP_APPLY=1 \
 BOOTSTRAP_INSTALL_RUNTIME=1 \
 BOOTSTRAP_RUNTIME_MAX_BACKUPS=1 \
@@ -179,13 +181,15 @@ grep -Fq 'not running on Linux arm64 (Linux/x86_64); skipped Mihomo execution ch
   fail "synthetic payload execution was not skipped"
 
 [ -s "$core/jffs/ShellCrash/CrashCore.gz" ] || fail "new core was not staged"
+[ -f "$core/jffs/home-edge-bootstrap-state/lifecycle/state.env" ] || fail "stable state schema was not created"
+grep -Fxq 'state_migration_state=ready' "$tmp/core.out" || fail "adapter did not report ready state migration"
 [ -x "$core/jffs/scripts/home-edge-reconcile-self-heal.sh" ] || fail "lifecycle reconciler was not deployed"
 [ ! -e "$HOME_EDGE_WRITE_LOCK_DIR" ] || fail "bootstrap did not release its inherited global write lock"
 [ -x "$core/jffs/scripts/home-edge-subscription-runtime-evidence.sh" ] || fail "subscription runtime evidence helper was not deployed"
 grep -Fq '# BEGIN home-edge-bootstrap self-heal lifecycle' "$core/jffs/scripts/services-start" || fail "persistent lifecycle hook was not installed"
 [ "$(grep -c '#home_edge_selfheal#' "$cru_state")" -eq 1 ] || fail "adapter did not leave exactly one self-heal cron job"
 backup=""
-for candidate in "$core/jffs/home-edge-bootstrap/backups/runtime"/ShellCrash.*/CrashCore.gz; do
+for candidate in "$core/jffs/home-edge-bootstrap-state/backups/runtime"/ShellCrash.*/CrashCore.gz; do
   [ -f "$candidate" ] || continue
   if grep -q 'old-core' "$candidate"; then
     backup=$candidate
@@ -193,17 +197,28 @@ for candidate in "$core/jffs/home-edge-bootstrap/backups/runtime"/ShellCrash.*/C
   fi
 done
 [ -n "$backup" ] || fail "old core backup missing"
-grep -l 'custom-nat-start' "$core/jffs/home-edge-bootstrap/backups/runtime"/nat-start.* >/dev/null 2>&1 || fail "custom script directory nat-start backup missing"
+grep -l 'custom-nat-start' "$core/jffs/home-edge-bootstrap-state/backups/runtime"/nat-start.* >/dev/null 2>&1 || fail "custom script directory nat-start backup missing"
 grep -Fq '/tmp/home-edge-shellcrash.' "$core/jffs/ShellCrash/init.home-edge.sh" || fail "ShellCrash init temp path was not isolated"
 grep -q 'old-core' "$backup" || fail "old core backup content mismatch"
 [ ! -e "$core/jffs/ShellCrash/CrashCore.gz.tmp."* ] || fail "temporary core residue remains"
 
 for pattern in 'ShellCrash.*' 'CrashCore.*' 'nat-start.*'; do
   retained=0
-  for candidate in "$core/jffs/home-edge-bootstrap/backups/runtime"/$pattern; do
+  for candidate in "$core/jffs/home-edge-bootstrap-state/backups/runtime"/$pattern; do
     [ -e "$candidate" ] || continue
     retained=$((retained + 1))
   done
   [ "$retained" -le 1 ] || fail "runtime backup retention exceeded for $pattern"
 done
+
+HOME_EDGE_STATE_ROOT=/jffs/home-edge-bootstrap-state sh -c '
+  . "$1"
+  printf "%s\n" \
+    "SUBSCRIPTION_FILE=$SUBSCRIPTION_FILE" \
+    "SUBSCRIPTION_CACHE=$SUBSCRIPTION_CACHE" \
+    "SUBSCRIPTION_BACKUP_DIR=$SUBSCRIPTION_BACKUP_DIR"
+' sh "$repo/config/policy.env" >"$tmp/policy-values.out"
+grep -Fxq 'SUBSCRIPTION_FILE=/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local' "$tmp/policy-values.out" || fail "subscription file default is not stable"
+grep -Fxq 'SUBSCRIPTION_CACHE=/jffs/home-edge-bootstrap-state/cache/subscription.yaml' "$tmp/policy-values.out" || fail "subscription cache default is not stable"
+grep -Fxq 'SUBSCRIPTION_BACKUP_DIR=/jffs/home-edge-bootstrap-state/backups/subscription' "$tmp/policy-values.out" || fail "subscription backup default is not stable"
 echo "merlin_adapter_fixture_tests=ok"

@@ -5,7 +5,7 @@ umask 077
 
 root="${HOME_EDGE_RECONCILE_ROOT:-}"
 policy_rel="${HOME_EDGE_POLICY_PATH:-/jffs/scripts/home-edge-policy.env}"
-local_policy_rel="${HOME_EDGE_LOCAL_POLICY_PATH:-/jffs/scripts/home-edge-policy.local}"
+local_policy_rel="${HOME_EDGE_LOCAL_POLICY_PATH:-/jffs/home-edge-bootstrap-state/policy.local}"
 wrapper_rel="${HOME_EDGE_CRON_WRAPPER_PATH:-/jffs/scripts/home-edge-self-heal-cron.sh}"
 reconciler_rel="${HOME_EDGE_RECONCILER_PATH:-/jffs/scripts/home-edge-reconcile-self-heal.sh}"
 services_start_rel="${HOME_EDGE_SERVICES_START_PATH:-/jffs/scripts/services-start}"
@@ -34,13 +34,17 @@ path_in_root() {
   esac
 }
 
-for managed_path in "$policy_rel" "$local_policy_rel" "$wrapper_rel" "$reconciler_rel" "$services_start_rel"; do
+for managed_path in "$policy_rel" "$wrapper_rel" "$reconciler_rel" "$services_start_rel"; do
   case "$managed_path" in
     /jffs/scripts/?*) ;;
     *) die "managed paths must remain below /jffs/scripts" ;;
   esac
   case "$managed_path" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "unsafe managed path" ;; esac
 done
+case "$local_policy_rel" in
+  /jffs/home-edge-bootstrap-state/policy.local) ;;
+  *) die "local policy must use the stable state root" ;;
+esac
 case "$job_name" in ""|*[!A-Za-z0-9_-]*) die "unsafe cron job name" ;; esac
 case "$write_lock_already_held" in 0|1) ;; *) die "HOME_EDGE_WRITE_LOCK_HELD must be 0 or 1" ;; esac
 case "$lock_dir" in /tmp/?*) ;; *) die "HOME_EDGE_WRITE_LOCK_DIR must remain below /tmp" ;; esac

@@ -2,10 +2,12 @@ param(
   [string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
   [string]$Router = $env:ROUTER,
   [string]$OutputDir = "C:\tmp\home-edge-support-bundles",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts"
+  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$SshCommand = $(if ($env:HOME_EDGE_SSH_COMMAND) { $env:HOME_EDGE_SSH_COMMAND } else { "ssh" })
 )
 
 $ErrorActionPreference = "Stop"
+$PowerShellExe = (Get-Command powershell.exe -ErrorAction Stop).Source
 
 function Redact-SupportText {
   param([string]$Text)
@@ -103,16 +105,43 @@ Capture-Command -Name "client-topology.txt" -Directory $WorkDir -Command {
 
 if ($Router) {
   Capture-Command -Name "edge-health.txt" -Directory $WorkDir -Command {
-    & (Join-Path $PSScriptRoot "check-edge-health.ps1") -Router $Router -KnownHostsFile $KnownHostsFile
+    & $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "check-edge-health.ps1") -Router $Router -KnownHostsFile $KnownHostsFile
   }
   Capture-Command -Name "router-status.txt" -Directory $WorkDir -Command {
-    & (Join-Path $PSScriptRoot "check-router-status.ps1") -Router $Router -KnownHostsFile $KnownHostsFile -NoPause -NoLog
+    & $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "check-router-status.ps1") -Router $Router -KnownHostsFile $KnownHostsFile -SshCommand $SshCommand -NoPause -NoLog
   }
 }
 else {
   Write-RedactedFile -Path (Join-Path $WorkDir "edge-health.txt") -Text "edge_health_state=skipped_no_router"
   Write-RedactedFile -Path (Join-Path $WorkDir "router-status.txt") -Text "router_status=skipped_no_router"
 }
+
+function Get-SafeLifecycleValue {
+  param(
+    [string]$Text,
+    [string]$Name,
+    [string[]]$Allowed,
+    [string]$Default = "unavailable"
+  )
+  $Match = [regex]::Match($Text, "(?m)^" + [regex]::Escape($Name) + "=([a-z0-9_.-]+)\r?$")
+  if ($Match.Success -and $Allowed -contains $Match.Groups[1].Value) { return $Match.Groups[1].Value }
+  $Default
+}
+
+$RouterStatusText = Get-Content -LiteralPath (Join-Path $WorkDir "router-status.txt") -Raw
+$StableSchema = Get-SafeLifecycleValue -Text $RouterStatusText -Name "stable_state_schema" -Allowed @("1", "missing", "invalid")
+$StableSubscription = Get-SafeLifecycleValue -Text $RouterStatusText -Name "stable_subscription_state" -Allowed @("present", "absent", "unavailable")
+$StablePolicy = Get-SafeLifecycleValue -Text $RouterStatusText -Name "stable_policy_state" -Allowed @("present", "absent", "unavailable")
+$CompatibilityBridge = Get-SafeLifecycleValue -Text $RouterStatusText -Name "compatibility_bridge_state" -Allowed @("present", "absent", "drift")
+$LifecycleReport = @(
+  "stable_state_root=/jffs/home-edge-bootstrap-state",
+  "stable_state_schema=$StableSchema",
+  "stable_subscription_state=$StableSubscription",
+  "stable_policy_state=$StablePolicy",
+  "compatibility_bridge_state=$CompatibilityBridge"
+) -join [Environment]::NewLine
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText((Join-Path $WorkDir "lifecycle-state.txt"), ($LifecycleReport + [Environment]::NewLine), $Utf8NoBom)
 
 $Archive = "$WorkDir.zip"
 if (Test-Path -LiteralPath $Archive) {

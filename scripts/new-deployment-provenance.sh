@@ -55,6 +55,10 @@ managed_file_count=$(wc -l <"$sums" | tr -d ' ')
 
 cat >"$metadata" <<EOF
 schema_version=1
+stable_state_schema=1
+stable_state_root=/jffs/home-edge-bootstrap-state
+active_mapping_migrator=scripts/migrate-router-state.sh|scripts/migrate-router-state.sh
+active_mapping_compatibility=stable-state-compatibility/v1|/jffs/scripts/home-edge-policy.local
 source_kind=$source_kind
 source_commit=$source_commit
 source_tree_state=$source_tree_state

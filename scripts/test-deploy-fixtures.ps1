@@ -6,4 +6,6 @@ if ($LASTEXITCODE -ne 0 -or $Plan -notmatch 'deploy_state=plan') { throw "PowerS
 $Source = Get-Content -LiteralPath $Deploy -Raw
 if ($Source -notmatch 'new-deployment-provenance\.ps1') { throw "PowerShell deploy does not generate provenance from staged bytes" }
 if ($Source -notmatch 'DEPLOYMENT-CONTENT-SHA256SUMS') { throw "PowerShell deploy lacks provenance archive contract" }
+if ($Source -notmatch '/jffs/home-edge-bootstrap-state/lifecycle/state\.env') { throw "PowerShell deploy does not verify stable state schema" }
+if ($Source -notmatch 'stable_state_root=/jffs/home-edge-bootstrap-state') { throw "PowerShell deploy does not verify stable state root metadata" }
 Write-Host "deploy_fixture_tests_ps=ok"

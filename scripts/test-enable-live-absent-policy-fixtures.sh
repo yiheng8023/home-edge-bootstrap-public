@@ -29,7 +29,7 @@ chmod 755 "$tmp/bin/cru"
 
 prepare_case() {
   root=$1
-  mkdir -p "$root/jffs/scripts"
+  mkdir -p "$root/jffs/scripts" "$root/jffs/home-edge-bootstrap-state"
   printf ': "${HEAL_CRON_DRY_RUN:=1}"\n' >"$root/jffs/scripts/home-edge-policy.env"
   : >"$root/cru.state"
   cp "$repo/scripts/reconcile-self-heal-registration.sh" "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
@@ -38,7 +38,7 @@ prepare_case() {
 [ "${ENABLE_FIXTURE_FAIL:-0}" != 1 ]
 EOF
   chmod 755 "$root/jffs/scripts/home-edge-reconcile-self-heal.sh" "$root/jffs/scripts/home-edge-self-heal-cron.sh"
-  [ ! -e "$root/jffs/scripts/home-edge-policy.local" ] || fail "fixture policy unexpectedly exists"
+  [ ! -e "$root/jffs/home-edge-bootstrap-state/policy.local" ] || fail "fixture policy unexpectedly exists"
 }
 
 wrapper_root="$tmp/wrapper"
@@ -46,13 +46,13 @@ prepare_case "$wrapper_root"
 if HOME_EDGE_ENABLE_ROOT="$wrapper_root" ENABLE_FIXTURE_FAIL=1 CRU_STATE="$wrapper_root/cru.state" PATH="$tmp/bin:$PATH" sh "$repo/scripts/enable-live-self-heal-router.sh" >/dev/null 2>&1; then
   fail "live wrapper failure should propagate"
 fi
-[ ! -e "$wrapper_root/jffs/scripts/home-edge-policy.local" ] || fail "wrapper failure did not restore absent local policy"
+[ ! -e "$wrapper_root/jffs/home-edge-bootstrap-state/policy.local" ] || fail "wrapper failure did not restore absent local policy"
 
 verification_root="$tmp/verification"
 prepare_case "$verification_root"
 if HOME_EDGE_ENABLE_ROOT="$verification_root" CRU_CORRUPT_ADD_ONCE_FILE="$tmp/corrupt.once" CRU_STATE="$verification_root/cru.state" PATH="$tmp/bin:$PATH" sh "$repo/scripts/enable-live-self-heal-router.sh" >/dev/null 2>&1; then
   fail "registration verification failure should propagate"
 fi
-[ ! -e "$verification_root/jffs/scripts/home-edge-policy.local" ] || fail "registration failure did not restore absent local policy"
+[ ! -e "$verification_root/jffs/home-edge-bootstrap-state/policy.local" ] || fail "registration failure did not restore absent local policy"
 
 echo "enable_live_absent_policy_fixture_tests=ok"

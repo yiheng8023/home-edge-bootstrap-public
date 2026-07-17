@@ -331,14 +331,60 @@ printf "%s\n" "$cron_list" | grep "home_edge_selfheal" || true
 tail -n 8 /tmp/self-heal.log 2>/dev/null || true
 echo
 echo "## Subscription"
-sub_file=/jffs/home-edge-bootstrap/SUBSCRIPTION.local
-sub_cache=/jffs/home-edge-bootstrap/cache/subscription.yaml
+stable_state_root=/jffs/home-edge-bootstrap-state
+stable_schema_file=$stable_state_root/lifecycle/state.env
+stable_policy_file=$stable_state_root/policy.local
+compatibility_bridge=/jffs/scripts/home-edge-policy.local
+print_kv "stable_state_root" "$stable_state_root"
+if [ ! -e "$stable_schema_file" ]; then
+  print_kv "stable_state_schema" "missing"
+elif [ ! -r "$stable_schema_file" ]; then
+  print_kv "stable_state_schema" "invalid"
+else
+  schema_version=$(sed -n "s/^state_schema_version=//p" "$stable_schema_file" | head -n 1)
+  schema_root=$(sed -n "s/^stable_state_root=//p" "$stable_schema_file" | head -n 1)
+  if [ "$schema_version" = 1 ] && [ "$schema_root" = "$stable_state_root" ]; then
+    print_kv "stable_state_schema" "1"
+  else
+    print_kv "stable_state_schema" "invalid"
+  fi
+fi
+sub_file=$stable_state_root/SUBSCRIPTION.local
+sub_cache=$stable_state_root/cache/subscription.yaml
+if [ -s "$sub_file" ]; then
+  print_kv "stable_subscription_state" "present"
+elif [ -e "$sub_file" ]; then
+  print_kv "stable_subscription_state" "unavailable"
+else
+  print_kv "stable_subscription_state" "absent"
+fi
+if [ -s "$stable_policy_file" ]; then
+  print_kv "stable_policy_state" "present"
+elif [ -e "$stable_policy_file" ]; then
+  print_kv "stable_policy_state" "unavailable"
+else
+  print_kv "stable_policy_state" "absent"
+fi
+bridge_expected=$(printf "%s\n" \
+  "# home-edge-bootstrap-owned: stable-state-compatibility/v1" \
+  "SUBSCRIPTION_FILE=/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local" \
+  "SUBSCRIPTION_CACHE=/jffs/home-edge-bootstrap-state/cache/subscription.yaml" \
+  "SUBSCRIPTION_BACKUP_DIR=/jffs/home-edge-bootstrap-state/backups/subscription" \
+  "[ ! -r /jffs/home-edge-bootstrap-state/policy.local ] || . /jffs/home-edge-bootstrap-state/policy.local")
+if [ ! -e "$compatibility_bridge" ]; then
+  print_kv "compatibility_bridge_state" "absent"
+elif [ ! -r "$compatibility_bridge" ]; then
+  print_kv "compatibility_bridge_state" "drift"
+elif [ "$(cat "$compatibility_bridge" 2>/dev/null)" = "$bridge_expected" ]; then
+  print_kv "compatibility_bridge_state" "present"
+else
+  print_kv "compatibility_bridge_state" "drift"
+fi
 subscription_state="missing"
 subscription_consumption_state="not_observed"
 if [ -s "$sub_file" ]; then
   subscription_state="credential_stored"
   print_kv "subscription_file" "present"
-  print_kv "subscription_file_bytes" "$(wc -c < "$sub_file")"
 else
   print_kv "subscription_file" "missing"
 fi
@@ -346,7 +392,6 @@ if [ -s "$sub_cache" ]; then
   subscription_state="cache_ready"
   subscription_consumption_state="cache_only_unverified"
   print_kv "subscription_cache" "present"
-  print_kv "subscription_cache_bytes" "$(wc -c < "$sub_cache")"
 else
   print_kv "subscription_cache" "missing"
 fi
@@ -354,9 +399,9 @@ if [ "$subscription_state" = "missing" ] && [ "$proxy_state" = "verified" ]; the
   subscription_state="runtime_imported"
   subscription_consumption_state="manual_runtime_import_unverified"
 fi
-subscription_apply_path=$(SUBSCRIPTION_APPLY_PATH=""; for f in /jffs/scripts/home-edge-policy.env /jffs/scripts/home-edge-policy.local; do [ ! -r "$f" ] || . "$f"; done; printf "%s" "${SUBSCRIPTION_APPLY_PATH:-}")
-subscription_runtime_evidence=$(SUBSCRIPTION_RUNTIME_EVIDENCE="/tmp/home-edge-subscription-runtime.evidence"; for f in /jffs/scripts/home-edge-policy.env /jffs/scripts/home-edge-policy.local; do [ ! -r "$f" ] || . "$f"; done; printf "%s" "${SUBSCRIPTION_RUNTIME_EVIDENCE:-/tmp/home-edge-subscription-runtime.evidence}")
-subscription_runtime_evidence_max_age=$(SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC=300; for f in /jffs/scripts/home-edge-policy.env /jffs/scripts/home-edge-policy.local; do [ ! -r "$f" ] || . "$f"; done; printf "%s" "${SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC:-300}")
+subscription_apply_path=$(SUBSCRIPTION_APPLY_PATH=""; for f in /jffs/scripts/home-edge-policy.env /jffs/home-edge-bootstrap-state/policy.local; do [ ! -r "$f" ] || . "$f"; done; printf "%s" "${SUBSCRIPTION_APPLY_PATH:-}")
+subscription_runtime_evidence=$(SUBSCRIPTION_RUNTIME_EVIDENCE="/tmp/home-edge-subscription-runtime.evidence"; for f in /jffs/scripts/home-edge-policy.env /jffs/home-edge-bootstrap-state/policy.local; do [ ! -r "$f" ] || . "$f"; done; printf "%s" "${SUBSCRIPTION_RUNTIME_EVIDENCE:-/tmp/home-edge-subscription-runtime.evidence}")
+subscription_runtime_evidence_max_age=$(SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC=300; for f in /jffs/scripts/home-edge-policy.env /jffs/home-edge-bootstrap-state/policy.local; do [ ! -r "$f" ] || . "$f"; done; printf "%s" "${SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC:-300}")
 if [ -s "$sub_cache" ] && [ -n "$subscription_apply_path" ]; then
   if [ ! -s "$subscription_apply_path" ]; then
     subscription_consumption_state="live_profile_missing"

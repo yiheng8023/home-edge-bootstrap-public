@@ -20,6 +20,18 @@ printf '%s\n' 'fixture-private-key-material'
 printf -- '-----END %s PRIVATE KEY-----\n' 'OPENSSH'
 EOF
 chmod +x "$fake_bin/git"
+cat >"$fake_bin/ssh" <<'EOF'
+#!/bin/sh
+cat >/dev/null || true
+printf '%s\n' \
+  'stable_state_root=/jffs/home-edge-bootstrap-state' \
+  'stable_state_schema=1' \
+  'stable_subscription_state=present' \
+  'stable_policy_state=present' \
+  'compatibility_bridge_state=present' \
+  'subscription_url=dummy_subscription_credential'
+EOF
+chmod +x "$fake_bin/ssh"
 
 fail() {
   echo "support_bundle_fixture_tests=failed"
@@ -39,15 +51,27 @@ output=$(
   HOST_SSH_FIXTURE_ROUTER_SSH_STATE=ok \
   PATH="$fake_bin:$PATH" \
   OUTPUT_DIR="$tmp" \
-  sh "$repo/scripts/export-support-bundle.sh"
+  sh "$repo/scripts/export-support-bundle.sh" user@router
 )
 
 bundle_dir=$(printf '%s\n' "$output" | awk -F= '$1 == "support_bundle_dir" { print $2; exit }')
 [ -n "$bundle_dir" ] && [ -d "$bundle_dir" ] || fail "support bundle directory was not created"
 
-for name in manifest.txt closeout.txt no-wall-readiness.txt doctor.txt host-ssh.txt client-topology.txt edge-health.txt router-status.txt; do
+for name in manifest.txt closeout.txt no-wall-readiness.txt doctor.txt host-ssh.txt client-topology.txt edge-health.txt router-status.txt lifecycle-state.txt; do
   [ -f "$bundle_dir/$name" ] || fail "missing support bundle file: $name"
 done
+
+grep -Fxq 'stable_state_root=/jffs/home-edge-bootstrap-state' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted stable state root"
+grep -Fxq 'stable_state_schema=1' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted stable state schema"
+grep -Fxq 'stable_subscription_state=present' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted safe subscription presence"
+grep -Fxq 'stable_policy_state=present' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted safe policy presence"
+grep -Fxq 'compatibility_bridge_state=present' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted compatibility bridge state"
+if grep -R -Fq 'dummy_subscription_credential' "$bundle_dir"; then fail "support report leaked subscription content"; fi
+support_archive=$(printf '%s\n' "$output" | awk -F= '$1 == "support_bundle_archive" { print $2; exit }')
+[ -s "$support_archive" ] || fail "support archive missing"
+if tar -tf "$support_archive" | grep -Eq 'SUBSCRIPTION\.local|(^|/)policy\.local|subscription\.yaml'; then
+  fail "support archive included stable secret state"
+fi
 
 if "$find_cmd" "$bundle_dir" -type f \( -name '*.raw' -o -name '*.raw.log' \) | grep -q .; then
   fail "raw support files were left behind"

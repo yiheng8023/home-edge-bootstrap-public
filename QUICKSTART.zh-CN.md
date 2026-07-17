@@ -38,6 +38,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\doctor.ps1
 sh scripts/doctor.sh
 ```
 
+仅检查宿主机且健康时，预期终态是 `doctor_state=local_ready_router_not_checked`；提供路由器
+目标后，应按实际报告的 doctor 状态和下一步行动继续，不能把宿主机就绪当成路由器已验证。
 缺少必需工具时先修复，再碰路由器。可选的深度离线 fixture checkout 检查使用
 `scripts\verify-local.ps1` 或 `sh scripts/verify-local.sh`。成功时最后输出
 `local_verification_state=ready`；失败会指出应先检查的门禁。fixture 不会对具体路由器、
@@ -68,7 +70,8 @@ sh scripts/doctor.sh
 
 ## 3. 设置实际目标并核验 SSH 身份
 
-使用路由器实际配置的管理/SSH 账户和局域网 IP。下例是占位符，不是本项目创建的账户：
+请用路由器实际配置的 SSH 账户和局域网 IP 替换整个目标。下例既不是本项目创建的账户，也
+不是发现路由器 IP 的办法：
 
 ```powershell
 $Router = "<router-admin-user>@192.168.50.1"
@@ -78,12 +81,18 @@ $Router = "<router-admin-user>@192.168.50.1"
 router="<router-admin-user>@192.168.50.1"
 ```
 
+变量只在当前终端有效；新开 PowerShell、Terminal 或 SSH 窗口后，必须重新设置 `$Router` 或
+`router`。
+
 首次探测前，通过独立可信渠道取得路由器 SSH 主机密钥指纹，例如本地控制台、固件提供的
 指纹显示或可信操作员记录。不同界面并不一致，无法取得可信指纹时应停止。
 `ssh-keyscan -t ed25519 192.168.50.1` 可以采集网络对端展示的密钥用于比对，但它本身不能证明身份。
 指纹不一致时停止；不要为了继续而删除已保存密钥或关闭主机密钥检查。
 
 ## 4. 启动可接续、先只读的会话
+
+编号式 `tui` 是菜单和导览入口；`run-bootstrap` 是可接续执行循环。两者都可启动流程，但绝不
+能针对同一路由器同时运行两个可写会话。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-bootstrap.ps1 -Router $Router -NoPause
@@ -97,11 +106,13 @@ sh scripts/run-bootstrap.sh --no-pause "$router"
 收官前保留这个目标会话。预期暂停或终态标记：
 
 - `bootstrap_state=waiting_prerequisite`：修复所列宿主机/路由器前置条件，再运行同一命令。
-- `bootstrap_state=waiting_manual`：完成人工动作，再运行同一命令。
+- `bootstrap_state=waiting_manual`：同时阅读 `next_action_code` 和 `next_action_command`，完成
+  所列人工动作，再运行同一 bootstrap 命令。
 - `bootstrap_state=pass`：最终安装门禁通过。
 - `bootstrap_state=accepted_boundary`：仍有已审阅人工例外；证据弱于完整通过。
 
-循环会输出 `next_action_code`，先执行只读能力探测，并在可写动作前准备 `--dry-run` 行为。
+需要操作者行动时，循环会输出两个下一步字段；它先执行只读能力探测，并在可写动作前准备
+`--dry-run` 行为。
 
 ## 5. 审查每次写入并保留回滚
 
@@ -111,7 +122,27 @@ sh scripts/run-bootstrap.sh --no-pause "$router"
 
 当前项目 kit 位于 `/jffs/home-edge-bootstrap`；存在旧 kit 时保留到
 `/jffs/home-edge-bootstrap.prev`，并报告 `rollback_available=0|1` 和准确回滚命令。运行时配置
-备份是另一类制品，默认位于 `/jffs/home-edge-bootstrap/backups/runtime`。apply 健康失败时不要开启自愈。
+备份是另一类制品，默认位于 `/jffs/home-edge-bootstrap-state/backups/runtime`。apply 健康失败时不要开启自愈。
+
+### 项目退出是独立生命周期操作
+
+先运行计划，审查精确删除/保留集合后才应用：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\decommission-merlin.ps1 -Router $Router -NoPause
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\decommission-merlin.ps1 -Router $Router -Apply -Confirmation DECOMMISSION -NoPause
+```
+
+```sh
+sh scripts/decommission-merlin.sh "$router"
+sh scripts/decommission-merlin.sh "$router" --apply --confirm DECOMMISSION
+```
+
+项目退出只删除项目辅助脚本、精确项目注册、经过校验的 kit 变体和默认可再生缓存。它保留
+`/jffs/home-edge-bootstrap-state`、操作者订阅与策略文件、恢复备份、Asuswrt-Merlin 固件以及
+外部 ShellCrash/Mihomo 运行时。回滚恢复上一版项目 kit；项目退出移除项目控制面；运行时卸载
+遵循运行时维护者流程；固件恢复遵循[华硕官方下载中心](https://www.asus.com/global/support/download-center/)
+和[梅林官方指南](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation)。本项目不替代通用刷机教程。
 
 ## 6. 运行最终门禁
 

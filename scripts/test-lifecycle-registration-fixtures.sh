@@ -23,7 +23,7 @@ export REAL_STAT REAL_CHMOD
 root="$tmp/root"
 fakebin="$tmp/fakebin"
 state="$tmp/cru.state"
-mkdir -p "$root/jffs/scripts" "$fakebin"
+mkdir -p "$root/jffs/scripts" "$root/jffs/home-edge-bootstrap-state" "$fakebin"
 : >"$state"
 
 cat >"$fakebin/cru" <<'EOF'
@@ -129,7 +129,7 @@ cmp -s "$state" "$tmp/prior-registration.verify-failure" || fail "cron verificat
 [ "$(grep -c '#home_edge_selfheal#' "$state")" -eq 1 ] || fail "duplicate registration was not reduced to one job"
 grep -Fq '*/5 * * * * sh /jffs/scripts/home-edge-self-heal-cron.sh #home_edge_selfheal#' "$state" || fail "drifted registration was not repaired"
 
-cat >"$root/jffs/scripts/home-edge-policy.local" <<'EOF'
+cat >"$root/jffs/home-edge-bootstrap-state/policy.local" <<'EOF'
 HEAL_CRON_DRY_RUN=0
 EOF
 : >"$state"

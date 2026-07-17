@@ -39,7 +39,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\doctor.ps1
 sh scripts/doctor.sh
 ```
 
-Fix a reported required tool before touching the router. For an optional deep, offline,
+For a healthy host-only run, the expected terminal marker is
+`doctor_state=local_ready_router_not_checked`. After supplying a router, use the reported doctor
+state and next action; host readiness is not router verification. Fix a reported required tool
+before touching the router. For an optional deep, offline,
 fixture-based checkout check, run `scripts\verify-local.ps1` or `sh scripts/verify-local.sh`.
 Success ends with `local_verification_state=ready`; a failure names the first gate to inspect. These
 fixtures are not field certification for a router, firmware build, provider, or network.
@@ -71,8 +74,8 @@ trusted network and transfer it offline, or stop.
 
 ## 3. Set the actual target and verify SSH identity
 
-Use the router's configured administrative/SSH account and actual LAN IP. The placeholder below is
-not an account created by this project:
+Replace the entire target with the router's configured SSH account and actual LAN IP. The placeholder
+below is neither an account created by this project nor an IP-discovery mechanism:
 
 ```powershell
 $Router = "<router-admin-user>@192.168.50.1"
@@ -82,6 +85,9 @@ $Router = "<router-admin-user>@192.168.50.1"
 router="<router-admin-user>@192.168.50.1"
 ```
 
+Each variable exists only in the current shell. Reset `$Router` or `router` after opening a new
+PowerShell, Terminal, or SSH window.
+
 Before the first probe, obtain the router's SSH host-key fingerprint through an independent trusted
 channel, such as a local console, firmware-provided display, or trusted operator record. Interfaces
 vary; stop if no trustworthy fingerprint is available. `ssh-keyscan -t ed25519 192.168.50.1` may
@@ -89,6 +95,9 @@ collect the network-presented key for comparison, but by itself it does not veri
 a mismatch. Never delete the saved key or disable host-key checking merely to continue.
 
 ## 4. Start a resumable, read-first session
+
+The numbered `tui` is a menu and orientation entry; `run-bootstrap` is the resumable execution loop.
+Either may start the workflow, but never run two write-capable sessions against the same router.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-bootstrap.ps1 -Router $Router -NoPause
@@ -103,11 +112,12 @@ The loop stores `state.env`, logs, and a dedicated `known_hosts` record below
 markers are:
 
 - `bootstrap_state=waiting_prerequisite`: fix the named host/router prerequisite, then rerun the same command.
-- `bootstrap_state=waiting_manual`: complete the named manual action, then rerun it.
+- `bootstrap_state=waiting_manual`: read both `next_action_code` and `next_action_command`, complete
+  the named manual action, then rerun the same bootstrap command.
 - `bootstrap_state=pass`: final installation closeout passed.
 - `bootstrap_state=accepted_boundary`: reviewed manual exceptions remain; this is weaker than a full pass.
 
-The loop prints `next_action_code`. It begins with read-only capability probes and prepares
+The loop prints both next-action fields when operator work is needed. It begins with read-only capability probes and prepares
 `--dry-run` behavior before write-capable actions.
 
 ## 5. Review every write and retain rollback
@@ -120,7 +130,30 @@ other response cancels the action.
 The current project kit is `/jffs/home-edge-bootstrap`; when an older kit exists, deployment keeps it
 at `/jffs/home-edge-bootstrap.prev` and reports `rollback_available=0|1` plus the exact rollback
 command. Runtime-configuration backups are separate and default to
-`/jffs/home-edge-bootstrap/backups/runtime`. Do not enable self-heal while apply health is failing.
+`/jffs/home-edge-bootstrap-state/backups/runtime`. Do not enable self-heal while apply health is failing.
+
+### Project decommission is a separate lifecycle operation
+
+Run the plan first, then apply only after reviewing the exact remove/retain sets:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\decommission-merlin.ps1 -Router $Router -NoPause
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\decommission-merlin.ps1 -Router $Router -Apply -Confirmation DECOMMISSION -NoPause
+```
+
+```sh
+sh scripts/decommission-merlin.sh "$router"
+sh scripts/decommission-merlin.sh "$router" --apply --confirm DECOMMISSION
+```
+
+Decommission removes project helpers, exact project registration, validated kit variants, and the
+default regenerable cache. It preserves `/jffs/home-edge-bootstrap-state`, operator subscription and
+policy files, recovery backups, Asuswrt-Merlin firmware, and the external ShellCrash/Mihomo runtime.
+Rollback restores a prior project kit; decommission retires project control surfaces; runtime
+uninstall follows the runtime maintainer; firmware recovery follows the
+[ASUS Download Center](https://www.asus.com/global/support/download-center/) and
+[official Asuswrt-Merlin guidance](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation).
+This project does not substitute a generic firmware flashing tutorial.
 
 ## 6. Run the final gate
 

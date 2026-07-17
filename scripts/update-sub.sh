@@ -12,9 +12,10 @@ else
   done
 fi
 
-SUB_FILE="${SUBSCRIPTION_FILE:-/jffs/home-edge-bootstrap/SUBSCRIPTION.local}"
-SUB_CACHE="${SUBSCRIPTION_CACHE:-/jffs/home-edge-bootstrap/cache/subscription.yaml}"
-BACKUP_DIR="${SUBSCRIPTION_BACKUP_DIR:-/jffs/home-edge-bootstrap/backups/subscription}"
+STATE_ROOT="${HOME_EDGE_STATE_ROOT:-/jffs/home-edge-bootstrap-state}"
+SUB_FILE="${SUBSCRIPTION_FILE:-$STATE_ROOT/SUBSCRIPTION.local}"
+SUB_CACHE="${SUBSCRIPTION_CACHE:-$STATE_ROOT/cache/subscription.yaml}"
+BACKUP_DIR="${SUBSCRIPTION_BACKUP_DIR:-$STATE_ROOT/backups/subscription}"
 APPLY_PATH="${SUBSCRIPTION_APPLY_PATH:-}"
 APPLY_ROOT="${SUBSCRIPTION_APPLY_ROOT:-}"
 RELOAD_CMD="${SUBSCRIPTION_RELOAD_CMD:-}"

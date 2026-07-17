@@ -86,6 +86,25 @@ else
   echo "router_status=skipped_no_router" > "$work_dir/router-status.txt"
 fi
 
+status_value() {
+  sed -n "s/^$1=//p" "$work_dir/router-status.txt" 2>/dev/null | head -n 1
+}
+stable_schema=$(status_value stable_state_schema)
+case "$stable_schema" in 1|missing|invalid) ;; *) stable_schema=unavailable ;; esac
+stable_subscription=$(status_value stable_subscription_state)
+case "$stable_subscription" in present|absent|unavailable) ;; *) stable_subscription=unavailable ;; esac
+stable_policy=$(status_value stable_policy_state)
+case "$stable_policy" in present|absent|unavailable) ;; *) stable_policy=unavailable ;; esac
+compatibility_bridge=$(status_value compatibility_bridge_state)
+case "$compatibility_bridge" in present|absent|drift) ;; *) compatibility_bridge=unavailable ;; esac
+{
+  echo "stable_state_root=/jffs/home-edge-bootstrap-state"
+  echo "stable_state_schema=$stable_schema"
+  echo "stable_subscription_state=$stable_subscription"
+  echo "stable_policy_state=$stable_policy"
+  echo "compatibility_bridge_state=$compatibility_bridge"
+} >"$work_dir/lifecycle-state.txt"
+
 tar -czf "$archive" -C "$output_dir" "$(basename "$work_dir")"
 
 echo "# Support Bundle"
