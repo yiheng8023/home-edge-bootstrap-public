@@ -1,1 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" aria-label="中文轮播第六页：邀请围绕适配器契约贡献兼容性。"><rect width="1080" height="1350" fill="#0B1220"/><rect x="80" y="80" width="920" height="1190" rx="24" fill="#14213D"/><path d="M120 364 H960" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="648" fill="#F7FAFC" font-family="sans-serif" font-size="45">06 共建</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" data-asset-id="zh-CN-carousel-06" data-visual-system="system-atlas/v1">
+<title>先走最短路径，再谈适配</title>
+<desc>中文轮播第六页：最短开始路径从预检到验证，并在边界外标出通过适配契约扩展新目标。</desc>
+<g id="background"><rect width="1080" height="1350" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="56" y="48" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1024" y="48" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="end">CAROUSEL / 06</text>
+<line x1="56" y1="72" x2="1024" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="56" y="1317" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="start">中文系统图册</text>
+<text x="1024" y="1317" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="64" y="146" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="22" font-weight="400" text-anchor="start">06 / 开始与扩展</text>
+<text x="64" y="238" fill="#17202A" font-family="Microsoft YaHei UI" font-size="50" font-weight="700" text-anchor="start">先走最短路径，再谈适配</text>
+<text x="68" y="306" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">先预检、声明目标、执行并核验证据</text>
+<text x="68" y="342" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">新软硬件通过公开适配契约逐步加入。</text>
+<line x1="68" y1="382" x2="1012" y2="382" stroke="#176B87" stroke-width="4"/>
+<circle cx="837" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="869" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="901" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="933" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="965" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="997" cy="116" r="7" fill="#176B87"/>
+<g id="page-diagram">
+<rect x="68" y="560" width="210" height="90" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="173" y="612" fill="#17202A" font-family="Microsoft YaHei UI" font-size="20" font-weight="700" text-anchor="middle">本地预检</text>
+<line x1="278" y1="605" x2="304.75" y2="605" stroke="#176B87" stroke-width="3"/>
+<polygon points="313,605 300.2121,612.8403 300.2121,597.1597" fill="#176B87"/>
+<rect x="313" y="560" width="210" height="90" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="418" y="612" fill="#17202A" font-family="Microsoft YaHei UI" font-size="20" font-weight="700" text-anchor="middle">声明目标</text>
+<line x1="523" y1="605" x2="549.75" y2="605" stroke="#176B87" stroke-width="3"/>
+<polygon points="558,605 545.2122,612.8403 545.2122,597.1597" fill="#176B87"/>
+<rect x="558" y="560" width="210" height="90" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="663" y="612" fill="#17202A" font-family="Microsoft YaHei UI" font-size="20" font-weight="700" text-anchor="middle">计划执行</text>
+<line x1="768" y1="605" x2="794.75" y2="605" stroke="#176B87" stroke-width="3"/>
+<polygon points="803,605 790.2122,612.8403 790.2122,597.1597" fill="#176B87"/>
+<rect x="803" y="560" width="210" height="90" fill="#287A5A" stroke="#287A5A" stroke-width="2" rx="8"/>
+<text x="908" y="612" fill="#FFFFFF" font-family="Microsoft YaHei UI" font-size="20" font-weight="700" text-anchor="middle">核验证据</text>
+<rect x="150" y="820" width="780" height="210" fill="#E8E3D7" stroke="#0D4658" stroke-width="3" rx="8"/>
+<text x="180" y="888" fill="#17202A" font-family="Microsoft YaHei UI" font-size="28" font-weight="700" text-anchor="start">适配扩展边界</text>
+<text x="180" y="940" fill="#17202A" font-family="Microsoft YaHei UI" font-size="28" font-weight="700" text-anchor="start">新软硬件通过能力、安全、恢复与证据契约加入</text>
+<rect x="350" y="1090" width="380" height="60" fill="#176B87" rx="30"/>
+<text x="540" y="1125" fill="#FFFFFF" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">先走通最短路径</text>
+</g>
+</g>
+</svg>

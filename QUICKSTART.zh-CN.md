@@ -195,6 +195,7 @@ Windows 上是 `C:\tmp\home-edge-support-bundles`，在 macOS/Linux 上是
 | 缺少 JFFS | 开启 custom scripts/configs；固件要求时重启，再运行同一会话 |
 | apply 后运行时不健康 | 不要开启自愈；使用已报告回滚并检查会话日志 |
 | 自愈注册不完整 | 先检查状态，再仅修复项目自有生命周期条目 |
+| `decommission_state=partial` 或 `blocked` | 停止后续写入，保留报告的稳定状态根目录，检查 `failed_action` 与 `next_action_code`；只有理解边界后才重新运行计划 |
 
 详细诊断、架构、适配器成熟度、无代理恢复和贡献说明见
 [完整 README](README.zh-CN.md)。

@@ -1,1 +1,1 @@
-Home Edge Bootstrap social preview with a three-node edge lifecycle line and the words Bootstrap, Recover, Verify.
+Home Edge Bootstrap system map showing external inputs, a router-primary edge, LAN clients, independent endpoint fallback, observed state, and a recovery loop.

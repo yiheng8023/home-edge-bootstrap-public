@@ -1,1 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Safety card showing plan, confirmation, apply, verification, and rollback as a bounded loop."><rect width="1600" height="900" fill="#0B1220"/><rect x="80" y="80" width="1440" height="740" rx="24" fill="#14213D"/><path d="M120 243 H1480" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="432" fill="#F7FAFC" font-family="sans-serif" font-size="67">Bounded automation</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" data-asset-id="en-safety" data-visual-system="system-atlas/v1">
+<title>Automation stops at trust boundaries</title>
+<desc>Bounded automation loop from observe and plan through a human authorization boundary to apply and verify, with rollback on failed verification.</desc>
+<g id="background"><rect width="1600" height="900" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="72" y="48" fill="#0D4658" font-family="Consolas" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1528" y="48" fill="#5E6872" font-family="Consolas" font-size="16" font-weight="400" text-anchor="end">MECHANISM / 04</text>
+<line x1="72" y1="72" x2="1528" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="72" y="867" fill="#5E6872" font-family="Consolas" font-size="15" font-weight="400" text-anchor="start">SAFETY</text>
+<text x="1528" y="867" fill="#0D4658" font-family="Consolas" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="88" y="164" fill="#17202A" font-family="Segoe UI" font-size="52" font-weight="700" text-anchor="start">Automation stops at trust boundaries</text>
+<text x="92" y="214" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">The routine can observe and prepare.</text>
+<text x="92" y="248" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">A human authorizes the consequential step.</text>
+<line x1="92" y1="286" x2="1508" y2="286" stroke="#176B87" stroke-width="4"/>
+<g id="bounded-loop">
+<rect x="80" y="410" width="220" height="92" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="190" y="462.5" fill="#17202A" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">OBSERVE</text>
+<line x1="300" y1="456" x2="356.2" y2="456" stroke="#176B87" stroke-width="4"/>
+<polygon points="365,456 351.3596,464.363 351.3596,447.637" fill="#176B87"/>
+<rect x="365" y="410" width="220" height="92" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="475" y="462.5" fill="#17202A" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">PLAN</text>
+<line x1="585" y1="456" x2="641.2" y2="456" stroke="#176B87" stroke-width="4"/>
+<polygon points="650,456 636.3596,464.363 636.3596,447.637" fill="#176B87"/>
+<rect x="650" y="410" width="220" height="92" fill="#A9651A" stroke="#A9651A" stroke-width="2" rx="8"/>
+<text x="760" y="462.5" fill="#FFFFFF" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">HUMAN BOUNDARY</text>
+<line x1="870" y1="456" x2="926.2" y2="456" stroke="#176B87" stroke-width="4"/>
+<polygon points="935,456 921.3596,464.363 921.3596,447.637" fill="#176B87"/>
+<rect x="935" y="410" width="220" height="92" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="1045" y="462.5" fill="#17202A" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">APPLY</text>
+<line x1="1155" y1="456" x2="1211.2" y2="456" stroke="#176B87" stroke-width="4"/>
+<polygon points="1220,456 1206.36,464.363 1206.36,447.637" fill="#176B87"/>
+<rect x="1220" y="410" width="220" height="92" fill="#287A5A" stroke="#287A5A" stroke-width="2" rx="8"/>
+<text x="1330" y="462.5" fill="#FFFFFF" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">VERIFY</text>
+<text x="760" y="386" fill="#A9651A" font-family="Consolas" font-size="14" font-weight="400" text-anchor="middle">EXPLICIT AUTHORIZATION</text>
+<line x1="1330" y1="502" x2="1330" y2="650" stroke="#A33A32" stroke-width="3"/>
+<line x1="1330" y1="650" x2="475" y2="650" stroke="#A33A32" stroke-width="3"/>
+<line x1="475" y1="650" x2="475" y2="510.25" stroke="#A33A32" stroke-width="3"/>
+<polygon points="475,502 482.8403,514.7878 467.1597,514.7878" fill="#A33A32"/>
+<rect x="780" y="622" width="260" height="52" fill="#A33A32" rx="26"/>
+<text x="910" y="653" fill="#FFFFFF" font-family="Segoe UI" font-size="18" font-weight="700" text-anchor="middle">ROLLBACK</text>
+<text x="800" y="764" fill="#0D4658" font-family="Consolas" font-size="22" font-weight="400" text-anchor="middle">Failure returns to a named rollback path.</text>
+</g>
+</g>
+</svg>

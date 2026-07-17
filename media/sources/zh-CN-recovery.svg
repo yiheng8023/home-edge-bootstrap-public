@@ -1,1 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="恢复卡片：离线缓存供给路由器边缘，终端兜底保持独立。"><rect width="1600" height="900" fill="#0B1220"/><rect x="80" y="80" width="1440" height="740" rx="24" fill="#14213D"/><path d="M120 243 H1480" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="432" fill="#F7FAFC" font-family="sans-serif" font-size="67">无可用代理时仍能恢复</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" data-asset-id="zh-CN-recovery" data-visual-system="system-atlas/v1">
+<title>恢复路径各有边界</title>
+<desc>恢复图：已校验输入、稳定部署包、运行时状态、上一版部署包、运行时备份和终端独立兜底彼此分离。</desc>
+<g id="background"><rect width="1600" height="900" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="72" y="48" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1528" y="48" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="end">MECHANISM / 03</text>
+<line x1="72" y1="72" x2="1528" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="72" y="867" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="start">RECOVERY</text>
+<text x="1528" y="867" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="88" y="164" fill="#17202A" font-family="Microsoft YaHei UI" font-size="52" font-weight="700" text-anchor="start">恢复路径各有边界</text>
+<text x="92" y="214" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">校验过的输入恢复受管路径</text>
+<text x="92" y="248" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">退出与恢复路线保持显式</text>
+<line x1="92" y1="286" x2="1508" y2="286" stroke="#176B87" stroke-width="4"/>
+<g id="recovery-map">
+<rect x="110" y="380" width="300" height="112" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="260" y="444" fill="#17202A" font-family="Microsoft YaHei UI" font-size="22" font-weight="700" text-anchor="middle">已校验输入</text>
+<line x1="410" y1="436" x2="601.2" y2="436" stroke="#176B87" stroke-width="4"/>
+<polygon points="610,436 596.3596,444.363 596.3596,427.637" fill="#176B87"/>
+<rect x="610" y="380" width="300" height="112" fill="#176B87" stroke="#176B87" stroke-width="2" rx="8"/>
+<text x="760" y="444" fill="#FFFFFF" font-family="Microsoft YaHei UI" font-size="22" font-weight="700" text-anchor="middle">稳定部署包</text>
+<line x1="910" y1="436" x2="1101.2" y2="436" stroke="#176B87" stroke-width="4"/>
+<polygon points="1110,436 1096.36,444.363 1096.36,427.637" fill="#176B87"/>
+<rect x="1110" y="380" width="300" height="112" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="1260" y="444" fill="#17202A" font-family="Microsoft YaHei UI" font-size="22" font-weight="700" text-anchor="middle">运行时状态</text>
+<rect x="110" y="620" width="300" height="82" fill="#E8E3D7" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="260" y="667.5" fill="#17202A" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">上一版部署包</text>
+<line x1="260" y1="620" x2="260" y2="522" stroke="#0D4658" stroke-width="3" stroke-dasharray="10 8"/>
+<rect x="610" y="620" width="300" height="82" fill="#E8E3D7" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="760" y="667.5" fill="#17202A" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">运行时备份</text>
+<line x1="760" y1="620" x2="760" y2="522" stroke="#0D4658" stroke-width="3" stroke-dasharray="10 8"/>
+<rect x="1110" y="620" width="300" height="82" fill="#E8E3D7" stroke="#A9651A" stroke-width="2" rx="8"/>
+<text x="1260" y="667.5" fill="#17202A" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">终端独立兜底</text>
+<line x1="1260" y1="620" x2="1260" y2="522" stroke="#A9651A" stroke-width="3" stroke-dasharray="10 8"/>
+<text x="800" y="778" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="22" font-weight="400" text-anchor="middle">续跑、更换、卸载与固件恢复是不同操作。</text>
+</g>
+</g>
+</svg>

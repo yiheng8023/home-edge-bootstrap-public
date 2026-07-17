@@ -206,6 +206,7 @@ macOS/Linux. The bundle is redacted, but you must review every file before attac
 | JFFS missing | Enable custom scripts/configs, reboot if firmware requires it, and rerun the same session |
 | Runtime unhealthy after apply | Do not enable self-heal; use the reported rollback and inspect the session log |
 | Self-heal registration incomplete | Run status first, then repair only project-owned lifecycle entries |
+| `decommission_state=partial` or `blocked` | Stop further writes, preserve the reported stable-state root, inspect `failed_action` and `next_action_code`, and rerun the plan only after the boundary is understood |
 
 Return to the [full README](README.md) for detailed diagnosis, architecture, adapter maturity,
 no-wall recovery, and contribution guidance.

@@ -1,1 +1,1 @@
-Square summary connecting a router-primary edge to independent endpoint fallback and verification evidence.
+System map showing external inputs feeding a router-primary edge and LAN clients, with independent endpoint fallback and a separate evidence boundary.

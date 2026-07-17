@@ -1,1 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="架构卡片：框架策略经已验证适配器流向边缘运行时。"><rect width="1600" height="900" fill="#0B1220"/><rect x="80" y="80" width="1440" height="740" rx="24" fill="#14213D"/><path d="M120 243 H1480" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="432" fill="#F7FAFC" font-family="sans-serif" font-size="67">能力驱动的边缘生命周期</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" data-asset-id="zh-CN-architecture" data-visual-system="system-atlas/v1">
+<title>能力驱动的分层架构</title>
+<desc>架构图：操作意图、生命周期框架、薄目标适配器、运行时与设备状态分层，观测证据沿独立路径返回。</desc>
+<g id="background"><rect width="1600" height="900" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="72" y="48" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1528" y="48" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="end">MECHANISM / 02</text>
+<line x1="72" y1="72" x2="1528" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="72" y="867" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="start">ARCHITECTURE</text>
+<text x="1528" y="867" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="88" y="164" fill="#17202A" font-family="Microsoft YaHei UI" font-size="52" font-weight="700" text-anchor="start">能力驱动的分层架构</text>
+<text x="92" y="214" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">意图经薄适配器向下传递</text>
+<text x="92" y="248" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">观测证据沿独立路径返回</text>
+<line x1="92" y1="286" x2="1508" y2="286" stroke="#176B87" stroke-width="4"/>
+<g id="layer-flow">
+<rect x="92" y="390" width="260" height="110" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="222" y="451.5" fill="#17202A" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">操作意图</text>
+<rect x="430" y="390" width="280" height="110" fill="#E8E3D7" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="570" y="451.5" fill="#17202A" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">生命周期框架</text>
+<rect x="800" y="404" width="180" height="82" fill="#FFFFFF" stroke="#176B87" stroke-width="2" rx="8"/>
+<text x="890" y="451" fill="#17202A" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">目标适配器</text>
+<rect x="1070" y="390" width="410" height="110" fill="#176B87" stroke="#176B87" stroke-width="2" rx="8"/>
+<text x="1275" y="451.5" fill="#FFFFFF" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">运行时与设备状态</text>
+<line x1="352" y1="445" x2="421.2" y2="445" stroke="#176B87" stroke-width="4"/>
+<polygon points="430,445 416.3596,453.363 416.3596,436.637" fill="#176B87"/>
+<line x1="710" y1="445" x2="791.2" y2="445" stroke="#176B87" stroke-width="4"/>
+<polygon points="800,445 786.3596,453.363 786.3596,436.637" fill="#176B87"/>
+<line x1="980" y1="445" x2="1061.2" y2="445" stroke="#176B87" stroke-width="4"/>
+<polygon points="1070,445 1056.36,453.363 1056.36,436.637" fill="#176B87"/>
+<text x="890" y="517" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="13" font-weight="400" text-anchor="middle">THIN ADAPTER</text>
+<rect x="430" y="650" width="570" height="72" fill="#FFFFFF" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="715" y="692.5" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="19" font-weight="700" text-anchor="middle">观测证据</text>
+<line x1="1000" y1="686" x2="1223.585" y2="505.1877" stroke="#0D4658" stroke-width="3" stroke-dasharray="10 8"/>
+<polygon points="1230,500 1224.987,514.1375 1215.127,501.9448" fill="#0D4658"/>
+<line x1="430" y1="686" x2="304.7262" y2="506.7621" stroke="#0D4658" stroke-width="3" stroke-dasharray="10 8"/>
+<polygon points="300,500 313.7521,505.9901 300.8995,514.973" fill="#0D4658"/>
+<text x="1050" y="670" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="20" font-weight="400" text-anchor="start">声明的意图</text>
+<text x="1050" y="700" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="20" font-weight="400" text-anchor="start">不等于观测到的状态</text>
+</g>
+</g>
+</svg>

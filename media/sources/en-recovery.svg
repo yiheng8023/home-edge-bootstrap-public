@@ -1,1 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Recovery card showing an offline cache feeding a router edge while endpoint fallback remains independent."><rect width="1600" height="900" fill="#0B1220"/><rect x="80" y="80" width="1440" height="740" rx="24" fill="#14213D"/><path d="M120 243 H1480" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="432" fill="#F7FAFC" font-family="sans-serif" font-size="67">Recovery without a working proxy</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" data-asset-id="en-recovery" data-visual-system="system-atlas/v1">
+<title>Recovery keeps boundaries distinct</title>
+<desc>Recovery diagram separating verified inputs, stable deployment kit, runtime state, previous kit, runtime backup, and independent endpoint fallback.</desc>
+<g id="background"><rect width="1600" height="900" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="72" y="48" fill="#0D4658" font-family="Consolas" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1528" y="48" fill="#5E6872" font-family="Consolas" font-size="16" font-weight="400" text-anchor="end">MECHANISM / 03</text>
+<line x1="72" y1="72" x2="1528" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="72" y="867" fill="#5E6872" font-family="Consolas" font-size="15" font-weight="400" text-anchor="start">RECOVERY</text>
+<text x="1528" y="867" fill="#0D4658" font-family="Consolas" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="88" y="164" fill="#17202A" font-family="Segoe UI" font-size="52" font-weight="700" text-anchor="start">Recovery keeps boundaries distinct</text>
+<text x="92" y="214" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">Verified inputs restore the managed path.</text>
+<text x="92" y="248" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">Exit and recovery routes remain explicit.</text>
+<line x1="92" y1="286" x2="1508" y2="286" stroke="#176B87" stroke-width="4"/>
+<g id="recovery-map">
+<rect x="110" y="380" width="300" height="112" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="260" y="444" fill="#17202A" font-family="Segoe UI" font-size="22" font-weight="700" text-anchor="middle">VERIFIED INPUTS</text>
+<line x1="410" y1="436" x2="601.2" y2="436" stroke="#176B87" stroke-width="4"/>
+<polygon points="610,436 596.3596,444.363 596.3596,427.637" fill="#176B87"/>
+<rect x="610" y="380" width="300" height="112" fill="#176B87" stroke="#176B87" stroke-width="2" rx="8"/>
+<text x="760" y="444" fill="#FFFFFF" font-family="Segoe UI" font-size="22" font-weight="700" text-anchor="middle">STABLE KIT</text>
+<line x1="910" y1="436" x2="1101.2" y2="436" stroke="#176B87" stroke-width="4"/>
+<polygon points="1110,436 1096.36,444.363 1096.36,427.637" fill="#176B87"/>
+<rect x="1110" y="380" width="300" height="112" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="1260" y="444" fill="#17202A" font-family="Segoe UI" font-size="22" font-weight="700" text-anchor="middle">RUNTIME STATE</text>
+<rect x="110" y="620" width="300" height="82" fill="#E8E3D7" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="260" y="667.5" fill="#17202A" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">PREVIOUS KIT</text>
+<line x1="260" y1="620" x2="260" y2="522" stroke="#0D4658" stroke-width="3" stroke-dasharray="10 8"/>
+<rect x="610" y="620" width="300" height="82" fill="#E8E3D7" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="760" y="667.5" fill="#17202A" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">RUNTIME BACKUP</text>
+<line x1="760" y1="620" x2="760" y2="522" stroke="#0D4658" stroke-width="3" stroke-dasharray="10 8"/>
+<rect x="1110" y="620" width="300" height="82" fill="#E8E3D7" stroke="#A9651A" stroke-width="2" rx="8"/>
+<text x="1260" y="667.5" fill="#17202A" font-family="Segoe UI" font-size="19" font-weight="700" text-anchor="middle">ENDPOINT FALLBACK</text>
+<line x1="1260" y1="620" x2="1260" y2="522" stroke="#A9651A" stroke-width="3" stroke-dasharray="10 8"/>
+<text x="800" y="778" fill="#0D4658" font-family="Consolas" font-size="22" font-weight="400" text-anchor="middle">Resume, replace, uninstall, and firmware restore are different operations.</text>
+</g>
+</g>
+</svg>

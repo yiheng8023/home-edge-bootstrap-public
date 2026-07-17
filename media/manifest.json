@@ -13,8 +13,8 @@
                        "height":  640,
                        "language":  "neutral",
                        "role":  "social-hero",
-                       "sha256":  "a9e27ee661106966e16c5070142439a76281e7c302003f27b6064a9dedd1d641",
-                       "bytes":  16122
+                       "sha256":  "d18f023a29cb055cc81d972272dd6c4a3c943531b899922dfcadf024dd2fbab4",
+                       "bytes":  33990
                    },
                    {
                        "id":  "en-architecture",
@@ -25,8 +25,8 @@
                        "height":  900,
                        "language":  "en",
                        "role":  "architecture",
-                       "sha256":  "ec9a66e4d37b688d5a9020b7b64e670004daba8863e0f4355d747afcf9a33dce",
-                       "bytes":  32152
+                       "sha256":  "8187117a5a49fd0aa95727bf8f7909303112abe8f34929204931bbd6a891f337",
+                       "bytes":  40901
                    },
                    {
                        "id":  "en-recovery",
@@ -37,8 +37,8 @@
                        "height":  900,
                        "language":  "en",
                        "role":  "recovery",
-                       "sha256":  "65ad0eec82c170c918093b436489b89b8e1e775377d948edcd2c154ce3a69c61",
-                       "bytes":  33920
+                       "sha256":  "c169920c5ca5f628b92e50c126c11947f5675bb44dc3b1d034ca905570513cb8",
+                       "bytes":  38541
                    },
                    {
                        "id":  "en-safety",
@@ -49,8 +49,8 @@
                        "height":  900,
                        "language":  "en",
                        "role":  "safety",
-                       "sha256":  "b19ad96e366915bb333bd6c560aaf882fe1ff83fd69354ee36f454adb42ac1d4",
-                       "bytes":  28850
+                       "sha256":  "ebcd2afc06d960828d48ab55cc414e7f4165a97fd25c26ef848dcab755da6962",
+                       "bytes":  35023
                    },
                    {
                        "id":  "en-evidence",
@@ -61,8 +61,8 @@
                        "height":  900,
                        "language":  "en",
                        "role":  "evidence",
-                       "sha256":  "6b29cacada1258ac5f0bc25816e40fa1cbfa03b0a758ed6867148c521e2f338c",
-                       "bytes":  32389
+                       "sha256":  "3bf42ab0674e55fe11fec8a7ba751a4db53513c9b5a97b9704f5ccde20f9d0ac",
+                       "bytes":  36983
                    },
                    {
                        "id":  "zh-CN-architecture",
@@ -73,8 +73,8 @@
                        "height":  900,
                        "language":  "zh-CN",
                        "role":  "architecture",
-                       "sha256":  "b0f6c59729852d257b1fbfe3d7ccab89093e2971f822a3838593c95ae17b4945",
-                       "bytes":  32837
+                       "sha256":  "9f9ea1574b0bdf36c0c632e54a0d233b59e5115209f46285523ad8d143fde9ba",
+                       "bytes":  42298
                    },
                    {
                        "id":  "zh-CN-recovery",
@@ -85,8 +85,8 @@
                        "height":  900,
                        "language":  "zh-CN",
                        "role":  "recovery",
-                       "sha256":  "52c3ca2ce669d1015bc6fb4f31141f16795c079320d0d186bd42c0db9aee913e",
-                       "bytes":  36165
+                       "sha256":  "54df59782e0f1a5977ed6d845121eb8d5239f93a69340ea6786ab25a5ebdd695",
+                       "bytes":  40374
                    },
                    {
                        "id":  "zh-CN-safety",
@@ -97,8 +97,8 @@
                        "height":  900,
                        "language":  "zh-CN",
                        "role":  "safety",
-                       "sha256":  "02d2933bb541d133b07319aa704d2ca367b05ee21c45efff74173c74869b39fd",
-                       "bytes":  29792
+                       "sha256":  "cb0949cc78519a4b46ada41792af6161642446fe48c5d6f1f55eba0d45dab08b",
+                       "bytes":  34222
                    },
                    {
                        "id":  "zh-CN-evidence",
@@ -109,8 +109,8 @@
                        "height":  900,
                        "language":  "zh-CN",
                        "role":  "evidence",
-                       "sha256":  "55f55d9348fe6aa4e177ea4b958679d3bdc783db62843e9ac449b07416f30884",
-                       "bytes":  33632
+                       "sha256":  "ce41c312897918953de9e90fd23fd52455c9622096bdde31e9c79121b910b78c",
+                       "bytes":  36029
                    },
                    {
                        "id":  "en-summary",
@@ -121,8 +121,8 @@
                        "height":  1200,
                        "language":  "en",
                        "role":  "square-summary",
-                       "sha256":  "4b983c00eb31af5c17371f036d23aaa9aee933d7372f5bee3994a346375d17f3",
-                       "bytes":  26838
+                       "sha256":  "7d7ae32a3129585bf6b7416dae17af9a04167383a6b4fe82fd2ddaf89b6beca1",
+                       "bytes":  39536
                    },
                    {
                        "id":  "zh-CN-summary",
@@ -133,8 +133,8 @@
                        "height":  1200,
                        "language":  "zh-CN",
                        "role":  "square-summary",
-                       "sha256":  "f2430ffc453ed634f176134bb4f3b2a695b25ccc2cd91e1b73404b5af9c2018d",
-                       "bytes":  31572
+                       "sha256":  "2d268659511e44f9c39a471f23bcdd69414ce055ab4bdda976f2a2100b273f98",
+                       "bytes":  44201
                    },
                    {
                        "id":  "zh-CN-carousel-01",
@@ -145,8 +145,8 @@
                        "height":  1350,
                        "language":  "zh-CN",
                        "role":  "carousel",
-                       "sha256":  "48104d71ddd66b30209b5dd9e53698e3d09bf00c556a7352ba9b6de9f896b85c",
-                       "bytes":  24199
+                       "sha256":  "37f2afe66547c30560f6bb83097f39ebfe8685cd57a95eaa2da5e48969918446",
+                       "bytes":  36418
                    },
                    {
                        "id":  "zh-CN-carousel-02",
@@ -157,8 +157,8 @@
                        "height":  1350,
                        "language":  "zh-CN",
                        "role":  "carousel",
-                       "sha256":  "320d5f30b82ed3856afeb1d914a3e890670604d60ca2ae3ced4c1ca5e5c7398f",
-                       "bytes":  22367
+                       "sha256":  "d9f5bfd098f12880a4509c6ca41dbc3db381765785a9185c2c0635d6a6ee3db2",
+                       "bytes":  40135
                    },
                    {
                        "id":  "zh-CN-carousel-03",
@@ -169,8 +169,8 @@
                        "height":  1350,
                        "language":  "zh-CN",
                        "role":  "carousel",
-                       "sha256":  "466deeb9568a9a29a6bb510a8facabc36b2d392f68913dbf4eab2466acb161dd",
-                       "bytes":  22789
+                       "sha256":  "e04c3ad748df4ae0cde49c8071b2f8f4d9ce1482aabd8ecf928667d795fe33ab",
+                       "bytes":  54021
                    },
                    {
                        "id":  "zh-CN-carousel-04",
@@ -181,8 +181,8 @@
                        "height":  1350,
                        "language":  "zh-CN",
                        "role":  "carousel",
-                       "sha256":  "b5681d8318797cf5c9c846bbf23a7069355dc649305623e4c61b8968aa60b3a3",
-                       "bytes":  20555
+                       "sha256":  "b0b83f0770df7f0926c8ce0fcf0a48aadb1e96c0d56c058e0544737aa09fb61b",
+                       "bytes":  42562
                    },
                    {
                        "id":  "zh-CN-carousel-05",
@@ -193,8 +193,8 @@
                        "height":  1350,
                        "language":  "zh-CN",
                        "role":  "carousel",
-                       "sha256":  "59b2514a2f028bf36c1492eee12aeff21200e51f957a8d9b84bf74df38d77012",
-                       "bytes":  22695
+                       "sha256":  "30cc7eac1fea8f2d705284d5aadf0cd1d38000b2312fd634d63a1c2b8ce15c40",
+                       "bytes":  48041
                    },
                    {
                        "id":  "zh-CN-carousel-06",
@@ -205,8 +205,8 @@
                        "height":  1350,
                        "language":  "zh-CN",
                        "role":  "carousel",
-                       "sha256":  "04391f756624a2c05da14b717c049f8c4f4ade94d9f2359a7f9d142ef79c106c",
-                       "bytes":  23535
+                       "sha256":  "6eb2c3cfc963aeade68018ba8d2e5adeaafdfa4c33e90fe84a196782b2562c8d",
+                       "bytes":  45238
                    }
                ]
 }

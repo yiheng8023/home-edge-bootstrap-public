@@ -1,12 +1,47 @@
 {
   "language": "en",
   "project": "Home Edge Bootstrap",
-  "tagline": "Bootstrap. Recover. Verify.",
-  "cards": {
-    "architecture": {"title": "Capability-driven edge lifecycle", "body": "A stable framework, thin adapters, and evidence kept separate from assumptions.", "alt": "Architecture card showing framework policy flowing through a verified adapter to an edge runtime."},
-    "recovery": {"title": "Recovery without a working proxy", "body": "Verified offline inputs keep the recovery path independent from proxy-only downloads.", "alt": "Recovery card showing an offline cache feeding a router edge while endpoint fallback remains independent."},
-    "safety": {"title": "Bounded automation", "body": "Plan, confirm, apply, verify, and roll back. Human trust decisions stay human.", "alt": "Safety card showing plan, confirmation, apply, verification, and rollback as a bounded loop."},
-    "evidence": {"title": "Evidence before claims", "body": "Linux, macOS, and Windows checks cover local behavior, release integrity, and public boundaries.", "alt": "Evidence card listing Linux, macOS, Windows, release integrity, and boundary verification."}
+  "index_line": "BOOTSTRAP / RECOVER / VERIFY",
+  "ui": {
+    "summary_nodes": ["EXTERNAL INPUTS", "ROUTER EDGE", "LAN CLIENTS", "OBSERVED EVIDENCE", "ENDPOINT FALLBACK"],
+    "explicit_authorization": "EXPLICIT AUTHORIZATION",
+    "no_dimension_substitutes": "NO DIMENSION SUBSTITUTES FOR ANOTHER"
   },
-  "summary": {"title": "A recoverable home edge", "body": "Router-primary, endpoint fallback, adapter-ready, and explicit about what is not proven.", "alt": "Square summary connecting a router-primary edge to independent endpoint fallback and verification evidence."}
+  "summary": {
+    "title": "A recoverable home edge",
+    "deck": ["Router-primary operation.", "Independent endpoint fallback.", "Evidence before claims."],
+    "boundary": "Coordinates lifecycle / does not own runtime or provider",
+    "alt": "System map showing external inputs feeding a router-primary edge and LAN clients, with independent endpoint fallback and a separate evidence boundary."
+  },
+  "cards": {
+    "architecture": {
+      "title": "Capability-driven architecture",
+      "deck": ["Intent moves down through a thin adapter.", "Observed evidence returns on a separate path."],
+      "labels": ["OPERATOR INTENT", "LIFECYCLE FRAMEWORK", "TARGET ADAPTER", "RUNTIME + DEVICE STATE", "OBSERVED EVIDENCE"],
+      "conclusion": "Declared intent is not observed state.",
+      "conclusion_lines": ["DECLARED INTENT", "IS NOT OBSERVED STATE"],
+      "alt": "Architecture diagram with operator intent, lifecycle framework, thin target adapter, runtime and device state, plus an independent observed-evidence return path."
+    },
+    "recovery": {
+      "title": "Recovery keeps boundaries distinct",
+      "deck": ["Verified inputs restore the managed path.", "Exit and recovery routes remain explicit."],
+      "labels": ["VERIFIED INPUTS", "STABLE KIT", "RUNTIME STATE", "PREVIOUS KIT", "RUNTIME BACKUP", "ENDPOINT FALLBACK"],
+      "conclusion": "Resume, replace, uninstall, and firmware restore are different operations.",
+      "alt": "Recovery diagram separating verified inputs, stable deployment kit, runtime state, previous kit, runtime backup, and independent endpoint fallback."
+    },
+    "safety": {
+      "title": "Automation stops at trust boundaries",
+      "deck": ["The routine can observe and prepare.", "A human authorizes the consequential step."],
+      "labels": ["OBSERVE", "PLAN", "HUMAN BOUNDARY", "APPLY", "VERIFY", "ROLLBACK"],
+      "conclusion": "Failure returns to a named rollback path.",
+      "alt": "Bounded automation loop from observe and plan through a human authorization boundary to apply and verify, with rollback on failed verification."
+    },
+    "evidence": {
+      "title": "Evidence is multidimensional",
+      "deck": ["Each claim needs its own observable signal.", "One green dimension cannot substitute for another."],
+      "labels": ["BEHAVIOR", "HEALTH", "IDENTITY", "CONSUMPTION", "TOPOLOGY", "RELEASE", "BOUNDARY"],
+      "conclusion": "Independent dimensions / independently verified",
+      "alt": "Evidence matrix separating behavior, health, identity, subscription consumption, topology, release integrity, and boundary verification."
+    }
+  }
 }

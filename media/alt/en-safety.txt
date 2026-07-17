@@ -1,1 +1,1 @@
-Safety card showing plan, confirmation, apply, verification, and rollback as a bounded loop.
+Bounded automation loop from observe and plan through a human authorization boundary to apply and verify, with rollback on failed verification.

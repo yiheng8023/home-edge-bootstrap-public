@@ -1,1 +1,1 @@
-Recovery card showing an offline cache feeding a router edge while endpoint fallback remains independent.
+Recovery diagram separating verified inputs, stable deployment kit, runtime state, previous kit, runtime backup, and independent endpoint fallback.

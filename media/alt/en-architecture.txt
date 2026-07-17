@@ -1,1 +1,1 @@
-Architecture card showing framework policy flowing through a verified adapter to an edge runtime.
+Architecture diagram with operator intent, lifecycle framework, thin target adapter, runtime and device state, plus an independent observed-evidence return path.

@@ -1,1 +1,1 @@
-Evidence card listing Linux, macOS, Windows, release integrity, and boundary verification.
+Evidence matrix separating behavior, health, identity, subscription consumption, topology, release integrity, and boundary verification.

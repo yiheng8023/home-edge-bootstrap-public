@@ -27,9 +27,18 @@ for item in assets:
   if data[:8]!=b'\x89PNG\r\n\x1a\n' or data[12:16]!=b'IHDR' or struct.unpack('>II',data[16:24])!=(w,h): fail('invalid PNG structure')
   if item['id']=='hero' and len(data)>=1_000_000: fail('social preview exceeds GitHub limit')
   if hashlib.sha256(data).hexdigest()!=item.get('sha256') or len(data)!=item.get('bytes'): fail('media digest or size mismatch')
-  if not alt.read_text(encoding='utf-8').strip(): fail('empty media alt text')
+  alt_text=alt.read_text(encoding='utf-8').strip()
+  if not alt_text: fail('empty media alt text')
   text=svg.read_text(encoding='utf-8'); tree=ET.fromstring(text)
   if tree.tag.split('}')[-1]!='svg' or 'viewBox' not in tree.attrib: fail('unsafe SVG identity')
+  if tree.attrib.get('viewBox')!=f'0 0 {w} {h}': fail('SVG viewBox mismatch')
+  if tree.attrib.get('data-asset-id')!=item['id']: fail('SVG asset identity mismatch')
+  if tree.attrib.get('data-visual-system')!='system-atlas/v1': fail('SVG visual-system identity mismatch')
+  elements=[node.tag.split('}')[-1] for node in tree.iter()]
+  if elements.count('text')<6 or elements.count('g')<2: fail('SVG information structure is too shallow')
+  if 'title' not in elements or 'desc' not in elements: fail('SVG accessible title or description is missing')
+  descriptions=[''.join(node.itertext()).strip() for node in tree.iter() if node.tag.split('}')[-1]=='desc']
+  if descriptions!=[alt_text]: fail('SVG description and alt text differ')
   normalized=unicodedata.normalize('NFKC',text).lower()
   if any(x in normalized for x in ('<script','javascript:','data:image','href="http','href="//','®','™')): fail('unsafe SVG content')
 palette=json.loads((media/'sources/palette.json').read_text(encoding='utf-8'))
@@ -37,7 +46,10 @@ def lum(value):
   rgb=[int(value[i:i+2],16)/255 for i in (1,3,5)]; c=[x/12.92 if x<=.04045 else ((x+.055)/1.055)**2.4 for x in rgb]; return .2126*c[0]+.7152*c[1]+.0722*c[2]
 def contrast(a,b):
   x,y=sorted((lum(a),lum(b)),reverse=True); return (x+.05)/(y+.05)
-if contrast(palette['text'],palette['surface'])<4.5 or contrast(palette['accent'],palette['background'])<3: fail('palette contrast is insufficient')
+required_palette={'paper','paper_alt','ink','muted','rule','signal','signal_dark','success','warning','danger','white'}
+if set(palette)!=required_palette: fail('unexpected System Atlas palette keys')
+if contrast(palette['ink'],palette['paper'])<7: fail('primary palette contrast is insufficient')
+if contrast(palette['signal'],palette['paper'])<4.5: fail('signal palette contrast is insufficient')
 combined='\n'.join(p.read_text(encoding='utf-8',errors='replace') for p in [media/'MEDIA_KIT.md',media/'manifest.json',*media.glob('alt/*.txt'),*media.glob('sources/*.svg')])
 private_reference='private'+r'[-_ ]+repository|'+'\u79c1\u4ed3'
 for pattern in (r'(?i)utm_|fbclid|gclid|'+private_reference+r'|guaranteed|one-click|official endorsement|[A-Z]:\\Projects\\',r'(?i)subscription[_ -]?url'):

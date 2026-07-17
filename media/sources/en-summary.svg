@@ -1,1 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-label="Square summary connecting a router-primary edge to independent endpoint fallback and verification evidence."><rect width="1200" height="1200" fill="#0B1220"/><rect x="80" y="80" width="1040" height="1040" rx="24" fill="#14213D"/><path d="M120 324 H1080" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="576" fill="#F7FAFC" font-family="sans-serif" font-size="50">A recoverable home edge</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" data-asset-id="en-summary" data-visual-system="system-atlas/v1">
+<title>A recoverable home edge</title>
+<desc>System map showing external inputs feeding a router-primary edge and LAN clients, with independent endpoint fallback and a separate evidence boundary.</desc>
+<g id="background"><rect width="1200" height="1200" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="56" y="48" fill="#0D4658" font-family="Consolas" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1144" y="48" fill="#5E6872" font-family="Consolas" font-size="16" font-weight="400" text-anchor="end">SUMMARY / 01</text>
+<line x1="56" y1="72" x2="1144" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="56" y="1167" fill="#5E6872" font-family="Consolas" font-size="15" font-weight="400" text-anchor="start">TOPOLOGY + BOUNDARY</text>
+<text x="1144" y="1167" fill="#0D4658" font-family="Consolas" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<g id="editorial-heading">
+<text x="64" y="174" fill="#17202A" font-family="Segoe UI" font-size="48" font-weight="700" text-anchor="start">A recoverable home edge</text>
+<text x="68" y="232" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">Router-primary operation.</text>
+<text x="68" y="266" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">Independent endpoint fallback.</text>
+<text x="68" y="300" fill="#5E6872" font-family="Segoe UI" font-size="24" font-weight="400" text-anchor="start">Evidence before claims.</text>
+</g>
+<g id="topology">
+<rect x="70" y="420" width="240" height="92" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="190" y="473" fill="#17202A" font-family="Segoe UI" font-size="20" font-weight="700" text-anchor="middle">EXTERNAL INPUTS</text>
+<rect x="480" y="400" width="250" height="132" fill="#176B87" stroke="#176B87" stroke-width="2" rx="8"/>
+<text x="605" y="475" fill="#FFFFFF" font-family="Segoe UI" font-size="24" font-weight="700" text-anchor="middle">ROUTER EDGE</text>
+<rect x="890" y="420" width="240" height="92" fill="#FFFFFF" stroke="#A9B0B4" stroke-width="2" rx="8"/>
+<text x="1010" y="473" fill="#17202A" font-family="Segoe UI" font-size="20" font-weight="700" text-anchor="middle">LAN CLIENTS</text>
+<line x1="310" y1="466" x2="470.65" y2="466" stroke="#176B87" stroke-width="5"/>
+<polygon points="480,466 465.5071,474.8857 465.5071,457.1143" fill="#176B87"/>
+<line x1="730" y1="466" x2="880.65" y2="466" stroke="#176B87" stroke-width="5"/>
+<polygon points="890,466 875.5071,474.8857 875.5071,457.1143" fill="#176B87"/>
+<rect x="480" y="640" width="250" height="80" fill="#E8E3D7" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="605" y="687" fill="#17202A" font-family="Segoe UI" font-size="20" font-weight="700" text-anchor="middle">OBSERVED EVIDENCE</text>
+<line x1="605" y1="532" x2="605" y2="631.75" stroke="#0D4658" stroke-width="3"/>
+<polygon points="605,640 597.1597,627.2122 612.8403,627.2122" fill="#0D4658"/>
+<rect x="480" y="820" width="250" height="80" fill="#FFFFFF" stroke="#A9651A" stroke-width="2" rx="8"/>
+<text x="605" y="867" fill="#17202A" font-family="Segoe UI" font-size="20" font-weight="700" text-anchor="middle">ENDPOINT FALLBACK</text>
+<line x1="730" y1="860" x2="1004.828" y2="518.4277" stroke="#A9651A" stroke-width="3" stroke-dasharray="10 8"/>
+<polygon points="1010,512 1008.092,526.8782 995.8751,517.0483" fill="#A9651A"/>
+</g>
+<g id="boundary-note">
+<rect x="70" y="1000" width="1060" height="72" fill="#E8E3D7" stroke="#A9B0B4" stroke-width="2" rx="6"/>
+<text x="600" y="1041" fill="#17202A" font-family="Consolas" font-size="20" font-weight="400" text-anchor="middle">Coordinates lifecycle / does not own runtime or provider</text>
+</g>
+</g>
+</svg>

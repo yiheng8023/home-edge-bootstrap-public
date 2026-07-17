@@ -1,9 +1,13 @@
 {
-  "background": "#0B1220",
-  "surface": "#14213D",
-  "text": "#F7FAFC",
-  "muted": "#B8C4D6",
-  "accent": "#4FD1C5",
-  "accent2": "#7AA2F7",
-  "warning": "#F6C177"
+  "paper": "#F4F1E8",
+  "paper_alt": "#E8E3D7",
+  "ink": "#17202A",
+  "muted": "#5E6872",
+  "rule": "#A9B0B4",
+  "signal": "#176B87",
+  "signal_dark": "#0D4658",
+  "success": "#287A5A",
+  "warning": "#A9651A",
+  "danger": "#A33A32",
+  "white": "#FFFFFF"
 }

@@ -1,1 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" aria-label="中文轮播第四页：说明自动化权限与回滚边界。"><rect width="1080" height="1350" fill="#0B1220"/><rect x="80" y="80" width="920" height="1190" rx="24" fill="#14213D"/><path d="M120 364 H960" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="648" fill="#F7FAFC" font-family="sans-serif" font-size="45">04 安全</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" data-asset-id="zh-CN-carousel-04" data-visual-system="system-atlas/v1">
+<title>运行状态不等于部署包</title>
+<desc>中文轮播第四页：稳定运行状态与可替换部署包位于两个独立平面，并由受控操作连接。</desc>
+<g id="background"><rect width="1080" height="1350" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="56" y="48" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1024" y="48" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="end">CAROUSEL / 04</text>
+<line x1="56" y1="72" x2="1024" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="56" y="1317" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="start">中文系统图册</text>
+<text x="1024" y="1317" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="64" y="146" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="22" font-weight="400" text-anchor="start">04 / 稳定状态</text>
+<text x="64" y="238" fill="#17202A" font-family="Microsoft YaHei UI" font-size="50" font-weight="700" text-anchor="start">运行状态不等于部署包</text>
+<text x="68" y="306" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">稳定运行状态可以延续</text>
+<text x="68" y="342" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">部署包则可以替换、升级或安全退出。</text>
+<line x1="68" y1="382" x2="1012" y2="382" stroke="#176B87" stroke-width="4"/>
+<circle cx="837" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="869" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="901" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="933" cy="116" r="7" fill="#176B87"/>
+<circle cx="965" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="997" cy="116" r="7" fill="#A9B0B4"/>
+<g id="page-diagram">
+<rect x="92" y="520" width="896" height="230" fill="#FFFFFF" stroke="#176B87" stroke-width="3" rx="8"/>
+<text x="126" y="600" fill="#17202A" font-family="Microsoft YaHei UI" font-size="30" font-weight="700" text-anchor="start">稳定运行状态</text>
+<text x="126" y="654" fill="#17202A" font-family="Microsoft YaHei UI" font-size="30" font-weight="700" text-anchor="start">服务可达 / 证据可读 / 回滚可用</text>
+<rect x="92" y="870" width="896" height="230" fill="#E8E3D7" stroke="#A9651A" stroke-width="3" rx="8"/>
+<text x="126" y="950" fill="#17202A" font-family="Microsoft YaHei UI" font-size="30" font-weight="700" text-anchor="start">可替换部署包</text>
+<text x="126" y="1004" fill="#17202A" font-family="Microsoft YaHei UI" font-size="30" font-weight="700" text-anchor="start">升级 / 更换 / 退役</text>
+<line x1="540" y1="750" x2="540" y2="861.2" stroke="#0D4658" stroke-width="4"/>
+<polygon points="540,870 531.637,856.3596 548.363,856.3596" fill="#0D4658"/>
+<rect x="410" y="782" width="260" height="58" fill="#0D4658" rx="29"/>
+<text x="540" y="816" fill="#FFFFFF" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">受控变更</text>
+</g>
+</g>
+</svg>

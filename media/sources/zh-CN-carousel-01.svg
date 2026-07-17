@@ -1,1 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" aria-label="中文轮播第一页：说明初始化之后仍需持续检测。"><rect width="1080" height="1350" fill="#0B1220"/><rect x="80" y="80" width="920" height="1190" rx="24" fill="#14213D"/><path d="M120 364 H960" stroke="#4FD1C5" stroke-width="6"/><text x="120" y="648" fill="#F7FAFC" font-family="sans-serif" font-size="45">01 问题</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" data-asset-id="zh-CN-carousel-01" data-visual-system="system-atlas/v1">
+<title>初始化不是终点</title>
+<desc>中文轮播第一页：时间线从初始化经过重启、配置漂移与上游变化，强调系统需要持续观测。</desc>
+<g id="background"><rect width="1080" height="1350" fill="#F4F1E8"/></g>
+<g id="content">
+<text x="56" y="48" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="start">HOME EDGE BOOTSTRAP</text>
+<text x="1024" y="48" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="16" font-weight="400" text-anchor="end">CAROUSEL / 01</text>
+<line x1="56" y1="72" x2="1024" y2="72" stroke="#A9B0B4" stroke-width="2"/>
+<text x="56" y="1317" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="start">中文系统图册</text>
+<text x="1024" y="1317" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="15" font-weight="400" text-anchor="end">SYSTEM ATLAS / V1</text>
+<text x="64" y="146" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="22" font-weight="400" text-anchor="start">01 / 现实会变化</text>
+<text x="64" y="238" fill="#17202A" font-family="Microsoft YaHei UI" font-size="50" font-weight="700" text-anchor="start">初始化不是终点</text>
+<text x="68" y="306" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">一次成功不能覆盖之后的重启、漂移</text>
+<text x="68" y="342" fill="#5E6872" font-family="Microsoft YaHei UI" font-size="24" font-weight="400" text-anchor="start">和上游变化；系统必须重新读取现实。</text>
+<line x1="68" y1="382" x2="1012" y2="382" stroke="#176B87" stroke-width="4"/>
+<circle cx="837" cy="116" r="7" fill="#176B87"/>
+<circle cx="869" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="901" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="933" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="965" cy="116" r="7" fill="#A9B0B4"/>
+<circle cx="997" cy="116" r="7" fill="#A9B0B4"/>
+<g id="page-diagram">
+<circle cx="92" cy="700" r="15" fill="#17202A"/>
+<line x1="110" y1="700" x2="249.75" y2="700" stroke="#A9B0B4" stroke-width="3"/>
+<polygon points="258,700 245.2121,707.8403 245.2121,692.1597" fill="#A9B0B4"/>
+<text x="92" y="758" fill="#17202A" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">初始化</text>
+<circle cx="276" cy="700" r="15" fill="#17202A"/>
+<line x1="294" y1="700" x2="433.75" y2="700" stroke="#A9B0B4" stroke-width="3"/>
+<polygon points="442,700 429.2121,707.8403 429.2121,692.1597" fill="#A9B0B4"/>
+<text x="276" y="758" fill="#17202A" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">重启</text>
+<circle cx="460" cy="700" r="15" fill="#17202A"/>
+<line x1="478" y1="700" x2="617.75" y2="700" stroke="#A9B0B4" stroke-width="3"/>
+<polygon points="626,700 613.2122,707.8403 613.2122,692.1597" fill="#A9B0B4"/>
+<text x="460" y="758" fill="#17202A" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">配置漂移</text>
+<circle cx="644" cy="700" r="15" fill="#17202A"/>
+<line x1="662" y1="700" x2="801.75" y2="700" stroke="#A9B0B4" stroke-width="3"/>
+<polygon points="810,700 797.2122,707.8403 797.2122,692.1597" fill="#A9B0B4"/>
+<text x="644" y="758" fill="#17202A" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">上游变化</text>
+<circle cx="828" cy="700" r="15" fill="#176B87"/>
+<text x="828" y="758" fill="#17202A" font-family="Microsoft YaHei UI" font-size="18" font-weight="700" text-anchor="middle">重新观测</text>
+<rect x="92" y="900" width="896" height="132" fill="#E8E3D7" stroke="#0D4658" stroke-width="2" rx="8"/>
+<text x="540" y="960" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="30" font-weight="700" text-anchor="middle">一次成功是证据</text>
+<text x="540" y="1002" fill="#0D4658" font-family="Microsoft YaHei UI" font-size="30" font-weight="700" text-anchor="middle">不是永久状态</text>
+</g>
+</g>
+</svg>
