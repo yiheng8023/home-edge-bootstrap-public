@@ -29,9 +29,11 @@ verified adapter maturity stage or certify hardware beyond the declared capabili
   runtime deployment fails.
 - Protect the POSIX remote-script template with a quoted heredoc so embedded `awk` quotes cannot
   escape the template and recursively invoke deployment. Provenance avoids one shell per staged
-  file on Git Bash, failure-path fixtures use a minimal verified runtime payload, and rollback
-  cleanup includes the service-rule helper. A runtime-stage failure now either replays the restored
-  prior control plane or removes first-install active scripts and hooks before reporting rollback.
+  file on Git Bash, canonicalizes platform-specific SHA-256 output while accepting legacy
+  star-delimited records, uses a minimal verified runtime payload in failure-path fixtures, and
+  includes the service-rule helper in rollback cleanup. A runtime-stage failure now either replays
+  the restored prior control plane or removes first-install active scripts and hooks before
+  reporting rollback.
 
 A live RT-AX86U Pro recovery exercise verified the running mixed-mode core, controller
 authentication, dashboard reachability, explicit-proxy and transparent probes, and a downstream-ASUS

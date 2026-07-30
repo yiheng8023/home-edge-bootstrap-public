@@ -59,6 +59,34 @@ git -C "$source_root" add source.txt
 git -C "$source_root" commit -qm baseline
 source_commit=$(git -C "$source_root" rev-parse HEAD)
 
+if real_sha256sum=$(command -v sha256sum 2>/dev/null); then
+  star_stage="$tmp/star-stage"
+  fakebin="$tmp/fakebin"
+  mkdir -p "$star_stage" "$fakebin"
+  cp -R "$stage/." "$star_stage/"
+  cat >"$fakebin/sha256sum" <<'EOF'
+#!/bin/sh
+"${REAL_SHA256SUM:?}" "$@" | awk '{ path=$2; sub(/^\*/, "", path); print $1 " *" path }'
+EOF
+  chmod 755 "$fakebin/sha256sum"
+  REAL_SHA256SUM="$real_sha256sum" PATH="$fakebin:$PATH" \
+    sh "$repo/scripts/new-deployment-provenance.sh" "$star_stage" "$source_root"
+  if grep -Ev '^[0-9a-f]{64}  [A-Za-z0-9._/-]+$' "$star_stage/DEPLOYMENT-CONTENT-SHA256SUMS" >/dev/null; then
+    fail "generator did not canonicalize star-delimited SHA-256 output"
+  fi
+  star_match_output=$(HOME_EDGE_INSTALL_DIR="$star_stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+  printf '%s\n' "$star_match_output" | grep -q '^deployment_provenance_state=match$' ||
+    fail "canonicalized star-delimited generator output did not verify"
+  sed 's/^\([0-9a-f]\{64\}\)  /\1 */' "$star_stage/DEPLOYMENT-CONTENT-SHA256SUMS" >"$star_stage/DEPLOYMENT-CONTENT-SHA256SUMS.next"
+  mv "$star_stage/DEPLOYMENT-CONTENT-SHA256SUMS.next" "$star_stage/DEPLOYMENT-CONTENT-SHA256SUMS"
+  star_content_id=$("$real_sha256sum" "$star_stage/DEPLOYMENT-CONTENT-SHA256SUMS" | awk '{print $1}')
+  sed "s/^content_id=.*/content_id=$star_content_id/" "$star_stage/DEPLOYMENT-PROVENANCE.env" >"$star_stage/DEPLOYMENT-PROVENANCE.env.next"
+  mv "$star_stage/DEPLOYMENT-PROVENANCE.env.next" "$star_stage/DEPLOYMENT-PROVENANCE.env"
+  legacy_star_output=$(HOME_EDGE_INSTALL_DIR="$star_stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+  printf '%s\n' "$legacy_star_output" | grep -q '^deployment_provenance_state=match$' ||
+    fail "legacy star-delimited provenance did not verify"
+fi
+
 sh "$repo/scripts/new-deployment-provenance.sh" "$stage" "$source_root"
 [ -s "$stage/DEPLOYMENT-PROVENANCE.env" ] || fail "missing provenance metadata"
 [ -s "$stage/DEPLOYMENT-CONTENT-SHA256SUMS" ] || fail "missing provenance checksums"

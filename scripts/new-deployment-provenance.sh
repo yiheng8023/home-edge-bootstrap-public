@@ -15,6 +15,12 @@ else
   echo "new-deployment-provenance: SHA-256 tool unavailable" >&2
   exit 1
 fi
+hash_line_tmp=$(mktemp "${TMPDIR:-/tmp}/home-edge-provenance-hash.XXXXXX") || {
+  echo "new-deployment-provenance: cannot allocate hash normalization file" >&2
+  exit 1
+}
+cleanup() { rm -f "$hash_line_tmp"; }
+trap cleanup EXIT HUP INT TERM
 
 hash_file() {
   case "$hash_tool" in
@@ -27,9 +33,13 @@ write_hash_line() {
   # Do not use command substitution here. On Git Bash that would create one
   # MSYS shell process per staged file, which is both slow and resource-heavy.
   case "$hash_tool" in
-    sha256sum) sha256sum "$1" ;;
-    shasum) shasum -a 256 "$1" ;;
+    sha256sum) sha256sum "$1" >"$hash_line_tmp" ;;
+    shasum) shasum -a 256 "$1" >"$hash_line_tmp" ;;
   esac
+  IFS=' ' read -r digest ignored <"$hash_line_tmp" || return 1
+  case "$digest" in *[!0-9a-f]*|'') return 1 ;; esac
+  [ "${#digest}" -eq 64 ] || return 1
+  printf '%s  %s\n' "$digest" "$1"
 }
 
 source_kind=non_git

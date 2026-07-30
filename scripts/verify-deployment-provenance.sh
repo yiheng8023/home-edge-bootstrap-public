@@ -63,8 +63,13 @@ hash_status=$?
 [ "$actual_content_id" = "$content_id" ] || { emit drift; exit 0; }
 
 while IFS= read -r line || [ -n "$line" ]; do
-  expected_hash=${line%%  *}
-  path=${line#*  }
+  expected_hash=${line%% *}
+  remainder=${line#* }
+  case "$remainder" in
+    ' '*) path=${remainder# } ;;
+    \**) path=${remainder#\*} ;;
+    *) emit drift; exit 0 ;;
+  esac
   case "$expected_hash" in *[!0-9a-f]*|'') emit drift; exit 0 ;; esac
   case "$path" in ''|/*|..|../*|*/../*|*/..) emit drift; exit 0 ;; esac
   [ ${#expected_hash} -eq 64 ] || { emit drift; exit 0; }

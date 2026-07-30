@@ -48,12 +48,19 @@ prepare_case() {
   printf 'HEAL_CRON_DRY_RUN=1\nSITE_VALUE=preserved\n' >"$root/jffs/home-edge-bootstrap-state/policy.local"
   : >"$root/cru.state"
   cp "$repo/scripts/reconcile-self-heal-registration.sh" "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
+  cat >"$root/jffs/scripts/home-edge-start-shellcrash.sh" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
   cat >"$root/jffs/scripts/home-edge-self-heal-cron.sh" <<'EOF'
 #!/bin/sh
 [ "${ENABLE_FIXTURE_FAIL:-0}" = "1" ] && exit 17
 exit 0
 EOF
-  chmod 755 "$root/jffs/scripts/home-edge-self-heal-cron.sh" "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
+  chmod 755 \
+    "$root/jffs/scripts/home-edge-self-heal-cron.sh" \
+    "$root/jffs/scripts/home-edge-reconcile-self-heal.sh" \
+    "$root/jffs/scripts/home-edge-start-shellcrash.sh"
 }
 
 success_root="$tmp/success"
