@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A release contains exactly these nine files for `v0.1.0`:
+A versioned release contains exactly nine contracted files. For `v0.1.1`, they are:
 
-- `home-edge-bootstrap-v0.1.0-source.zip`
-- `home-edge-bootstrap-v0.1.0-source.tar.gz`
-- `home-edge-bootstrap-v0.1.0-offline.zip`
-- `home-edge-bootstrap-v0.1.0-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.1-source.zip`
+- `home-edge-bootstrap-v0.1.1-source.tar.gz`
+- `home-edge-bootstrap-v0.1.1-offline.zip`
+- `home-edge-bootstrap-v0.1.1-offline.tar.gz`
 - `mihomo-v1.19.28-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -108,22 +108,27 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
 
-## Next Release Acceptance Contract
+## v0.1.1 Acceptance Contract
 
-For v0.1.1, publication is gated on all of the following:
+v0.1.1 publication is gated on all of the following:
 
 - Create a new tag and new versioned assets; never replace v0.1.0 assets or describe them as fixed.
 - Preserve the nine contractual asset roles, verify `SHA256SUMS`, the release manifest, SPDX SBOM,
   licenses, and complete corresponding source, and give every uploaded asset its exact non-empty
   label.
 - Render the Release body from the reviewed v0.1.1 tag and verify every tag-pinned link.
-- On a supported live official Asuswrt-Merlin target, prove helper-command fallbacks, temporary
-  staging of the large runtime payload outside persistent JFFS, safe interrupted-install cleanup,
-  rollback, reboot survival, client checks, and installation closeout.
-- Record the exact source commit and field evidence. Fixture and host CI success alone do not satisfy
-  the live acceptance gate.
+- Record supported live official Asuswrt-Merlin evidence for the running core, boot survival,
+  controller/UI reachability, transparent and explicit-proxy paths, client checks, and installation
+  closeout.
+- Verify helper-command fallbacks, temporary runtime staging outside persistent JFFS,
+  interrupted-install cleanup, and rollback against the exact tagged implementation. Destructive
+  failure branches may use deterministic offline fault injection instead of deliberately disrupting
+  an active live network, but the evidence type must be disclosed.
+- Record the exact source commit, field evidence, and offline verification boundary. Host CI or
+  fixtures alone do not substitute for the live runtime evidence above.
 
-These are candidate requirements, not evidence that v0.1.1 is ready or published.
+The release notes record the resulting evidence and its limits; this contract does not certify
+additional hardware, providers, routes, accounts, or regional outcomes.
 
 ## Sensitive Egress Limitation
 

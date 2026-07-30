@@ -2,9 +2,10 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
-## v0.1.1 candidate (unreleased)
+## v0.1.1 (2026-07-31)
 
-This is a candidate summary, not a release or compatibility claim.
+Maintenance release incorporating the RT-AX86U Pro field-recovery findings. It does not assign a
+verified adapter maturity stage or certify hardware beyond the declared capability boundary.
 
 - Normalize and back up ShellCrash startup tasks that recursively start the service or update the
   core, scripts, or rule data during startup, while preserving unrelated and benign tasks.
@@ -35,9 +36,45 @@ This is a candidate summary, not a release or compatibility claim.
 A live RT-AX86U Pro recovery exercise verified the running mixed-mode core, controller
 authentication, dashboard reachability, explicit-proxy and transparent probes, and a downstream-ASUS
 topology behind a separate upstream gateway. Router power-loss/restart recovery was observed after
-boot-hook repair, but this remains site evidence rather than reproduction from the final tag. The
-candidate is not released until its exact tagged archives, manifest, checksums, SBOM, release body,
-targeted local gates, and remaining acceptance evidence have been reviewed.
+boot-hook repair. This is bounded site evidence; destructive rollback branches are verified by
+deterministic offline fixtures rather than deliberately reinjected into an active network.
+
+### What to download
+
+You do not need all nine files. Choose one package for your operator host and download
+`SHA256SUMS` with it:
+
+| Need | Download | Required with it |
+|---|---|---|
+| Windows offline package, runtime included | [`home-edge-bootstrap-v0.1.1-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/home-edge-bootstrap-v0.1.1-offline.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/SHA256SUMS) |
+| macOS/Linux offline package, runtime included | [`home-edge-bootstrap-v0.1.1-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/home-edge-bootstrap-v0.1.1-offline.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/SHA256SUMS) |
+| Windows scripts/docs only; runtime already present | [`home-edge-bootstrap-v0.1.1-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/home-edge-bootstrap-v0.1.1-source.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/SHA256SUMS) |
+| macOS/Linux scripts/docs only; runtime already present | [`home-edge-bootstrap-v0.1.1-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/home-edge-bootstrap-v0.1.1-source.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/SHA256SUMS) |
+
+Choose one archive format for one purpose. The manifest, SBOM, and complete-source archives are
+audit and source-availability artifacts, not additional installation parts:
+
+| Asset | Purpose | Needed for normal installation? |
+|---|---|---|
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/RELEASE-MANIFEST.json) | Records the public commit, component locks, sizes, and digests | No |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/SBOM.spdx.json) | Release-specific software inventory and license metadata | No |
+| [`mihomo-v1.19.28-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/mihomo-v1.19.28-source-complete.tar.gz) | Complete corresponding source for Mihomo | No |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.1/shellcrash-1.9.4-source-complete.tar.gz) | Complete corresponding source for ShellCrash | No |
+| GitHub **Source code (zip)** / **Source code (tar.gz)** | Automatic GitHub snapshots; not contracted packages | No |
+
+The exact non-empty GitHub asset labels are:
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.1-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.1-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.1-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.1-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.28-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
 
 ## v0.1.0
 

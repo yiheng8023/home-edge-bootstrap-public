@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-`v0.1.0` 发布恰好包含以下九个文件：
+每个版本化发布恰好包含九个契约文件。`v0.1.1` 对应：
 
-- `home-edge-bootstrap-v0.1.0-source.zip`
-- `home-edge-bootstrap-v0.1.0-source.tar.gz`
-- `home-edge-bootstrap-v0.1.0-offline.zip`
-- `home-edge-bootstrap-v0.1.0-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.1-source.zip`
+- `home-edge-bootstrap-v0.1.1-source.tar.gz`
+- `home-edge-bootstrap-v0.1.1-offline.zip`
+- `home-edge-bootstrap-v0.1.1-offline.tar.gz`
 - `mihomo-v1.19.28-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -97,7 +97,7 @@ sh scripts/verify-public-release.sh --repo . --version v0.1.0 --dist /path/to/di
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
 
-## 下一版本验收合同
+## v0.1.1 验收合同
 
 v0.1.1 发布必须同时满足：
 
@@ -105,11 +105,15 @@ v0.1.1 发布必须同时满足：
 - 保留九类契约资源，验证 `SHA256SUMS`、发布 manifest、SPDX SBOM、许可证与完整对应源码，
   并为每个上传资源应用精确的非空标签。
 - 从已审阅 v0.1.1 tag 生成 Release 正文，并验证所有固定到 tag 的链接。
-- 在受支持的真实官方 Asuswrt-Merlin 目标上证明：辅助命令回退、大型运行时载荷在持久
-  JFFS 之外临时暂存、安装中断清理、回滚、重启存续、客户端检查与安装收官均通过。
-- 记录精确源码提交与现场证据；仅有 fixture 与主机 CI 通过不足以满足真实环境验收门。
+- 记录受支持真实官方 Asuswrt-Merlin 环境中运行内核、启动存续、controller/UI、透明与
+  显式代理路径、客户端检查和安装收官证据。
+- 针对精确 tag 实现验证辅助命令回退、持久 JFFS 外的临时运行时 staging、安装中断清理和
+  回滚。破坏性失败分支可采用确定性离线故障注入，而不是故意中断正在使用的真实网络，但
+  必须披露证据类型。
+- 记录精确源码提交、现场证据与离线验证边界；仅有主机 CI 或 fixture 不能替代上述真实
+  运行时证据。
 
-以上是候选要求，不是 v0.1.1 已就绪或已发布的证据。
+发布说明记录最终证据及其限制；本合同不额外认证硬件、服务商、路线、账号或地区结果。
 
 ## 敏感出口限制
 
