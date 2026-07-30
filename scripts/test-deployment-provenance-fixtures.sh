@@ -22,6 +22,10 @@ printf '%s\n' '#!/bin/sh' 'echo runtime-evidence' >"$stage/scripts/subscription-
 printf '%s\n' '#!/bin/sh' 'echo verify' >"$stage/scripts/verify-bundle.sh"
 printf '%s\n' '#!/bin/sh' 'echo reconcile' >"$stage/scripts/reconcile-self-heal-registration.sh"
 printf '%s\n' '#!/bin/sh' 'echo migrate-state' >"$stage/scripts/migrate-router-state.sh"
+printf '%s\n' '#!/bin/sh' 'echo secure-temp' >"$stage/scripts/home-edge-secure-temp.sh"
+printf '%s\n' '#!/bin/sh' 'echo configure-dns' >"$stage/scripts/configure-shellcrash-dns.sh"
+printf '%s\n' '#!/bin/sh' 'echo prefetch-data' >"$stage/scripts/prefetch-shellcrash-data.sh"
+printf '%s\n' '#!/bin/sh' 'echo start-shellcrash' >"$stage/scripts/start-shellcrash-at-boot.sh"
 printf '%s\n' 'HEAL_DRY_RUN=1' >"$stage/config/policy.env"
 printf '%s\n' 'private-marker-must-not-print' >"$stage/README.md"
 cp "$stage/scripts/self-heal.sh" "$active/home-edge-self-heal.sh"
@@ -29,6 +33,10 @@ cp "$stage/scripts/update-sub.sh" "$active/home-edge-update-sub.sh"
 cp "$stage/scripts/subscription-runtime-evidence.sh" "$active/home-edge-subscription-runtime-evidence.sh"
 cp "$stage/scripts/verify-bundle.sh" "$active/home-edge-verify-bundle.sh"
 cp "$stage/scripts/reconcile-self-heal-registration.sh" "$active/home-edge-reconcile-self-heal.sh"
+cp "$stage/scripts/home-edge-secure-temp.sh" "$active/home-edge-secure-temp.sh"
+cp "$stage/scripts/configure-shellcrash-dns.sh" "$active/home-edge-configure-dns.sh"
+cp "$stage/scripts/prefetch-shellcrash-data.sh" "$active/home-edge-prefetch-shellcrash-data.sh"
+cp "$stage/scripts/start-shellcrash-at-boot.sh" "$active/home-edge-start-shellcrash.sh"
 cp "$stage/config/policy.env" "$active/home-edge-policy.env"
 cat >"$active/home-edge-policy.local" <<'EOF'
 # home-edge-bootstrap-owned: stable-state-compatibility/v1
@@ -85,6 +93,21 @@ rm -f "$active/home-edge-subscription-runtime-evidence.sh"
 missing_helper_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
 printf '%s\n' "$missing_helper_output" | grep -q '^deployment_provenance_state=drift$' || fail "missing deployed runtime evidence helper was not reported as drift"
 cp "$stage/scripts/subscription-runtime-evidence.sh" "$active/home-edge-subscription-runtime-evidence.sh"
+
+rm -f "$active/home-edge-configure-dns.sh"
+missing_dns_helper_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+printf '%s\n' "$missing_dns_helper_output" | grep -q '^deployment_provenance_state=drift$' || fail "missing deployed DNS helper was not reported as drift"
+cp "$stage/scripts/configure-shellcrash-dns.sh" "$active/home-edge-configure-dns.sh"
+
+rm -f "$active/home-edge-prefetch-shellcrash-data.sh"
+missing_data_helper_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+printf '%s\n' "$missing_data_helper_output" | grep -q '^deployment_provenance_state=drift$' || fail "missing deployed data prefetch helper was not reported as drift"
+cp "$stage/scripts/prefetch-shellcrash-data.sh" "$active/home-edge-prefetch-shellcrash-data.sh"
+
+rm -f "$active/home-edge-start-shellcrash.sh"
+missing_boot_helper_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+printf '%s\n' "$missing_boot_helper_output" | grep -q '^deployment_provenance_state=drift$' || fail "missing deployed ShellCrash boot helper was not reported as drift"
+cp "$stage/scripts/start-shellcrash-at-boot.sh" "$active/home-edge-start-shellcrash.sh"
 
 printf '%s\n' '# drift' >>"$active/home-edge-policy.local"
 bridge_drift_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")

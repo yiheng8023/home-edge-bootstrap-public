@@ -203,7 +203,7 @@ for tool in sh nvram cru curl grep sed awk sort wc date; do
     risk_count=$((risk_count + 1))
   fi
 done
-for tool in tar gzip base64; do
+for tool in tar gzip; do
   if has_cmd "$tool"; then
     print_kv "tool_$tool" "present"
   else
@@ -211,6 +211,14 @@ for tool in tar gzip base64; do
     risk_count=$((risk_count + 1))
   fi
 done
+if has_cmd base64; then
+  print_kv tool_base64 present
+elif has_cmd openssl; then
+  print_kv tool_base64 fallback_openssl
+else
+  print_kv tool_base64 missing
+  risk_count=$((risk_count + 1))
+fi
 for tool in sha256sum mktemp; do
   if has_cmd "$tool"; then
     print_kv "tool_$tool" "present"
@@ -489,8 +497,22 @@ fi
 
 $exitCode = 1
 try {
-  $sshCommand = "tr -d '\r' | sh -s"
-  $output = $RemoteCommand | ssh @SshArgs $sshCommand 2>&1
+  $Payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($RemoteCommand))
+  $sshCommand = @'
+set -eu
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "audit-router-baseline: base64 or openssl is required to decode the payload" >&2
+    return 1
+  fi
+}
+decode_payload | sh -s
+'@
+  $output = $Payload | ssh @SshArgs $sshCommand 2>&1
   $exitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 0 }
   $output | Tee-Object -FilePath $LogPath
   Write-Host ""

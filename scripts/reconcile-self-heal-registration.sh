@@ -9,6 +9,7 @@ local_policy_rel="${HOME_EDGE_LOCAL_POLICY_PATH:-/jffs/home-edge-bootstrap-state
 wrapper_rel="${HOME_EDGE_CRON_WRAPPER_PATH:-/jffs/scripts/home-edge-self-heal-cron.sh}"
 reconciler_rel="${HOME_EDGE_RECONCILER_PATH:-/jffs/scripts/home-edge-reconcile-self-heal.sh}"
 services_start_rel="${HOME_EDGE_SERVICES_START_PATH:-/jffs/scripts/services-start}"
+shellcrash_starter_rel="${HOME_EDGE_SHELLCRASH_STARTER_PATH:-/jffs/scripts/home-edge-start-shellcrash.sh}"
 job_name="${HOME_EDGE_CRON_JOB_NAME:-home_edge_selfheal}"
 begin_marker='# BEGIN home-edge-bootstrap self-heal lifecycle'
 end_marker='# END home-edge-bootstrap self-heal lifecycle'
@@ -34,7 +35,7 @@ path_in_root() {
   esac
 }
 
-for managed_path in "$policy_rel" "$wrapper_rel" "$reconciler_rel" "$services_start_rel"; do
+for managed_path in "$policy_rel" "$wrapper_rel" "$reconciler_rel" "$services_start_rel" "$shellcrash_starter_rel"; do
   case "$managed_path" in
     /jffs/scripts/?*) ;;
     *) die "managed paths must remain below /jffs/scripts" ;;
@@ -56,6 +57,7 @@ local_policy=$(path_in_root "$local_policy_rel")
 wrapper=$(path_in_root "$wrapper_rel")
 reconciler=$(path_in_root "$reconciler_rel")
 services_start=$(path_in_root "$services_start_rel")
+shellcrash_starter=$(path_in_root "$shellcrash_starter_rel")
 
 cleanup() {
   [ -z "$tmp_hook" ] || rm -f "$tmp_hook" "${tmp_hook}.content" "${tmp_hook}.assembled" 2>/dev/null || true
@@ -155,11 +157,18 @@ write_canonical_block() {
     printf '  "%s" --boot\n' "$reconciler_rel"
   fi
   printf 'fi\n'
+  printf 'if [ -x "%s" ]; then\n' "$shellcrash_starter"
+  if [ -n "$root" ]; then
+    printf '  HOME_EDGE_SHELLCRASH_DIR="%s/jffs/ShellCrash" HOME_EDGE_STATE_ROOT="%s/jffs/home-edge-bootstrap-state" HOME_EDGE_SHELLCRASH_BOOT_DELAY=0 "%s" &\n' "$root" "$root" "$shellcrash_starter"
+  else
+    printf '  "%s" &\n' "$shellcrash_starter_rel"
+  fi
+  printf 'fi\n'
   printf '%s\n' "$end_marker"
 }
 
 registration_state() {
-  if ! command -v cru >/dev/null 2>&1; then
+  if ! which cru >/dev/null 2>&1; then
     printf '%s\n' unavailable
     return 0
   fi
@@ -183,11 +192,13 @@ emit_status() {
   if [ "$dry_run" = "0" ]; then mode=live; else mode=dry_run; fi
   printf 'self_heal_registration_state=%s\n' "$registration"
   printf 'self_heal_boot_hook_state=%s\n' "$hook"
+  printf 'shellcrash_boot_hook_state=%s\n' "$hook"
   printf 'self_heal_policy_mode=%s\n' "$mode"
 }
 
 install_boot_hook() {
   [ -s "$reconciler" ] || die "missing installed reconciler: $reconciler"
+  [ -s "$shellcrash_starter" ] || die "missing installed ShellCrash boot starter: $shellcrash_starter"
   mkdir -p "$(dirname "$services_start")" || die "cannot prepare services-start directory"
   if [ ! -e "$services_start" ]; then
     printf '#!/bin/sh\n' >"$services_start" || die "cannot create services-start"
@@ -241,7 +252,7 @@ install_boot_hook() {
 }
 
 reconcile_cron() {
-  command -v cru >/dev/null 2>&1 || die "cru is required for self-heal registration"
+  which cru >/dev/null 2>&1 || die "cru is required for self-heal registration"
   [ -s "$wrapper" ] || die "missing cron wrapper: $wrapper"
   expected_line="$schedule sh $wrapper_rel #$job_name#"
   prior_list=$(cru l 2>/dev/null || true)

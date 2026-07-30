@@ -29,7 +29,7 @@ printf '%s\n' \
   'stable_subscription_state=present' \
   'stable_policy_state=present' \
   'compatibility_bridge_state=present' \
-  'subscription_url=dummy_subscription_credential'
+  'subscription_url=REDACTED-fixture-subscription'
 EOF
 chmod +x "$fake_bin/ssh"
 
@@ -66,7 +66,7 @@ grep -Fxq 'stable_state_schema=1' "$bundle_dir/lifecycle-state.txt" || fail "sup
 grep -Fxq 'stable_subscription_state=present' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted safe subscription presence"
 grep -Fxq 'stable_policy_state=present' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted safe policy presence"
 grep -Fxq 'compatibility_bridge_state=present' "$bundle_dir/lifecycle-state.txt" || fail "support report omitted compatibility bridge state"
-if grep -R -Fq 'dummy_subscription_credential' "$bundle_dir"; then fail "support report leaked subscription content"; fi
+if grep -R -Fq 'REDACTED-fixture-subscription' "$bundle_dir"; then fail "support report leaked subscription content"; fi
 support_archive=$(printf '%s\n' "$output" | awk -F= '$1 == "support_bundle_archive" { print $2; exit }')
 [ -s "$support_archive" ] || fail "support archive missing"
 if tar -tf "$support_archive" | grep -Eq 'SUBSCRIPTION\.local|(^|/)policy\.local|subscription\.yaml'; then

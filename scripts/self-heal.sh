@@ -6,12 +6,14 @@
 # constraints, not project defaults. The implementation only uses the local clash/mihomo API and
 # works with inline proxies, proxy-providers, concrete routes, or nested selector groups.
 #
-# Runs on the ROUTER (BusyBox ash). Deps: curl, jq, sort, mktemp (ShellClash ships these).
+# Runs on the ROUTER (BusyBox ash). Deps: curl, jq, sort, openssl.
 # Safe to test: with HEAL_DRY_RUN=1 (default) it only LOGS what it would switch to.
 #
 # Env knobs (all optional):
 #   CLASH_API   clash/mihomo API endpoint; when blank, auto-discovered
 #   CLASH_SECRET   API secret (blank by default)
+#   CLASH_SECRET_FILE   one-line private file containing the API secret; ignored when CLASH_SECRET is set
+#   CURL_BIN / JQ_BIN   explicit tool paths for restricted Merlin/cron PATH environments
 #   HEAL_GROUP  explicit selector group name; blank means auto-discover
 #   HEAL_GROUP_MATCH_REGEX  preferred main-selector group-name regex
 #   HEAL_GROUP_EXCLUDE_REGEX  group-name regex to deprioritize during auto-discovery
@@ -43,6 +45,9 @@ fi
 
 API="${CLASH_API:-}"
 SECRET="${CLASH_SECRET:-}"
+SECRET_FILE="${CLASH_SECRET_FILE:-}"
+CURL_BIN="${CURL_BIN:-}"
+JQ_BIN="${JQ_BIN:-}"
 GROUP="${HEAL_GROUP:-}"
 GROUP_MATCH_RE="${HEAL_GROUP_MATCH_REGEX:-节点选择|代理选择|主选择|手动切换|自动选择|选择代理|全局选择|默认代理|国外|境外|(^|[^A-Za-z0-9])(PROXY|SELECT|Selector|Manual|Fallback|Auto|URL[ _.-]*Test|Load[ _.-]*Balance|Node[ _.-]*(Select|Selector|Choice)|Proxy[ _.-]*(Select|Selector|Choice)|Global[ _.-]*(Proxy|Select|Selector)|Main[ _.-]*(Proxy|Select|Selector)|Default[ _.-]*(Proxy|Select|Selector)|Outbound|Route[ _.-]*(Select|Selector))([^A-Za-z0-9]|$)}"
 GROUP_EXCLUDE_RE="${HEAL_GROUP_EXCLUDE_REGEX:-广告|拦截|REJECT|DIRECT|直连|微软|Microsoft|苹果|Apple|谷歌|Google|FCM|电报|Telegram|Netflix|NETFLIX|Disney|YouTube|TikTok|媒体|Media|人工智能|(^|[^A-Za-z0-9])AI([^A-Za-z0-9]|$)|漏网|Final|MATCH}"
@@ -89,7 +94,70 @@ log() {
     echo "$(date '+%F %T') self-heal: $*" >> "$LOG"
   fi
 }
-enc() { printf %s "$1" | jq -sRr @uri; }
+
+find_cmd() {
+  name="$1"
+  shift
+  found=$(which "$name" 2>/dev/null || true)
+  if [ -n "$found" ] && [ -x "$found" ]; then
+    printf '%s\n' "$found"
+    return 0
+  fi
+  for candidate in "$@"; do
+    [ -x "$candidate" ] && {
+      printf '%s\n' "$candidate"
+      return 0
+    }
+  done
+  return 1
+}
+
+resolve_runtime_tools() {
+  if [ -n "$CURL_BIN" ]; then
+    [ -x "$CURL_BIN" ] || {
+      log "ERROR CURL_BIN is not executable"
+      return 1
+    }
+  else
+    CURL_BIN=$(find_cmd curl \
+      /usr/sbin/curl /usr/bin/curl /bin/curl /opt/bin/curl /opt/usr/bin/curl \
+      /jffs/ShellCrash/bin/curl) || {
+      log "ERROR curl is required"
+      return 1
+    }
+  fi
+
+  if [ -n "$JQ_BIN" ]; then
+    [ -x "$JQ_BIN" ] || {
+      log "ERROR JQ_BIN is not executable"
+      return 1
+    }
+  else
+    JQ_BIN=$(find_cmd jq \
+      /usr/sbin/jq /usr/bin/jq /bin/jq /opt/bin/jq /opt/usr/bin/jq \
+      /jffs/ShellCrash/bin/jq) || {
+      log "ERROR jq is required"
+      return 1
+    }
+  fi
+}
+
+enc() { printf %s "$1" | "$JQ_BIN" -sRr @uri; }
+
+secure_temp_helper=${HOME_EDGE_SECURE_TEMP_HELPER:-}
+if [ -z "$secure_temp_helper" ]; then
+  source_dir=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || {
+    log "ERROR cannot resolve helper directory"
+    exit 1
+  }
+  secure_temp_helper="$source_dir/home-edge-secure-temp.sh"
+  [ -r "$secure_temp_helper" ] || secure_temp_helper=/jffs/scripts/home-edge-secure-temp.sh
+fi
+[ -r "$secure_temp_helper" ] || {
+  log "ERROR project secure temporary-path helper is unavailable"
+  exit 1
+}
+. "$secure_temp_helper"
 
 validate_bool() {
   name="$1"
@@ -167,15 +235,15 @@ acquire_lock() {
 
 capi_url() {
   if [ -z "$auth_config" ]; then
-    curl -fsS --connect-timeout 1 --max-time 4 "$@"
+    "$CURL_BIN" -fsS --connect-timeout 1 --max-time 4 "$@"
     return $?
   fi
   if [ "$auth_config" = "-" ]; then
     printf 'header = "Authorization: Bearer %s"\n' "$SECRET" |
-      curl -fsS --connect-timeout 1 --max-time 4 --config - "$@"
+      "$CURL_BIN" -fsS --connect-timeout 1 --max-time 4 --config - "$@"
     return $?
   fi
-  curl -fsS --connect-timeout 1 --max-time 4 --config "$auth_config" "$@"
+  "$CURL_BIN" -fsS --connect-timeout 1 --max-time 4 --config "$auth_config" "$@"
 }
 
 loopback_ipv4() {
@@ -225,18 +293,63 @@ prepare_auth_config() {
     auth_config=-
     return 0
   fi
-  auth_config=$(mktemp /tmp/home-edge-curl-auth.XXXXXX) || { log "ERROR cannot allocate curl auth config"; return 1; }
+  auth_config=$(home_edge_secure_temp /tmp/home-edge-curl-auth.XXXXXX) || { log "ERROR cannot allocate curl auth config"; return 1; }
   chmod 600 "$auth_config" 2>/dev/null || true
   printf 'header = "Authorization: Bearer %s"\n' "$SECRET" >"$auth_config" || return 1
+}
+
+load_secret_file() {
+  [ -z "$SECRET" ] || return 0
+  [ -n "$SECRET_FILE" ] || return 0
+
+  case "$SECRET_FILE" in
+    /*) ;;
+    *) log "ERROR CLASH_SECRET_FILE must be absolute"; return 1 ;;
+  esac
+  case "$SECRET_FILE" in
+    /|*[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.|*//*)
+      log "ERROR unsafe CLASH_SECRET_FILE"
+      return 1
+      ;;
+  esac
+  [ -f "$SECRET_FILE" ] && [ -r "$SECRET_FILE" ] && [ ! -L "$SECRET_FILE" ] || {
+    log "ERROR CLASH_SECRET_FILE must be a readable regular file"
+    return 1
+  }
+
+  case "$(uname -s 2>/dev/null || echo unknown)" in
+    MINGW*|MSYS*|CYGWIN*) ;;
+    *)
+      secret_mode=$(ls -ld "$SECRET_FILE" 2>/dev/null | awk '{print $1}')
+      case "$secret_mode" in
+        ????------) ;;
+        *) log "ERROR CLASH_SECRET_FILE permissions must deny group and other access"; return 1 ;;
+      esac
+      ;;
+  esac
+
+  awk 'NR > 1 { extra=1; exit } END { exit extra ? 1 : 0 }' "$SECRET_FILE" 2>/dev/null || {
+    log "ERROR CLASH_SECRET_FILE must contain exactly one line"
+    return 1
+  }
+  if LC_ALL=C grep -q '[[:cntrl:]]' "$SECRET_FILE" 2>/dev/null; then
+    log "ERROR CLASH_SECRET_FILE contains unsupported control characters"
+    return 1
+  fi
+  SECRET=$(sed -n '1p' "$SECRET_FILE" 2>/dev/null | tr -d '\r')
+  [ -n "$SECRET" ] || {
+    log "ERROR CLASH_SECRET_FILE is empty"
+    return 1
+  }
 }
 
 api_alive() {
   u="${1%/}"
   api_endpoint_allowed "$u" || return 1
   r=$(capi_url "$u/version" 2>/dev/null)
-  echo "$r" | jq -e 'type == "object"' >/dev/null 2>&1 && { echo "$u"; return 0; }
+  echo "$r" | "$JQ_BIN" -e 'type == "object"' >/dev/null 2>&1 && { echo "$u"; return 0; }
   r=$(capi_url "$u/proxies" 2>/dev/null)
-  echo "$r" | jq -e '.proxies? | type == "object"' >/dev/null 2>&1 && { echo "$u"; return 0; }
+  echo "$r" | "$JQ_BIN" -e '.proxies? | type == "object"' >/dev/null 2>&1 && { echo "$u"; return 0; }
   return 1
 }
 
@@ -314,7 +427,7 @@ observe_failed_controller() {
     api_endpoint_allowed "$u" || continue
     case " $seen_status " in *" $u "*) continue ;; esac
     seen_status="$seen_status $u"
-    code=$(curl -sS --connect-timeout 1 --max-time 4 -o /dev/null -w '%{http_code}' "$u/version" 2>/dev/null || true)
+    code=$("$CURL_BIN" -sS --connect-timeout 1 --max-time 4 -o /dev/null -w '%{http_code}' "$u/version" 2>/dev/null || true)
     case "$code" in
       401|403)
         echo "controller_state=reachable"
@@ -337,6 +450,8 @@ observe_failed_controller() {
 
 trap cleanup_runtime EXIT
 trap handle_signal HUP INT TERM
+resolve_runtime_tools || exit 1
+load_secret_file || exit 1
 if [ "$OBSERVE_ONLY" != "1" ] && [ "$VERIFY_ONLY" != "1" ]; then
   if acquire_lock; then
     :
@@ -366,7 +481,7 @@ fi
 if [ "$OBSERVE_ONLY" = "1" ]; then
   echo "controller_state=reachable"
   if [ -n "$SECRET" ]; then
-    anonymous_code=$(curl -sS --connect-timeout 1 --max-time 4 -o /dev/null -w '%{http_code}' "$API/version" 2>/dev/null || true)
+    anonymous_code=$("$CURL_BIN" -sS --connect-timeout 1 --max-time 4 -o /dev/null -w '%{http_code}' "$API/version" 2>/dev/null || true)
     case "$anonymous_code" in
       401|403) echo "controller_auth_state=authenticated" ;;
       2??) echo "controller_auth_state=unexpectedly_open" ;;
@@ -376,7 +491,7 @@ if [ "$OBSERVE_ONLY" = "1" ]; then
     echo "controller_auth_state=not_required"
   fi
   dashboard_json=$(capi_url "$API/configs" 2>/dev/null || true)
-  if printf '%s\n' "$dashboard_json" | jq -e 'type == "object"' >/dev/null 2>&1; then
+  if printf '%s\n' "$dashboard_json" | "$JQ_BIN" -e 'type == "object"' >/dev/null 2>&1; then
     if printf '%s\n' "$dashboard_json" | grep -Eq '"external-ui"[[:space:]]*:[[:space:]]*"[^"[:space:]][^"]*"'; then
       echo "dashboard_config_state=configured"
     else
@@ -401,7 +516,7 @@ matches_preferred() { matches "$PREFERRED_RE" "$1"; }
 
 make_tmp_file() {
   prefix="${1:-home-edge}"
-  t=$(mktemp "/tmp/${prefix}.XXXXXX" 2>/dev/null || true)
+  t=$(home_edge_secure_temp "/tmp/${prefix}.XXXXXX" 2>/dev/null || true)
   [ -n "$t" ] || return 1
   printf '%s\n' "$t"
 }
@@ -412,13 +527,13 @@ resolve_group() {
 
   if [ -n "$GROUP" ]; then
     printf '%s\n' "$proxies_json" \
-      | jq -e --arg group "$GROUP" '.proxies[$group].all? | type == "array"' >/dev/null 2>&1 && {
+      | "$JQ_BIN" -e --arg group "$GROUP" '.proxies[$group].all? | type == "array"' >/dev/null 2>&1 && {
         printf '%s\n' "$GROUP"
         return 0
       }
 
     found=$(printf '%s\n' "$proxies_json" \
-      | jq -r --arg term "$GROUP" '
+      | "$JQ_BIN" -r --arg term "$GROUP" '
           .proxies
           | to_entries[]
           | select((.value.all? | type) == "array")
@@ -430,7 +545,7 @@ resolve_group() {
   fi
 
   found=$(printf '%s\n' "$proxies_json" \
-    | jq -r --arg match "$GROUP_MATCH_RE" --arg exclude "$GROUP_EXCLUDE_RE" '
+    | "$JQ_BIN" -r --arg match "$GROUP_MATCH_RE" --arg exclude "$GROUP_EXCLUDE_RE" '
         .proxies as $p
         | [
             $p
@@ -467,7 +582,7 @@ delay() {
   worst=""
   while [ "$probe_i" -lt "$DELAY_PROBES" ]; do
     d=$(capi "$API/proxies/$(enc "$1")/delay?timeout=$DELAY_TIMEOUT_MS&url=$(enc "$PROBE_URL")" \
-      | jq -r '.delay // empty' 2>/dev/null)
+      | "$JQ_BIN" -r '.delay // empty' 2>/dev/null)
     case "$d" in
       ""|*[!0-9]*) ;;
       *)
@@ -486,7 +601,7 @@ route_matches_region() {
   [ -z "$REGION_RE" ] && return 0
   matches "$REGION_RE" "$n" && return 0
   ng=$(capi "$API/proxies/$(enc "$n")")
-  nnow=$(echo "$ng" | jq -r '.now // empty' 2>/dev/null)
+  nnow=$(echo "$ng" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
   [ -n "$nnow" ] && matches "$REGION_RE" "$nnow"
 }
 
@@ -514,11 +629,11 @@ add_nested_candidates() {
   [ "$MUTATE_NESTED_GROUPS" = "1" ] || return 0
   parent="$1"
   pg=$(capi "$API/proxies/$(enc "$parent")")
-  echo "$pg" | jq -e '.all? | type == "array"' >/dev/null 2>&1 || return 0
+  echo "$pg" | "$JQ_BIN" -e '.all? | type == "array"' >/dev/null 2>&1 || return 0
   prio=2
   [ -n "$REGION_RE" ] && route_matches_region "$parent" && prio=1
   matches_preferred "$parent" && prio=0
-  echo "$pg" | jq -r '.all[]' | while IFS= read -r child; do
+  echo "$pg" | "$JQ_BIN" -r '.all[]' | while IFS= read -r child; do
     candidate_allowed "$child" || continue
     d=$(delay "$child")
     if [ -n "$d" ]; then
@@ -531,9 +646,9 @@ add_nested_candidates() {
 switch_group() {
   target_group="$1"
   target_node="$2"
-  payload=$(printf '%s' "$target_node" | jq -Rs '{name:.}')
+  payload=$(printf '%s' "$target_node" | "$JQ_BIN" -Rs '{name:.}')
   capi -X PUT "$API/proxies/$(enc "$target_group")" -d "$payload" >/dev/null || return 1
-  applied=$(capi "$API/proxies/$(enc "$target_group")" | jq -r '.now // empty' 2>/dev/null)
+  applied=$(capi "$API/proxies/$(enc "$target_group")" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
   [ "$applied" = "$target_node" ]
 }
 
@@ -565,14 +680,14 @@ switch_allowed() {
 record_switch() {
   mkdir -p "$STATE_DIR" 2>/dev/null || true
   chmod 700 "$STATE_DIR" 2>/dev/null || true
-  printf '%s %s -> %s\n' "$(date +%s)" "$1" "$2" >> "$SWITCH_JOURNAL" 2>/dev/null || true
+  printf '%s switch\n' "$(date +%s)" >> "$SWITCH_JOURNAL" 2>/dev/null || true
 }
 
 choose_exact_role_target() {
   role_group="$1"
   wanted="$2"
   capi "$API/proxies/$(enc "$role_group")" \
-    | jq -r '.all[]' 2>/dev/null \
+    | "$JQ_BIN" -r '.all[]' 2>/dev/null \
     | while IFS= read -r candidate; do
         [ "$candidate" = "$wanted" ] && { printf '%s\n' "$candidate"; break; }
       done \
@@ -584,7 +699,7 @@ choose_route_role_target() {
   [ -n "$ROLE_ROUTE_TARGET_RE" ] || return 0
   role_tmp=$(make_tmp_file home-edge-role-candidates) || return 1
   capi "$API/proxies/$(enc "$role_group")" \
-    | jq -r '.all[]' 2>/dev/null \
+    | "$JQ_BIN" -r '.all[]' 2>/dev/null \
     | while IFS= read -r candidate; do
         matches "$ROLE_ROUTE_TARGET_RE" "$candidate" || continue
         candidate_delay=$(delay "$candidate")
@@ -607,30 +722,30 @@ enforce_role_group() {
   esac
 
   if [ -z "$target" ]; then
-    log "WARN role group $role_group has no safe $role_kind target; left unchanged"
+    log "WARN recognized $role_kind role group has no safe target; left unchanged"
     return 0
   fi
 
   role_payload=$(capi "$API/proxies/$(enc "$role_group")")
-  current=$(printf '%s\n' "$role_payload" | jq -r '.now // empty' 2>/dev/null)
+  current=$(printf '%s\n' "$role_payload" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
   [ "$current" = "$target" ] && return 0
 
   if [ "$DRY_RUN" = "1" ]; then
-    log "DRY-RUN would switch role group $role_group: $current -> $target"
+    log "DRY-RUN would switch a recognized $role_kind role group"
     return 0
   fi
 
   if ! switch_allowed; then
-    log "CIRCUIT-BREAKER switch limit reached (${MAX_SWITCHES_PER_HOUR}/hour); left role group $role_group unchanged"
+    log "CIRCUIT-BREAKER switch limit reached (${MAX_SWITCHES_PER_HOUR}/hour); left role group unchanged"
     return 0
   fi
 
   if switch_group "$role_group" "$target"; then
     record_switch "$current" "$target"
-    log "SWITCHED role group $role_group: $current -> $target"
+    log "SWITCHED a recognized $role_kind role group"
     return 0
   fi
-  log "ERROR role switch failed or was not applied $role_group -> $target"
+  log "ERROR recognized $role_kind role switch failed or was not applied"
   return 1
 }
 
@@ -639,7 +754,7 @@ enforce_role_groups() {
   role_groups_tmp=$(make_tmp_file home-edge-role-groups) || return 1
   role_json=$(capi "$API/proxies") || { rm -f "$role_groups_tmp"; return 1; }
   printf '%s\n' "$role_json" \
-    | jq -r '.proxies | to_entries[] | select((.value.all? | type) == "array" and ((.value.type // "") | test("(?i)^selector$|^select$"))) | .key' 2>/dev/null \
+    | "$JQ_BIN" -r '.proxies | to_entries[] | select((.value.all? | type) == "array" and ((.value.type // "") | test("(?i)^selector$|^select$"))) | .key' 2>/dev/null \
     >"$role_groups_tmp" || { rm -f "$role_groups_tmp"; return 1; }
   while IFS= read -r role_group; do
     [ "$role_group" = "$GROUP" ] && continue
@@ -654,30 +769,28 @@ enforce_role_groups() {
 
 resolved=$(resolve_group || true)
 [ -n "$resolved" ] || {
-  groups=$(capi "$API/proxies" | jq -r '.proxies | keys[]' 2>/dev/null | head -20 | tr '\n' ',' | sed 's/,$//')
-  log "ERROR no selectable main proxy group found at $API; set HEAL_GROUP explicitly. visible_groups=$groups"
+  log "ERROR no selectable main proxy group found at $API; set HEAL_GROUP explicitly"
   exit 1
 }
 if [ -z "$GROUP" ]; then
-  log "INFO auto-discovered selector group '$resolved'"
+  log "INFO auto-discovered one selectable main proxy group"
 elif [ "$resolved" != "$GROUP" ]; then
-  log "INFO resolved group '$GROUP' -> '$resolved'"
+  log "INFO resolved the configured selector through a nested selectable group"
 fi
 GROUP="$resolved"
 
 g=$(capi "$API/proxies/$(enc "$GROUP")")
 [ -n "$g" ] || { log "ERROR: clash API unreachable at $API"; exit 1; }
-if ! echo "$g" | jq -e '.all? | type == "array"' >/dev/null 2>&1; then
-  groups=$(capi "$API/proxies" | jq -r '.proxies | keys[]' 2>/dev/null | head -20 | tr '\n' ',' | sed 's/,$//')
-  log "ERROR group '$GROUP' not found or is not selectable at $API; set HEAL_GROUP. visible_groups=$groups"
+if ! echo "$g" | "$JQ_BIN" -e '.all? | type == "array"' >/dev/null 2>&1; then
+  log "ERROR configured group was not found or is not selectable at $API; set HEAL_GROUP"
   exit 1
 fi
-cur=$(echo "$g" | jq -r '.now // empty')
+cur=$(echo "$g" | "$JQ_BIN" -r '.now // empty')
 
 if [ "$VERIFY_ONLY" = "1" ]; then
   route_probe_id="$(date +%s)-$$"
   echo "route_probe_id=$route_probe_id"
-  echo "route_identity=$cur"
+  echo "route_identity=redacted"
   if [ -n "$cur" ] && [ -n "$(delay "$cur")" ] && route_matches_region "$cur"; then
     if [ -n "$REGION_RE" ]; then
       echo "route_classification=region_match"
@@ -686,27 +799,27 @@ if [ "$VERIFY_ONLY" = "1" ]; then
       echo "route_classification=reachable"
       echo "route_region_constraint=none"
     fi
-    log "VERIFY current=$cur reaches probe target; no mutation"
+    log "VERIFY current route reaches probe target; no mutation"
     echo "verification_state=pass"
     exit 0
   fi
   if [ -n "$REGION_RE" ]; then echo "route_region_constraint=not_matched"; else echo "route_region_constraint=none"; fi
   if [ -n "$cur" ]; then echo "route_classification=unreachable_or_region_mismatch"; else echo "route_classification=unknown"; fi
-  log "ERROR verify-only current=$cur cannot reach probe target or satisfy the configured region constraint"
+  log "ERROR verify-only current route cannot reach probe target or satisfy the configured region constraint"
   echo "verification_state=fail"
   exit 1
 fi
 
 # 1) Preserve a reachable current route when it satisfies the optional region constraint.
 if [ -n "$cur" ] && [ -n "$(delay "$cur")" ] && route_matches_region "$cur"; then
-  log "OK current=$cur reaches probe target; no change"
+  log "OK current route reaches probe target; no change"
   enforce_role_groups || exit 1
   exit 0
 fi
 
 # 2) Otherwise pick the best reachable eligible route. Nested mutation remains opt-in.
 tmp=$(make_tmp_file home-edge-candidates) || { log "ERROR cannot create temp file"; exit 1; }
-echo "$g" | jq -r '.all[]' | while IFS= read -r n; do
+echo "$g" | "$JQ_BIN" -r '.all[]' | while IFS= read -r n; do
   add_candidate "$n"
   add_nested_candidates "$n"
 done
@@ -720,46 +833,46 @@ child_group=$(printf '%s\n' "$bestline" | cut -f5)
 child=$(printf '%s\n' "$bestline" | cut -f6)
 
 if [ -z "$best" ]; then
-  log "WARN no eligible route reached probe target (current=$cur); left unchanged"
+  log "WARN no eligible route reached probe target; current route left unchanged"
   enforce_role_groups || exit 1
   exit 0
 fi
 
 if [ "$best" = "$cur" ] && [ -z "$child" ]; then
-  log "OK current=$cur is the best available eligible route (${bestd}ms priority=$bestprio); no switch"
+  log "OK current route is the best available eligible route (${bestd}ms priority=$bestprio); no switch"
   enforce_role_groups || exit 1
   exit 0
 fi
 
 if [ "$DRY_RUN" = "1" ]; then
   if [ -n "$child" ]; then
-    log "DRY-RUN would switch nested $child_group -> $child, then $GROUP: $cur -> $best (${bestd}ms priority=$bestprio)"
+    log "DRY-RUN would switch one nested selector and then the main selector (${bestd}ms priority=$bestprio)"
   else
-    log "DRY-RUN would switch $GROUP: $cur -> $best (${bestd}ms priority=$bestprio)"
+    log "DRY-RUN would switch the main selector (${bestd}ms priority=$bestprio)"
   fi
 else
   if ! switch_allowed; then
-    log "CIRCUIT-BREAKER switch limit reached (${MAX_SWITCHES_PER_HOUR}/hour); left $GROUP unchanged"
+    log "CIRCUIT-BREAKER switch limit reached (${MAX_SWITCHES_PER_HOUR}/hour); left main selector unchanged"
     enforce_role_groups
     exit 0
   fi
   child_previous=""
   if [ -n "$child" ]; then
-    child_previous=$(capi "$API/proxies/$(enc "$child_group")" | jq -r '.now // empty' 2>/dev/null)
-    switch_group "$child_group" "$child" || { log "ERROR nested switch failed or was not applied $child_group -> $child"; exit 1; }
+    child_previous=$(capi "$API/proxies/$(enc "$child_group")" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
+    switch_group "$child_group" "$child" || { log "ERROR nested switch failed or was not applied"; exit 1; }
   fi
   if switch_group "$GROUP" "$best"; then
     record_switch "$cur" "$best"
-    log "SWITCHED $GROUP: $cur -> $best (${bestd}ms priority=$bestprio)"
+    log "SWITCHED main selector to a reachable eligible route (${bestd}ms priority=$bestprio)"
   else
     if [ -n "$child" ] && [ -n "$child_previous" ]; then
       if switch_group "$child_group" "$child_previous"; then
-        log "ROLLBACK nested $child_group: $child -> $child_previous"
+        log "ROLLBACK restored the prior nested selector route"
       else
-        log "ERROR nested rollback failed $child_group -> $child_previous"
+        log "ERROR nested rollback failed"
       fi
     fi
-    log "ERROR switch failed or was not applied $GROUP -> $best"
+    log "ERROR main selector switch failed or was not applied"
     exit 1
   fi
 fi

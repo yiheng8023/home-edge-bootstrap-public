@@ -47,6 +47,15 @@ hook_existed=0
 log() { echo "enable-live-self-heal: $*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
 
+secure_temp_helper=${HOME_EDGE_SECURE_TEMP_HELPER:-}
+if [ -z "$secure_temp_helper" ]; then
+  source_dir=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || die "cannot resolve helper directory"
+  secure_temp_helper="$source_dir/home-edge-secure-temp.sh"
+  [ -r "$secure_temp_helper" ] || secure_temp_helper=/jffs/scripts/home-edge-secure-temp.sh
+fi
+[ -r "$secure_temp_helper" ] || die "project secure temporary-path helper is unavailable"
+. "$secure_temp_helper"
+
 case "$lock_dir" in /tmp/?*) ;; *) die "HOME_EDGE_WRITE_LOCK_DIR must remain below /tmp" ;; esac
 case "$lock_dir" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "unsafe HOME_EDGE_WRITE_LOCK_DIR" ;; esac
 case "$lock_stale_sec" in ""|*[!0-9]*|0) lock_stale_sec=1800 ;; esac
@@ -111,7 +120,7 @@ restore_policy() {
 }
 
 snapshot_registration_surface() {
-  surface_snapshot=$(mktemp -d "/tmp/home-edge-enable-snapshot.XXXXXX") || return 1
+  surface_snapshot=$(home_edge_secure_temp -d "/tmp/home-edge-enable-snapshot.XXXXXX") || return 1
   if [ -e "$services_start" ]; then
     [ -f "$services_start" ] && [ ! -L "$services_start" ] || return 1
     cp -p "$services_start" "$surface_snapshot/services-start" || return 1
@@ -143,7 +152,7 @@ acquire_lock
 [ -s "$reconciler" ] || die "missing lifecycle reconciler: $reconciler"
 mkdir -p "$(dirname "$local_policy")" || die "cannot prepare local policy directory"
 snapshot_registration_surface || die "cannot snapshot lifecycle registration surface"
-tmp_policy=$(mktemp "${local_policy}.tmp.XXXXXX") || die "cannot allocate temporary policy"
+tmp_policy=$(home_edge_secure_temp "${local_policy}.tmp.XXXXXX") || die "cannot allocate temporary policy"
 [ ! -e "$local_policy" ] || local_policy_existed=1
 [ -e "$local_policy" ] || : >"$local_policy"
 chmod 600 "$local_policy" 2>/dev/null || true

@@ -27,8 +27,22 @@ payload=$(base64 <"$router_script" | tr -d '\r\n') || {
 }
 
 printf '%s\n' "Enable live self-heal log: $log_path"
+remote='
+set -eu
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "enable-live-self-heal: base64 or openssl is required to decode the payload" >&2
+    return 1
+  fi
+}
+decode_payload | sh -s
+'
 # shellcheck disable=SC2086
-if printf '%s' "$payload" | ssh $ssh_opts -- "$router" 'base64 -d | sh -s' >"$log_path" 2>&1; then
+if printf '%s' "$payload" | ssh $ssh_opts -- "$router" "$remote" >"$log_path" 2>&1; then
   cat "$log_path"
   exit 0
 fi

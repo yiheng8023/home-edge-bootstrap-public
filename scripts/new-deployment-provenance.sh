@@ -7,11 +7,29 @@ source_root=${2:-}
 [ -d "$stage_root" ] || { echo "new-deployment-provenance: stage root is required" >&2; exit 2; }
 [ -d "$source_root" ] || { echo "new-deployment-provenance: source root is required" >&2; exit 2; }
 
+if command -v sha256sum >/dev/null 2>&1; then
+  hash_tool=sha256sum
+elif command -v shasum >/dev/null 2>&1; then
+  hash_tool=shasum
+else
+  echo "new-deployment-provenance: SHA-256 tool unavailable" >&2
+  exit 1
+fi
+
 hash_file() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
-  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
-  else echo "new-deployment-provenance: SHA-256 tool unavailable" >&2; return 1
-  fi
+  case "$hash_tool" in
+    sha256sum) sha256sum "$1" | awk '{print $1}' ;;
+    shasum) shasum -a 256 "$1" | awk '{print $1}' ;;
+  esac
+}
+
+write_hash_line() {
+  # Do not use command substitution here. On Git Bash that would create one
+  # MSYS shell process per staged file, which is both slow and resource-heavy.
+  case "$hash_tool" in
+    sha256sum) sha256sum "$1" ;;
+    shasum) shasum -a 256 "$1" ;;
+  esac
 }
 
 source_kind=non_git
@@ -45,8 +63,7 @@ tmp_sums="$stage_root/.deployment-content-sums.tmp"
   cd "$stage_root"
   "$find_cmd" . -type f ! -name DEPLOYMENT-PROVENANCE.env ! -name DEPLOYMENT-CONTENT-SHA256SUMS ! -name .deployment-content-sums.tmp -print |
     sed 's#^\./##' | LC_ALL=C "$sort_cmd" | while IFS= read -r path; do
-      hash=$(hash_file "$path") || exit 1
-      printf '%s  %s\n' "$hash" "$path"
+      write_hash_line "$path" || exit 1
     done
 ) >"$tmp_sums"
 mv "$tmp_sums" "$sums"

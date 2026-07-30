@@ -127,14 +127,26 @@ try {
   if ($Source -match "/tmp/home-edge-check-router-status.sh") {
     throw "PowerShell status helper still uses a fixed remote temp script"
   }
+  if ($Source -notmatch "openssl base64 -d -A" -or $Source -notmatch "tr -cd 'A-Za-z0-9\+/='") {
+    throw "PowerShell status helper lacks the Merlin/OpenSSL decoder and PowerShell BOM normalization"
+  }
+  if ($AuditSource -notmatch "openssl base64 -d -A" -or $AuditSource -notmatch "tr -cd 'A-Za-z0-9\+/='") {
+    throw "PowerShell baseline audit lacks the Merlin/OpenSSL decoder and PowerShell BOM normalization"
+  }
   if ($Source -notmatch "verify-deployment-provenance\.sh") {
     throw "PowerShell status helper does not run the read-only provenance verifier"
   }
   if ($Source -notmatch "HOME_EDGE_EXPECTED_SOURCE_") {
     throw "PowerShell status helper does not bind expected local source identity"
   }
-  foreach ($EvidenceText in @("runtime_active_config_path", "runtime_process_identity", "SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC", "route_evidence_probe_id", "cache_apply_path_alias", "controller_dashboard_config_state:-unknown")) {
+  foreach ($EvidenceText in @("runtime_active_config_path", "runtime_process_identity", "SUBSCRIPTION_RUNTIME_EVIDENCE_MAX_AGE_SEC", "route_evidence_probe_id", "route_evidence_identity_state", "route_evidence_region_constraint", "route_evidence_verification_state=unavailable", "cache_apply_path_alias", "controller_dashboard_config_state:-unknown")) {
     if ($Source -notmatch [regex]::Escape($EvidenceText)) { throw "PowerShell status helper lacks conservative evidence text: $EvidenceText" }
+  }
+  if ($Source -match [regex]::Escape('route_evidence_identity=$(route_value route_identity)')) {
+    throw "PowerShell status helper still emits the live route identity"
+  }
+  foreach ($SecretFileText in @("CONTROLLER_SECRET.local", "CLASH_SECRET_FILE=")) {
+    if ($Source -notmatch [regex]::Escape($SecretFileText)) { throw "PowerShell status helper lacks controller secret-file wiring: $SecretFileText" }
   }
   foreach ($Field in @("deployment_provenance_state", "deployment_source_commit", "deployment_content_id")) {
     if ($Source -notmatch $Field) { throw "PowerShell status helper lacks safe provenance field: $Field" }

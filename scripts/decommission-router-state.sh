@@ -24,6 +24,11 @@ home-edge-update-sub.sh
 home-edge-subscription-runtime-evidence.sh
 home-edge-verify-bundle.sh
 home-edge-reconcile-self-heal.sh
+home-edge-secure-temp.sh
+home-edge-configure-dns.sh
+home-edge-prefetch-shellcrash-data.sh
+home-edge-start-shellcrash.sh
+home-edge-configure-service-rules.sh
 home-edge-self-heal-cron.sh'
 
 state_migration_state=unavailable
@@ -222,7 +227,7 @@ classify_registration() {
     stop_before_mutation "managed services-start markers are malformed or duplicated"
   fi
 
-  command -v cru >/dev/null 2>&1 || stop_before_mutation "cru is unavailable"
+  which cru >/dev/null 2>&1 || stop_before_mutation "cru is unavailable"
   cron_list=$(cru l 2>/dev/null) || stop_before_mutation "cannot read cron registration"
   exact_count=$(printf '%s\n' "$cron_list" | awk '{ line=$0; while (sub(/#home_edge_selfheal#/, "", line)) n++ } END { print n+0 }')
   loose_count=$(printf '%s\n' "$cron_list" | grep -c 'home_edge_selfheal' 2>/dev/null || true)

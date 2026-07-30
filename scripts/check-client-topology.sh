@@ -79,7 +79,7 @@ proxy_state() {
   fi
 
   if command -v powershell.exe >/dev/null 2>&1; then
-    win_proxy=$(powershell.exe -NoProfile -Command "try { \$s=Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings' -ErrorAction Stop; if ([int]\$s.ProxyEnable -eq 1) { 'system_proxy' } elseif ([string]\$s.AutoConfigURL) { 'pac_proxy' } else { 'none' } } catch { 'unknown' }" 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')
+    win_proxy=$(powershell.exe -NoProfile -Command "try { \$u=Get-ItemProperty 'HKCU:\Environment' -ErrorAction Stop; \$p=@(\$u.http_proxy,\$u.https_proxy,\$u.all_proxy,\$u.HTTP_PROXY,\$u.HTTPS_PROXY,\$u.ALL_PROXY) | Where-Object { \$_ }; if (\$p.Count -gt 0) { 'user_env_proxy'; exit }; \$s=Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings' -ErrorAction Stop; if ([int]\$s.ProxyEnable -eq 1) { 'system_proxy' } elseif ([string]\$s.AutoConfigURL) { 'pac_proxy' } else { 'none' } } catch { 'unknown' }" 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')
     printf '%s' "${win_proxy:-unknown}"
     return
   fi
@@ -90,7 +90,6 @@ proxy_state() {
 tun_state() {
   probe_address="$1"
   [ -n "${CLIENT_TOPOLOGY_FIXTURE_TUN_STATE:-}" ] && { printf '%s\n' "$CLIENT_TOPOLOGY_FIXTURE_TUN_STATE"; return; }
-  [ -n "$probe_address" ] || { printf unknown; return; }
 
   default_device=""
   default_gateway_value=""
@@ -122,8 +121,12 @@ tun_state() {
     return
   fi
 
-  [ -n "$effective_device" ] || { printf unknown; return; }
   [ -n "$default_device" ] || { printf unknown; return; }
+  case "$default_gateway_value" in
+    198.18.*|198.19.*) printf present; return ;;
+  esac
+  [ -n "$probe_address" ] || { printf unknown; return; }
+  [ -n "$effective_device" ] || { printf unknown; return; }
   if [ "$effective_device" != "$default_device" ]; then
     printf present
   elif [ -n "$effective_gateway" ] && [ -n "$default_gateway_value" ] && [ "$effective_gateway" != "$default_gateway_value" ]; then
@@ -135,9 +138,17 @@ tun_state() {
   fi
 }
 
+classify_dns_address() {
+  case "$1" in
+    28.*|198.18.*|198.19.*) printf "fake_ip:%s" "$1" ;;
+    "") printf unknown ;;
+    *) printf "ordinary:%s" "$1" ;;
+  esac
+}
+
 dns_state() {
   [ -n "${CLIENT_TOPOLOGY_FIXTURE_DNS_STATE:-}" ] && { printf '%s\n' "$CLIENT_TOPOLOGY_FIXTURE_DNS_STATE"; return; }
-  sample_host="${CLIENT_DNS_SAMPLE_HOST:-www.iana.org}"
+  sample_host="$1"
   resolved=""
   if command -v getent >/dev/null 2>&1; then
     resolved=$(getent ahostsv4 "$sample_host" 2>/dev/null | awk '{ print $1; exit }')
@@ -147,11 +158,29 @@ dns_state() {
     resolved=$(powershell.exe -NoProfile -Command "try { (Resolve-DnsName '$sample_host' -Type A -ErrorAction Stop | Select-Object -First 1 -ExpandProperty IPAddress) } catch { '' }" 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')
   fi
 
-  case "$resolved" in
-    28.*|198.18.*|198.19.*) printf "fake_ip:$resolved" ;;
-    "") printf unknown ;;
-    *) printf "ordinary:$resolved" ;;
-  esac
+  classify_dns_address "$resolved"
+}
+
+router_dns_state() {
+  sample_host="$1"
+  server="$2"
+  [ -n "${CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE:-}" ] && {
+    printf '%s\n' "$CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE"
+    return
+  }
+  [ -n "$server" ] || { printf unknown; return; }
+  resolved=""
+  if command -v dig >/dev/null 2>&1; then
+    resolved=$(dig +time=2 +tries=1 +short A "$sample_host" "@$server" 2>/dev/null | awk 'NF { print; exit }')
+  elif command -v nslookup >/dev/null 2>&1; then
+    resolved=$(nslookup "$sample_host" "$server" 2>/dev/null |
+      awk '/^Address: / { value=$2 } /^Address [0-9]+: / { value=$3 } END { print value }')
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    resolved=$(CLIENT_DNS_SAMPLE_HOST="$sample_host" CLIENT_DNS_SERVER="$server" \
+      powershell.exe -NoProfile -Command 'try { (Resolve-DnsName $env:CLIENT_DNS_SAMPLE_HOST -Server $env:CLIENT_DNS_SERVER -DnsOnly -QuickTimeout -Type A -ErrorAction Stop | Select-Object -First 1 -ExpandProperty IPAddress) } catch { "" }' \
+      2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')
+  fi
+  classify_dns_address "$resolved"
 }
 
 http_probe() {
@@ -188,18 +217,37 @@ gateway=$(default_gateway)
 expected_router=""
 [ -n "$router" ] && expected_router=$(router_host "$router")
 system_proxy_state=$(proxy_state)
-client_dns_state=$(dns_state)
+sample_host="${CLIENT_DNS_SAMPLE_HOST:-www.iana.org}"
+client_dns_state=$(dns_state "$sample_host")
+router_dns_state=$(router_dns_state "$sample_host" "$expected_router")
+fake_ip_owner=not_applicable
+case "$client_dns_state" in
+  fake_ip:*)
+    client_fake_address=${client_dns_state#fake_ip:}
+    if [ "$router_dns_state" = "fake_ip:$client_fake_address" ]; then
+      fake_ip_owner=router
+    else
+      case "$router_dns_state" in
+        ordinary:*) fake_ip_owner=client ;;
+        *) fake_ip_owner=unknown ;;
+      esac
+    fi
+    ;;
+esac
 route_probe_address=""
 case "$client_dns_state" in ordinary:*) route_probe_address=${client_dns_state#ordinary:} ;; esac
+if [ -z "$route_probe_address" ]; then
+  case "$router_dns_state" in ordinary:*) route_probe_address=${router_dns_state#ordinary:} ;; esac
+fi
 local_tun_state=$(tun_state "$route_probe_address")
 client_http_state=$(http_probe)
 
 client_runtime_present=0
 case "$system_proxy_state" in none|unknown) ;; *) client_runtime_present=1 ;; esac
 [ "$local_tun_state" = "present" ] && client_runtime_present=1
-case "$client_dns_state" in fake_ip:*) client_runtime_present=1 ;; esac
+[ "$fake_ip_owner" = "client" ] && client_runtime_present=1
 if [ "$client_runtime_present" = "0" ] &&
-  { [ "$system_proxy_state" = "unknown" ] || [ "$local_tun_state" = "unknown" ] || [ "$client_dns_state" = "unknown" ]; }; then
+  { [ "$system_proxy_state" = "unknown" ] || [ "$local_tun_state" = "unknown" ] || [ "$client_dns_state" = "unknown" ] || [ "$fake_ip_owner" = "unknown" ]; }; then
   client_runtime_present=unknown
 fi
 
@@ -237,6 +285,8 @@ print_kv "gateway_matches_router" "$gateway_matches_router"
 print_kv "system_proxy_state" "$system_proxy_state"
 print_kv "local_tun_state" "$local_tun_state"
 print_kv "client_dns_state" "$client_dns_state"
+print_kv "router_dns_state" "$router_dns_state"
+print_kv "fake_ip_owner" "$fake_ip_owner"
 print_kv "client_http_state" "$client_http_state"
 print_kv "client_runtime_present" "$client_runtime_present"
 print_kv "client_topology_mode" "$topology_mode"

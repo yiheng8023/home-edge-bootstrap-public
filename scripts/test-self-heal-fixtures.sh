@@ -448,6 +448,38 @@ fail() {
   exit 1
 }
 
+grep -Fq '/jffs/ShellCrash/bin/jq' "$repo/scripts/self-heal.sh" ||
+  fail "self-heal does not search the known ShellCrash jq path"
+grep -Fq '/jffs/ShellCrash/bin/curl' "$repo/scripts/self-heal.sh" ||
+  fail "self-heal does not search the known ShellCrash curl path"
+
+explicit_tool_output=$(
+  PATH="/usr/bin:/bin" \
+  SELF_HEAL_FIXTURE=current_us \
+  SELF_HEAL_ANON_STATUS=200 \
+  CLASH_API=http://127.0.0.1:18080 \
+  CURL_BIN="$fake_bin/curl" \
+  JQ_BIN="$fake_bin/jq" \
+  HEAL_OBSERVE_ONLY=1 \
+  sh "$repo/scripts/self-heal.sh"
+) || fail "self-heal rejected explicit curl/jq paths for a restricted cron PATH"
+printf '%s\n' "$explicit_tool_output" | grep -q '^controller_observation_state=ready$' ||
+  fail "explicit curl/jq path probe did not reach a ready controller state"
+if PATH="$fake_bin:$PATH" CURL_BIN="$tmp_root/missing-curl" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/invalid-curl.out" 2>"$tmp_root/invalid-curl.err"; then
+  fail "non-executable CURL_BIN should fail closed"
+fi
+grep -q 'CURL_BIN is not executable' "$tmp_root/invalid-curl.err" ||
+  fail "invalid CURL_BIN rejection message missing"
+if PATH="$fake_bin:$PATH" JQ_BIN="$tmp_root/missing-jq" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/invalid-jq.out" 2>"$tmp_root/invalid-jq.err"; then
+  fail "non-executable JQ_BIN should fail closed"
+fi
+grep -q 'JQ_BIN is not executable' "$tmp_root/invalid-jq.err" ||
+  fail "invalid JQ_BIN rejection message missing"
+
 run_case() {
   fixture="$1"
   log_file="$tmp_root/$fixture.log"
@@ -471,6 +503,20 @@ run_case() {
     cat "$log_file" >&2 2>/dev/null || true
     fail "fixture $fixture exited non-zero"
   }
+  for sensitive_identity in \
+    "Main Select" \
+    "Ad Block" \
+    "Microsoft Services" \
+    "Japan Tokyo" \
+    "USA - Los Angeles" \
+    "United States - New York" \
+    "Hong Kong" \
+    "Singapore"; do
+    if grep -Fq "$sensitive_identity" "$log_file"; then
+      cat "$log_file" >&2
+      fail "route or group identity leaked to self-heal log"
+    fi
+  done
 }
 
 assert_log() {
@@ -528,34 +574,34 @@ EOF
 fi
 
 run_case main_select env HEAL_DRY_RUN=1 HEAL_ROLE_GROUPS_ENABLED=0
-assert_log "$last_log" "INFO auto-discovered selector group 'Main Select'"
-assert_log "$last_log" "OK current=Japan Tokyo reaches probe target; no change"
+assert_log "$last_log" "INFO auto-discovered one selectable main proxy group"
+assert_log "$last_log" "OK current route reaches probe target; no change"
 
 run_case current_us env HEAL_DRY_RUN=1 HEAL_ROLE_GROUPS_ENABLED=0
-assert_log "$last_log" "OK current=USA - Los Angeles reaches probe target; no change"
+assert_log "$last_log" "OK current route reaches probe target; no change"
 
 # Profiles without an ad-block selector are valid: capability absence is a no-op.
 run_case current_us env HEAL_DRY_RUN=1
-assert_log "$last_log" "OK current=USA - Los Angeles reaches probe target; no change"
+assert_log "$last_log" "OK current route reaches probe target; no change"
 assert_not_log "$last_log" "role group"
 
 run_case no_us env HEAL_DRY_RUN=1 HEAL_ROLE_GROUPS_ENABLED=0
-assert_log "$last_log" "DRY-RUN would switch Main Select: Japan Tokyo -> Singapore"
+assert_log "$last_log" "DRY-RUN would switch the main selector"
 
 run_case main_select env HEAL_DRY_RUN=1 HEAL_ROLE_GROUPS_ENABLED=0 HEAL_ROUTE_REGION_REGEX='United States|USA'
-assert_log "$last_log" "DRY-RUN would switch Main Select: Japan Tokyo -> United States - New York"
+assert_log "$last_log" "DRY-RUN would switch the main selector"
 
 run_case role_drift env HEAL_DRY_RUN=1
-assert_log "$last_log" "DRY-RUN would switch role group Ad Block: DIRECT -> REJECT"
-assert_not_log "$last_log" "role group Microsoft Services"
+assert_log "$last_log" "DRY-RUN would switch a recognized ad role group"
+assert_not_log "$last_log" "recognized route role group"
 
 run_case role_missing_targets env HEAL_DRY_RUN=1 HEAL_ROLE_ROUTE_GROUP_MATCH_REGEX='Microsoft' HEAL_ROLE_ROUTE_TARGET_REGEX='US Auto'
-assert_log "$last_log" "WARN role group Ad Block has no safe ad target; left unchanged"
-assert_log "$last_log" "WARN role group Microsoft Services has no safe route target; left unchanged"
+assert_log "$last_log" "WARN recognized ad role group has no safe target; left unchanged"
+assert_log "$last_log" "WARN recognized route role group has no safe target; left unchanged"
 
 run_case role_drift env HEAL_DRY_RUN=0 HEAL_ROLE_ROUTE_GROUP_MATCH_REGEX='Microsoft' HEAL_ROLE_ROUTE_TARGET_REGEX='US Auto'
-assert_log "$last_log" "SWITCHED role group Ad Block: DIRECT -> REJECT"
-assert_log "$last_log" "SWITCHED role group Microsoft Services: DIRECT -> US Auto"
+assert_log "$last_log" "SWITCHED a recognized ad role group"
+assert_log "$last_log" "SWITCHED a recognized route role group"
 grep -Fq '/proxies/Ad%20Block' "$tmp_root/role_drift.put.log" || fail "missing ad role PUT"
 grep -Fq '/proxies/Microsoft%20Services' "$tmp_root/role_drift.put.log" || fail "missing Microsoft role PUT"
 if grep -Fq '/proxies/US-Auto-AI' "$tmp_root/role_drift.put.log"; then
@@ -563,7 +609,7 @@ if grep -Fq '/proxies/US-Auto-AI' "$tmp_root/role_drift.put.log"; then
 fi
 
 run_case nested_us env HEAL_DRY_RUN=1 HEAL_MUTATE_NESTED_GROUPS=1 HEAL_ROLE_GROUPS_ENABLED=0 HEAL_ROUTE_REGION_REGEX='US|USA'
-assert_log "$last_log" "DRY-RUN would switch nested US Auto -> USA - Los Angeles, then Main Select: Japan Tokyo -> US Auto"
+assert_log "$last_log" "DRY-RUN would switch one nested selector and then the main selector"
 
 verify_put_log="$tmp_root/verify-only.put.log"
 : >"$verify_put_log"
@@ -582,7 +628,7 @@ verify_output=$(
   sh "$repo/scripts/self-heal.sh"
 ) || fail "verify-only probe should succeed for a reachable current route"
 printf '%s\n' "$verify_output" | grep -q '^verification_state=pass$' || fail "verify-only pass marker missing"
-printf '%s\n' "$verify_output" | grep -q '^route_identity=USA - Los Angeles$' || fail "verify-only route identity missing"
+printf '%s\n' "$verify_output" | grep -q '^route_identity=redacted$' || fail "verify-only redacted route identity missing"
 printf '%s\n' "$verify_output" | grep -q '^route_classification=reachable$' || fail "verify-only generic classification missing"
 printf '%s\n' "$verify_output" | grep -q '^route_region_constraint=none$' || fail "verify-only region constraint evidence missing"
 printf '%s\n' "$verify_output" | grep -Eq '^route_probe_id=[0-9]+-[0-9]+$' || fail "verify-only fresh probe ID missing"
@@ -609,6 +655,119 @@ printf '%s\n' "$observe_output" | grep -q '^controller_auth_state=authenticated$
 printf '%s\n' "$observe_output" | grep -q '^dashboard_config_state=not_configured$' || fail "controller-observed dashboard absence missing"
 printf '%s\n' "$observe_output" | grep -q '^controller_observation_state=ready$' || fail "observe-only ready state missing"
 [ ! -s "$observe_put_log" ] || fail "observe-only probe must never mutate selectors"
+
+secret_file="$tmp_root/controller-secret.local"
+printf '%s\n' fixture-secret >"$secret_file"
+chmod 600 "$secret_file"
+observe_file_output=$(
+  PATH="$fake_bin:$PATH" \
+  SELF_HEAL_FIXTURE=current_us \
+  SELF_HEAL_ANON_STATUS=401 \
+  CLASH_API="http://127.0.0.1:18080" \
+  CLASH_SECRET_FILE="$secret_file" \
+  HEAL_OBSERVE_ONLY=1 \
+  sh "$repo/scripts/self-heal.sh"
+) || fail "observe-only probe should authenticate from CLASH_SECRET_FILE"
+printf '%s\n' "$observe_file_output" | grep -q '^controller_auth_state=authenticated$' ||
+  fail "secret-file authenticated controller state missing"
+if printf '%s\n' "$observe_file_output" | grep -Fq fixture-secret; then
+  fail "controller secret file content leaked"
+fi
+
+multiline_secret_file="$tmp_root/controller-secret-multiline.local"
+printf '%s\n%s\n' first-line second-line >"$multiline_secret_file"
+chmod 600 "$multiline_secret_file"
+if PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us \
+  CLASH_API="http://127.0.0.1:18080" CLASH_SECRET_FILE="$multiline_secret_file" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/multiline-secret.out" 2>"$tmp_root/multiline-secret.err"; then
+  fail "multiline CLASH_SECRET_FILE should be rejected"
+fi
+grep -q 'CLASH_SECRET_FILE must contain exactly one line' "$tmp_root/multiline-secret.err" ||
+  fail "multiline secret-file rejection message missing"
+if grep -Fq first-line "$tmp_root/multiline-secret.out" "$tmp_root/multiline-secret.err"; then
+  fail "multiline controller secret leaked"
+fi
+
+gapped_secret_file="$tmp_root/controller-secret-gapped.local"
+printf '%s\n\n%s\n' first-line third-line >"$gapped_secret_file"
+chmod 600 "$gapped_secret_file"
+if PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us \
+  CLASH_API="http://127.0.0.1:18080" CLASH_SECRET_FILE="$gapped_secret_file" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/gapped-secret.out" 2>"$tmp_root/gapped-secret.err"; then
+  fail "CLASH_SECRET_FILE with a blank second line and a third line should be rejected"
+fi
+grep -q 'CLASH_SECRET_FILE must contain exactly one line' "$tmp_root/gapped-secret.err" ||
+  fail "gapped multiline secret-file rejection message missing"
+if grep -Fq third-line "$tmp_root/gapped-secret.out" "$tmp_root/gapped-secret.err"; then
+  fail "gapped multiline controller secret leaked"
+fi
+
+empty_secret_file="$tmp_root/controller-secret-empty.local"
+: >"$empty_secret_file"
+chmod 600 "$empty_secret_file"
+if PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us \
+  CLASH_API="http://127.0.0.1:18080" CLASH_SECRET_FILE="$empty_secret_file" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/empty-secret.out" 2>"$tmp_root/empty-secret.err"; then
+  fail "empty CLASH_SECRET_FILE should be rejected"
+fi
+grep -q 'CLASH_SECRET_FILE is empty' "$tmp_root/empty-secret.err" ||
+  fail "empty secret-file rejection message missing"
+
+if PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us \
+  CLASH_API="http://127.0.0.1:18080" CLASH_SECRET_FILE="relative-secret.local" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/relative-secret.out" 2>"$tmp_root/relative-secret.err"; then
+  fail "relative CLASH_SECRET_FILE should be rejected"
+fi
+grep -q 'CLASH_SECRET_FILE must be absolute' "$tmp_root/relative-secret.err" ||
+  fail "relative secret-file rejection message missing"
+
+control_secret_file="$tmp_root/controller-secret-control.local"
+printf 'secret\tvalue\n' >"$control_secret_file"
+chmod 600 "$control_secret_file"
+if PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us \
+  CLASH_API="http://127.0.0.1:18080" CLASH_SECRET_FILE="$control_secret_file" \
+  HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+  >"$tmp_root/control-secret.out" 2>"$tmp_root/control-secret.err"; then
+  fail "CLASH_SECRET_FILE with control characters should be rejected"
+fi
+grep -q 'CLASH_SECRET_FILE contains unsupported control characters' "$tmp_root/control-secret.err" ||
+  fail "control-character secret-file rejection message missing"
+if grep -Fq 'secret' "$tmp_root/control-secret.out"; then
+  fail "control-character controller secret leaked to stdout"
+fi
+
+inline_priority_output=$(
+  PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us SELF_HEAL_ANON_STATUS=401 \
+  CLASH_API="http://127.0.0.1:18080" CLASH_SECRET=inline-priority-secret \
+  CLASH_SECRET_FILE="relative-path-must-be-ignored" HEAL_OBSERVE_ONLY=1 \
+  sh "$repo/scripts/self-heal.sh"
+) || fail "inline CLASH_SECRET should take precedence over CLASH_SECRET_FILE"
+printf '%s\n' "$inline_priority_output" | grep -q '^controller_auth_state=authenticated$' ||
+  fail "inline-secret priority probe did not authenticate"
+if printf '%s\n' "$inline_priority_output" | grep -Fq inline-priority-secret; then
+  fail "inline controller secret leaked"
+fi
+
+case "$(uname -s 2>/dev/null || echo unknown)" in
+  MINGW*|MSYS*|CYGWIN*) ;;
+  *)
+    loose_secret_file="$tmp_root/controller-secret-loose.local"
+    printf '%s\n' loose-secret >"$loose_secret_file"
+    chmod 644 "$loose_secret_file"
+    if PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us \
+      CLASH_API="http://127.0.0.1:18080" CLASH_SECRET_FILE="$loose_secret_file" \
+      HEAL_OBSERVE_ONLY=1 sh "$repo/scripts/self-heal.sh" \
+      >"$tmp_root/loose-secret.out" 2>"$tmp_root/loose-secret.err"; then
+      fail "group-readable CLASH_SECRET_FILE should be rejected"
+    fi
+    grep -q 'permissions must deny group and other access' "$tmp_root/loose-secret.err" ||
+      fail "loose secret-file permission rejection message missing"
+    ;;
+esac
 
 open_with_secret_output=$(
   PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE=current_us SELF_HEAL_ANON_STATUS=200 \
@@ -737,10 +896,10 @@ if PATH="$fake_bin:$PATH" \
   sh "$repo/scripts/self-heal.sh"; then
   fail "main selector PUT failure should propagate a non-zero exit"
 fi
-assert_log "$put_failure_log" "ERROR switch failed or was not applied Main Select -> United States - New York"
+assert_log "$put_failure_log" "ERROR main selector switch failed or was not applied"
 
 run_case main_select env HEAL_DRY_RUN=0 HEAL_MAX_SWITCHES_PER_HOUR=0 HEAL_ROLE_GROUPS_ENABLED=0 HEAL_ROUTE_REGION_REGEX='United States|USA'
-assert_log "$last_log" "CIRCUIT-BREAKER switch limit reached (0/hour); left Main Select unchanged"
+assert_log "$last_log" "CIRCUIT-BREAKER switch limit reached (0/hour); left main selector unchanged"
 if [ -s "$tmp_root/main_select.put.log" ]; then
   fail "circuit breaker should prevent PUT calls"
 fi

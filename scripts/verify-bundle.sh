@@ -13,6 +13,38 @@ info() { echo "verify-bundle: $*"; }
 warn() { warnings=$((warnings + 1)); echo "verify-bundle: WARN: $*" >&2; }
 fail() { failures=$((failures + 1)); echo "verify-bundle: ERROR: $*" >&2; }
 
+secure_tmp_file() {
+  template="$1"
+  if which mktemp >/dev/null 2>&1; then
+    path=$(mktemp "$template" 2>/dev/null) || path=""
+    if [ -n "$path" ]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+  fi
+
+  case "$template" in
+    *XXXXXX) prefix=${template%XXXXXX} ;;
+    *) return 1 ;;
+  esac
+  which openssl >/dev/null 2>&1 || return 1
+
+  attempt=0
+  while [ "$attempt" -lt 20 ]; do
+    attempt=$((attempt + 1))
+    suffix=$(openssl rand -hex 8 2>/dev/null | tr -d '\r\n') || suffix=""
+    case "$suffix" in
+      ""|*[!0-9a-f]*) continue ;;
+    esac
+    path="${prefix}${suffix}"
+    if (umask 077; set -C; : >"$path") 2>/dev/null; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+  done
+  return 1
+}
+
 need_file() {
   f="$1"
   if [ ! -s "$bundle_dir/$f" ]; then
@@ -27,14 +59,14 @@ need_file "ShellCrash.tar.gz" || true
 need_file "SHA256SUMS" || true
 
 if [ "$failures" -eq 0 ]; then
-  sums_tmp=$(mktemp "${TMPDIR:-/tmp}/home-edge-sha256.XXXXXX" 2>/dev/null) || sums_tmp=""
+  sums_tmp=$(secure_tmp_file "${TMPDIR:-/tmp}/home-edge-sha256.XXXXXX") || sums_tmp=""
   if [ -z "$sums_tmp" ]; then
     fail "cannot create secure temporary SHA256SUMS file"
   else
     tr -d '\r' < "$bundle_dir/SHA256SUMS" > "$sums_tmp"
-    if command -v sha256sum >/dev/null 2>&1; then
+    if which sha256sum >/dev/null 2>&1; then
       (cd "$bundle_dir" && sha256sum -c "$sums_tmp") || fail "SHA256SUMS check failed"
-    elif command -v shasum >/dev/null 2>&1; then
+    elif which shasum >/dev/null 2>&1; then
       (cd "$bundle_dir" && shasum -a 256 -c "$sums_tmp") || fail "SHA256SUMS check failed"
     elif [ "${BUNDLE_DIGEST_HOST_VERIFIED:-0}" = "1" ]; then
       warn "router digest tool unavailable; relying on explicit host verification attestation"
@@ -46,8 +78,8 @@ if [ "$failures" -eq 0 ]; then
 fi
 
 if [ -s "$bundle_dir/ShellCrash.tar.gz" ]; then
-  tar_list=$(mktemp "${TMPDIR:-/tmp}/home-edge-shellcrash-list.XXXXXX" 2>/dev/null) || tar_list=""
-  tar_verbose=$(mktemp "${TMPDIR:-/tmp}/home-edge-shellcrash-verbose.XXXXXX" 2>/dev/null) || tar_verbose=""
+  tar_list=$(secure_tmp_file "${TMPDIR:-/tmp}/home-edge-shellcrash-list.XXXXXX") || tar_list=""
+  tar_verbose=$(secure_tmp_file "${TMPDIR:-/tmp}/home-edge-shellcrash-verbose.XXXXXX") || tar_verbose=""
   if [ -z "$tar_list" ] || [ -z "$tar_verbose" ]; then
     fail "cannot create secure temporary archive inspection files"
   elif tar -tzf "$bundle_dir/ShellCrash.tar.gz" >"$tar_list" 2>/dev/null &&
@@ -81,7 +113,7 @@ if [ -s "$bundle_dir/ShellCrash.tar.gz" ]; then
 fi
 
 if [ -s "$bundle_dir/mihomo-linux-arm64" ]; then
-  if command -v od >/dev/null 2>&1; then
+  if which od >/dev/null 2>&1; then
     magic=$(dd if="$bundle_dir/mihomo-linux-arm64" bs=4 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')
     [ "$magic" = "7f454c46" ] || fail "mihomo-linux-arm64 is not an ELF binary"
   else

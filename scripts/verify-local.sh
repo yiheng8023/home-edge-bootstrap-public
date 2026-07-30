@@ -73,6 +73,10 @@ echo 'python3_runtime_state=ready'
 for fixture in \
   test-host-ssh-fixtures.sh \
   test-self-heal-fixtures.sh \
+  test-shellcrash-dns-fixtures.sh \
+  test-shellcrash-data-fixtures.sh \
+  test-shellcrash-boot-fixtures.sh \
+  test-shellcrash-service-rules-fixtures.sh \
   test-enable-live-self-heal-fixtures.sh \
   test-merlin-adapter-fixtures.sh \
   test-bundle-fixtures.sh \
@@ -96,6 +100,12 @@ do
   [ -f "$repo/scripts/$fixture" ] || { echo "missing required POSIX fixture: $fixture" >&2; exit 1; }
   sh "$repo/scripts/$fixture"
 done
+
+echo
+echo "## Self-Heal Strict Read-Only Fixture"
+sh "$repo/scripts/test-self-heal-fixtures.sh" --verify-readonly-only
+
+"$py" "$repo/scripts/test-release-body-fixtures.py" --repo-root "$repo" --surface public
 
 sh "$repo/scripts/verify-compatibility-matrix.sh"
 sh "$repo/scripts/scan-secrets.sh" "$repo"

@@ -64,6 +64,7 @@ git add bundle/MANIFEST.json bundle/SHA256SUMS
 - 如果载荷缺失，适配器只能退化为“配置已有 ShellCrash”，不能声称已支持完整离线全新安装。
 - 在代理链路验证通过前，不得要求 GitHub 或其他互联网下载源必须可达。
 - 运行时安装是显式动作：设置 `BOOTSTRAP_INSTALL_RUNTIME=1`。已有 ShellCrash 目录不会被替换，除非同时设置 `BOOTSTRAP_REPLACE_RUNTIME=1`。
+- 宿主机部署器会通过受保护的 `/tmp` 暂存目录传输已显式启用的运行时载荷，并在安装后删除。除非另行指定 `IncludeBundle`/`INCLUDE_BUNDLE=1`，不会把体积较大的原始运行时 bundle 持久写入 JFFS。
 
 ## 当前状态
 

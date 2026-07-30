@@ -19,14 +19,14 @@ emit() {
 }
 value() { awk -F= -v key="$1" '$1 == key { print substr($0, index($0, "=") + 1); exit }' "$metadata" 2>/dev/null; }
 hash_file() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" 2>/dev/null | awk '{print $1}'
-  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  if which sha256sum >/dev/null 2>&1; then sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  elif which shasum >/dev/null 2>&1; then shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
   else return 127
   fi
 }
 hash_stream() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum 2>/dev/null | awk '{print $1}'
-  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 2>/dev/null | awk '{print $1}'
+  if which sha256sum >/dev/null 2>&1; then sha256sum 2>/dev/null | awk '{print $1}'
+  elif which shasum >/dev/null 2>&1; then shasum -a 256 2>/dev/null | awk '{print $1}'
   else return 127
   fi
 }
@@ -78,7 +78,11 @@ for mapping in \
   'scripts/update-sub.sh|home-edge-update-sub.sh' \
   'scripts/subscription-runtime-evidence.sh|home-edge-subscription-runtime-evidence.sh' \
   'scripts/verify-bundle.sh|home-edge-verify-bundle.sh' \
-  'scripts/reconcile-self-heal-registration.sh|home-edge-reconcile-self-heal.sh'
+  'scripts/reconcile-self-heal-registration.sh|home-edge-reconcile-self-heal.sh' \
+  'scripts/home-edge-secure-temp.sh|home-edge-secure-temp.sh' \
+  'scripts/configure-shellcrash-dns.sh|home-edge-configure-dns.sh' \
+  'scripts/prefetch-shellcrash-data.sh|home-edge-prefetch-shellcrash-data.sh' \
+  'scripts/start-shellcrash-at-boot.sh|home-edge-start-shellcrash.sh'
 do
   source_path=${mapping%%|*}
   active_name=${mapping#*|}

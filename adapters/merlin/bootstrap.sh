@@ -14,6 +14,7 @@ shellcrash_dir="${BOOTSTRAP_SHELLCRASH_DIR:-/jffs/ShellCrash}"
 state_fixture_root="${BOOTSTRAP_STATE_FIXTURE_ROOT:-}"
 state_dir="${BOOTSTRAP_STATE_ROOT:-$jffs_dir/home-edge-bootstrap-state}"
 runtime_install="${BOOTSTRAP_INSTALL_RUNTIME:-0}"
+runtime_follows="${BOOTSTRAP_RUNTIME_FOLLOWS:-0}"
 replace_runtime="${BOOTSTRAP_REPLACE_RUNTIME:-0}"
 replace_core="${BOOTSTRAP_REPLACE_CORE:-0}"
 host_bundle_verified="${BOOTSTRAP_BUNDLE_HOST_VERIFIED:-0}"
@@ -26,14 +27,25 @@ runtime_evidence_src="$kit_root/scripts/subscription-runtime-evidence.sh"
 verify_bundle_src="$kit_root/scripts/verify-bundle.sh"
 reconcile_src="$kit_root/scripts/reconcile-self-heal-registration.sh"
 migration_src="$kit_root/scripts/migrate-router-state.sh"
+secure_temp_src="$kit_root/scripts/home-edge-secure-temp.sh"
+dns_config_src="$kit_root/scripts/configure-shellcrash-dns.sh"
+data_prefetch_src="$kit_root/scripts/prefetch-shellcrash-data.sh"
+shellcrash_boot_src="$kit_root/scripts/start-shellcrash-at-boot.sh"
+service_rules_src="$kit_root/scripts/configure-shellcrash-service-rules.sh"
 self_heal_dst="$router_script_dir/home-edge-self-heal.sh"
 update_sub_dst="$router_script_dir/home-edge-update-sub.sh"
 runtime_evidence_dst="$router_script_dir/home-edge-subscription-runtime-evidence.sh"
 verify_bundle_dst="$router_script_dir/home-edge-verify-bundle.sh"
 reconcile_dst="$router_script_dir/home-edge-reconcile-self-heal.sh"
 wrapper_dst="$router_script_dir/home-edge-self-heal-cron.sh"
-bundle_dir="$kit_root/bundle"
+secure_temp_dst="$router_script_dir/home-edge-secure-temp.sh"
+dns_config_dst="$router_script_dir/home-edge-configure-dns.sh"
+data_prefetch_dst="$router_script_dir/home-edge-prefetch-shellcrash-data.sh"
+shellcrash_boot_dst="$router_script_dir/home-edge-start-shellcrash.sh"
+service_rules_dst="$router_script_dir/home-edge-configure-service-rules.sh"
+bundle_dir="${BOOTSTRAP_BUNDLE_DIR:-$kit_root/bundle}"
 runtime_backup_dir="$state_dir/backups/runtime"
+protected_core_path="$state_dir/runtime/mihomo-linux-arm64.gz"
 runtime_tmp="${BOOTSTRAP_RUNTIME_TMP_DIR:-/tmp/home-edge-shellcrash.$$}"
 runtime_max_backups="${BOOTSTRAP_RUNTIME_MAX_BACKUPS:-3}"
 
@@ -106,6 +118,7 @@ validate_bool() {
 }
 validate_bool BOOTSTRAP_APPLY "$apply"
 validate_bool BOOTSTRAP_INSTALL_RUNTIME "$runtime_install"
+validate_bool BOOTSTRAP_RUNTIME_FOLLOWS "$runtime_follows"
 validate_bool BOOTSTRAP_REPLACE_RUNTIME "$replace_runtime"
 validate_bool BOOTSTRAP_REPLACE_CORE "$replace_core"
 validate_bool BOOTSTRAP_BUNDLE_HOST_VERIFIED "$host_bundle_verified"
@@ -166,6 +179,9 @@ fi
 
 case "$runtime_tmp" in /tmp/?*) ;; *) die "runtime temp directory must be a concrete path under /tmp: $runtime_tmp" ;; esac
 case "$runtime_tmp" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "runtime temp directory contains unsupported characters: $runtime_tmp" ;; esac
+case "$bundle_dir" in /*) ;; *) die "bundle directory must be absolute: $bundle_dir" ;; esac
+case "$bundle_dir" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "bundle directory contains unsupported characters: $bundle_dir" ;; esac
+[ ! -L "$bundle_dir" ] || die "bundle directory must not be a symbolic link: $bundle_dir"
 
 run() {
   if [ "$apply" = "1" ]; then
@@ -185,6 +201,11 @@ run() {
 [ -r "$verify_bundle_src" ] || die "missing $verify_bundle_src"
 [ -r "$reconcile_src" ] || die "missing $reconcile_src"
 [ -r "$migration_src" ] || die "missing $migration_src"
+[ -r "$secure_temp_src" ] || die "missing $secure_temp_src"
+[ -r "$dns_config_src" ] || die "missing $dns_config_src"
+[ -r "$data_prefetch_src" ] || die "missing $data_prefetch_src"
+[ -r "$shellcrash_boot_src" ] || die "missing $shellcrash_boot_src"
+[ -r "$service_rules_src" ] || die "missing $service_rules_src"
 
 which curl >/dev/null 2>&1 || log "WARN curl not found; ShellClash usually provides it"
 which jq >/dev/null 2>&1 || log "WARN jq not found; self-heal requires it"
@@ -212,7 +233,14 @@ log "install_dir=$install_dir"
 log "script_dir=$router_script_dir"
 log "shellcrash_dir=$shellcrash_dir"
 log "state_dir=$state_dir"
+log "bundle_dir=$bundle_dir"
+log "secure_temp_helper=$secure_temp_dst"
+log "dns_config_helper=$dns_config_dst"
+log "data_prefetch_helper=$data_prefetch_dst"
+log "shellcrash_boot_helper=$shellcrash_boot_dst"
+log "service_rules_helper=$service_rules_dst"
 log "runtime_install=$runtime_install"
+log "runtime_follows=$runtime_follows"
 log "replace_runtime=$replace_runtime"
 log "replace_core=$replace_core"
 
@@ -238,8 +266,13 @@ run cp "$update_sub_src" "$update_sub_dst"
 run cp "$runtime_evidence_src" "$runtime_evidence_dst"
 run cp "$verify_bundle_src" "$verify_bundle_dst"
 run cp "$reconcile_src" "$reconcile_dst"
+run cp "$secure_temp_src" "$secure_temp_dst"
+run cp "$dns_config_src" "$dns_config_dst"
+run cp "$data_prefetch_src" "$data_prefetch_dst"
+run cp "$shellcrash_boot_src" "$shellcrash_boot_dst"
+run cp "$service_rules_src" "$service_rules_dst"
 run chmod 600 "$policy_dst"
-run chmod 755 "$self_heal_dst" "$update_sub_dst" "$runtime_evidence_dst" "$verify_bundle_dst" "$reconcile_dst"
+run chmod 755 "$self_heal_dst" "$update_sub_dst" "$runtime_evidence_dst" "$verify_bundle_dst" "$reconcile_dst" "$secure_temp_dst" "$dns_config_dst" "$data_prefetch_dst" "$shellcrash_boot_dst" "$service_rules_dst"
 
 
 set_shellcrash_config() {
@@ -259,6 +292,144 @@ set_shellcrash_config() {
   fi
   mv "$cfg_tmp" "$cfg" || { rm -f "$cfg_tmp"; die "cannot commit ShellCrash config: $key"; }
 }
+
+normalize_shellcrash_hostdir() {
+  cfg="$shellcrash_dir/configs/ShellCrash.cfg"
+  [ -f "$cfg" ] || return 0
+  raw=$(sed -n 's/^hostdir=//p' "$cfg" | tail -n 1)
+  [ -n "$raw" ] || return 0
+  normalized=$raw
+  quote_pass=0
+  while [ "$quote_pass" -lt 4 ] && [ ${#normalized} -ge 2 ]; do
+    first=$(printf '%s' "$normalized" | cut -c 1)
+    last=$(printf '%s' "$normalized" | sed 's/.*\(.\)$/\1/')
+    case "$first:$last" in
+      "':'"|"\":\"") normalized=${normalized#?}; normalized=${normalized%?} ;;
+      *) break ;;
+    esac
+    quote_pass=$((quote_pass + 1))
+  done
+  [ "$normalized" != "$raw" ] || return 0
+  case "$normalized" in
+    ""|*[!A-Za-z0-9_./:-]*)
+      log "WARN quoted ShellCrash hostdir contains unsupported characters; left unchanged"
+      return 0
+      ;;
+  esac
+  set_shellcrash_config hostdir "$normalized"
+  log "normalized quoted ShellCrash hostdir"
+}
+
+normalize_shellcrash_startup_tasks() {
+  [ "$apply" = "1" ] || return 0
+  task_dir="$shellcrash_dir/task"
+  [ -d "$task_dir" ] || return 0
+  backup_dir="$state_dir/backups/shellcrash-tasks"
+  task_ts=""
+
+  for phase in bfstart afstart; do
+    task_file="$task_dir/$phase"
+    [ -e "$task_file" ] || continue
+    [ -f "$task_file" ] && [ ! -L "$task_file" ] || die "unsafe ShellCrash startup task surface: $task_file"
+    if ! grep -Eq '/task\.sh[[:space:]]+(101|111|112|113)([[:space:]]|$)' "$task_file"; then
+      continue
+    fi
+
+    [ -n "$task_ts" ] || task_ts=$(date +%Y%m%d%H%M%S)
+    mkdir -p "$backup_dir"
+    task_backup="$backup_dir/${phase}.${task_ts}.$$.tasks"
+    cp -p "$task_file" "$task_backup" || die "cannot back up unsafe ShellCrash $phase tasks"
+    chmod 600 "$task_backup" || die "cannot secure ShellCrash task backup"
+    task_tmp="${task_file}.tmp.$$"
+    awk '!/\/task\.sh[[:space:]]+(101|111|112|113)([[:space:]]|$)/' "$task_file" >"$task_tmp" ||
+      { rm -f "$task_tmp"; die "cannot stage ShellCrash $phase task normalization"; }
+    task_mode=$(stat -c '%a' "$task_file" 2>/dev/null || stat -f '%Lp' "$task_file" 2>/dev/null || echo 600)
+    chmod "$task_mode" "$task_tmp" 2>/dev/null || chmod 600 "$task_tmp" ||
+      { rm -f "$task_tmp"; die "cannot preserve ShellCrash $phase task mode"; }
+    mv "$task_tmp" "$task_file" || { rm -f "$task_tmp"; die "cannot normalize ShellCrash $phase tasks"; }
+    log "removed recursive or startup-update ShellCrash tasks from $phase; backup=$task_backup"
+  done
+}
+
+normalize_shellcrash_command_env() {
+  cfg="$shellcrash_dir/configs/command.env"
+  [ -f "$cfg" ] || return 0
+  cfg_tmp="${cfg}.tmp.$$"
+
+  tmpdir_count=$(awk -F= '$1 == "TMPDIR" { count++ } END { print count + 0 }' "$cfg")
+  bindir_count=$(awk -F= '$1 == "BINDIR" { count++ } END { print count + 0 }' "$cfg")
+  command_count=$(awk -F= '$1 == "COMMAND" { count++ } END { print count + 0 }' "$cfg")
+  [ "$tmpdir_count" -eq 1 ] || die "ShellCrash command.env must contain exactly one TMPDIR assignment"
+  [ "$bindir_count" -eq 1 ] || die "ShellCrash command.env must contain exactly one BINDIR assignment"
+  [ "$command_count" -eq 1 ] || die "ShellCrash command.env must contain exactly one COMMAND assignment"
+
+  invalid_line_count=$(awk '
+    /^[[:space:]]*$/ || /^[[:space:]]*#/ { next }
+    /^(TMPDIR|BINDIR|COMMAND)=/ { next }
+    { invalid++ }
+    END { print invalid + 0 }
+  ' "$cfg")
+  [ "$invalid_line_count" -eq 0 ] ||
+    die "ShellCrash command.env contains unsupported statements"
+
+  tmpdir_value=$(awk -F= '$1 == "TMPDIR" { print substr($0, index($0, "=") + 1); exit }' "$cfg")
+  bindir_value=$(awk -F= '$1 == "BINDIR" { print substr($0, index($0, "=") + 1); exit }' "$cfg")
+  command_value=$(awk -F= '$1 == "COMMAND" { print substr($0, index($0, "=") + 1); exit }' "$cfg")
+  case "$tmpdir_value" in
+    /*) ;;
+    *) die "ShellCrash command.env TMPDIR must be an unquoted absolute path" ;;
+  esac
+  case "$tmpdir_value" in
+    *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.|*//*)
+      die "ShellCrash command.env TMPDIR is unsafe"
+      ;;
+  esac
+  case "$bindir_value" in
+    /*) ;;
+    *) die "ShellCrash command.env BINDIR must be an unquoted absolute path" ;;
+  esac
+  case "$bindir_value" in
+    *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.|*//*)
+      die "ShellCrash command.env BINDIR is unsafe"
+      ;;
+  esac
+  case "$command_value" in
+    '"$TMPDIR/CrashCore -d $BINDIR -f $TMPDIR/config.yaml"' | \
+    '"$TMPDIR/CrashCore run -D $BINDIR -C $TMPDIR/jsons"') ;;
+    *) die "ShellCrash command.env COMMAND is unsupported" ;;
+  esac
+
+  tmpdir_line=$(awk -F= '$1 == "TMPDIR" { print NR; exit }' "$cfg")
+  bindir_line=$(awk -F= '$1 == "BINDIR" { print NR; exit }' "$cfg")
+  command_line=$(awk -F= '$1 == "COMMAND" { print NR; exit }' "$cfg")
+  if [ "$command_line" -gt "$tmpdir_line" ] && [ "$command_line" -gt "$bindir_line" ]; then
+    return 0
+  fi
+
+  if ! awk '
+    /^COMMAND=/ { command = $0; next }
+    { print }
+    END {
+      if (command != "") {
+        print command
+      }
+    }
+  ' "$cfg" >"$cfg_tmp"; then
+    rm -f "$cfg_tmp"
+    die "cannot stage ShellCrash command.env ordering repair"
+  fi
+
+  chmod 600 "$cfg_tmp" || {
+    rm -f "$cfg_tmp"
+    die "cannot secure ShellCrash command.env ordering repair"
+  }
+  mv "$cfg_tmp" "$cfg" || {
+    rm -f "$cfg_tmp"
+    die "cannot commit ShellCrash command.env ordering repair"
+  }
+  log "normalized ShellCrash command.env dependency order"
+}
+
 prune_runtime_backups() {
   case "$runtime_max_backups" in ""|*[!0-9]*|0) runtime_max_backups=3 ;; esac
   case "$runtime_backup_dir" in */backups/runtime) ;; *) die "invalid runtime backup directory: $runtime_backup_dir" ;; esac
@@ -320,8 +491,27 @@ install_offline_runtime() {
   core_path="$shellcrash_dir/CrashCore.gz"
   if [ "$runtime_existed" = "1" ] && [ "$replace_runtime" != "1" ] && [ -s "$core_path" ] && [ "$replace_core" != "1" ]; then
     log "existing Mihomo core preserved (set BOOTSTRAP_REPLACE_CORE=1 to replace it explicitly)"
+    mkdir -p "$(dirname "$protected_core_path")"
+    if [ ! -e "$protected_core_path" ]; then
+      if mv "$core_path" "$protected_core_path" && ln "$protected_core_path" "$core_path"; then
+        chmod 600 "$protected_core_path" "$core_path" || die "cannot secure protected existing Mihomo core"
+        log "existing Mihomo core moved behind a protected hard-link source"
+      else
+        [ -e "$core_path" ] || mv "$protected_core_path" "$core_path" 2>/dev/null || true
+        die "cannot protect existing Mihomo core without changing its bytes"
+      fi
+    elif cmp -s "$core_path" "$protected_core_path"; then
+      rm -f "$core_path" || die "cannot replace duplicate existing Mihomo core with protected link"
+      ln "$protected_core_path" "$core_path" ||
+        { cp -p "$protected_core_path" "$core_path" || die "cannot restore existing Mihomo core from protected source"; }
+      chmod 600 "$core_path" || die "cannot secure restored existing Mihomo core"
+      log "existing Mihomo core linked to its protected source"
+    else
+      log "WARN protected Mihomo core differs from preserved ShellCrash core; leaving both unchanged"
+    fi
   else
-    core_tmp="${core_path}.tmp.$$"
+    mkdir -p "$(dirname "$protected_core_path")"
+    core_tmp="${protected_core_path}.tmp.$$"
     ts=$(date +%Y%m%d%H%M%S)
     if [ -s "$core_path" ]; then
       cp -p "$core_path" "$runtime_backup_dir/CrashCore.$ts.$$.gz" || die "existing CrashCore backup failed"
@@ -331,7 +521,11 @@ install_offline_runtime() {
       die "staging Mihomo CrashCore.gz failed"
     fi
     chmod 600 "$core_tmp" || { rm -f "$core_tmp"; die "securing Mihomo CrashCore.gz failed"; }
-    mv "$core_tmp" "$core_path" || { rm -f "$core_tmp"; die "activating Mihomo CrashCore.gz failed"; }
+    mv "$core_tmp" "$protected_core_path" || { rm -f "$core_tmp"; die "activating protected Mihomo core failed"; }
+    rm -f "$core_path" || die "cannot replace ShellCrash Mihomo core link"
+    ln "$protected_core_path" "$core_path" ||
+      { cp -p "$protected_core_path" "$core_path" || die "cannot activate Mihomo core from protected source"; }
+    chmod 600 "$protected_core_path" "$core_path" || die "cannot secure activated Mihomo core"
 
     set_shellcrash_config crashcore meta
     set_shellcrash_config custcorelink ""
@@ -353,11 +547,25 @@ else
 fi
 
 if [ "$apply" = "1" ]; then
+  normalize_shellcrash_hostdir
+  normalize_shellcrash_command_env
+  normalize_shellcrash_startup_tasks
 cat > "$wrapper_dst" <<EOF
 #!/bin/sh
 for f in "$policy_dst" "$router_script_dir/home-edge-policy.local"; do
   [ -r "\$f" ] && . "\$f"
 done
+controller_secret_file="$state_dir/CONTROLLER_SECRET.local"
+if [ -z "\${CLASH_SECRET:-}" ] && [ -r "\$controller_secret_file" ] && [ ! -L "\$controller_secret_file" ]; then
+  CLASH_SECRET_FILE="\${CLASH_SECRET_FILE:-\$controller_secret_file}"
+  export CLASH_SECRET_FILE
+fi
+self_heal_subscription="$state_dir/SUBSCRIPTION.local"
+self_heal_yaml="$shellcrash_dir/yamls/config.yaml"
+self_heal_json="$shellcrash_dir/jsons/config.json"
+if [ ! -s "\$self_heal_subscription" ] && [ ! -s "\$self_heal_yaml" ] && [ ! -s "\$self_heal_json" ]; then
+  exit 0
+fi
 self_heal="$self_heal_dst"
 HEAL_DRY_RUN="\${HEAL_CRON_DRY_RUN:-1}" exec sh "\$self_heal"
 EOF
@@ -378,8 +586,8 @@ fi
 if [ "$apply" = "1" ]; then
   log "running DRY-RUN self-heal verification"
   if ! HEAL_DRY_RUN=1 sh "$self_heal_dst"; then
-    if [ "$runtime_install" = "1" ]; then
-      log "WARN self-heal dry-run failed after offline runtime install; import/start a subscription, then rerun status checks"
+    if [ "$runtime_install" = "1" ] || [ "$runtime_follows" = "1" ]; then
+      log "WARN self-heal dry-run failed while runtime or subscription state is not yet active; finish the staged install/import, then rerun status checks"
     else
       die "self-heal dry-run failed; see /tmp/self-heal.log"
     fi

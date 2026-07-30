@@ -39,9 +39,23 @@ if ($ApplyPath) { $Mode += "SUBSCRIPTION_APPLY_PATH=$(Quote-Sh $ApplyPath)" }
 if ($ReloadCommand) { $Mode += "SUBSCRIPTION_RELOAD_CMD=$(Quote-Sh $ReloadCommand)" }
 if ($AllowRemoteConverter) { $Mode += "SUBSCRIPTION_ALLOW_REMOTE_CONVERTER=1" }
 
-$RemoteScript = "set -e" + [Environment]::NewLine + "$($Mode -join ' ') sh /jffs/scripts/home-edge-update-sub.sh" + [Environment]::NewLine + "tail -n 8 /tmp/update-sub.log 2>/dev/null || true" + [Environment]::NewLine
+$RemoteScript = "set -e`n$($Mode -join ' ') sh /jffs/scripts/home-edge-update-sub.sh`ntail -n 8 /tmp/update-sub.log 2>/dev/null || true`n"
 $Payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($RemoteScript))
-$Payload | ssh @SshArgs "base64 -d | sh -s"
+$Remote = @'
+set -eu
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "refresh-subscription: base64 or openssl is required to decode the payload" >&2
+    return 1
+  fi
+}
+decode_payload | tr -d '\r' | sh -s
+'@
+$Payload | ssh @SshArgs $Remote
 if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }

@@ -55,7 +55,17 @@ handle_signal() { cleanup; trap - EXIT; exit 130; }
 trap cleanup EXIT
 trap handle_signal HUP INT TERM
 mkdir -m 700 "$work"
-base64 -d | tar -xzf - -C "$work"
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "decommission-merlin: base64 or openssl is required to decode the payload" >&2
+    return 1
+  fi
+}
+decode_payload | tar -xzf - -C "$work"
 [ -f "$work/migrate-router-state.sh" ] && [ ! -L "$work/migrate-router-state.sh" ]
 [ -f "$work/decommission-router-state.sh" ] && [ ! -L "$work/decommission-router-state.sh" ]
 HOME_EDGE_STATE_MIGRATOR="$work/migrate-router-state.sh" \

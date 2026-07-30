@@ -15,12 +15,21 @@ now=${HOME_EDGE_NOW_EPOCH:-$(date +%s)}
 die() { echo "subscription-runtime-evidence: ERROR: $*" >&2; exit 1; }
 value_from() { sed -n "s/^$1=//p" "$evidence" 2>/dev/null | head -n 1; }
 file_sha256() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
-  elif command -v openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | awk '{print $NF}'
+  if which sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  elif which openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" | awk '{print $NF}'
   else return 1
   fi
 }
 validate_number() { case "$2" in ""|*[!0-9]*) die "$1 must be a non-negative integer" ;; esac; }
+
+secure_temp_helper=${HOME_EDGE_SECURE_TEMP_HELPER:-}
+if [ -z "$secure_temp_helper" ]; then
+  source_dir=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || die "cannot resolve helper directory"
+  secure_temp_helper="$source_dir/home-edge-secure-temp.sh"
+  [ -r "$secure_temp_helper" ] || secure_temp_helper=/jffs/scripts/home-edge-secure-temp.sh
+fi
+[ -r "$secure_temp_helper" ] || die "project secure temporary-path helper is unavailable"
+. "$secure_temp_helper"
 
 evidence_path_is_safe() {
   case "$evidence" in /tmp/home-edge-*|/jffs/home-edge-bootstrap/?*) ;; *) return 1 ;; esac
@@ -78,7 +87,7 @@ case "$action" in
     digest=$(file_sha256 "$cache") || die "cache digest is unavailable"
     parent=$(dirname "$evidence")
     mkdir -p "$parent" || die "cannot prepare evidence directory"
-    tmp=$(mktemp "${evidence}.tmp.XXXXXX") || die "cannot stage evidence"
+    tmp=$(home_edge_secure_temp "${evidence}.tmp.XXXXXX") || die "cannot stage evidence"
     {
       echo "runtime_subscription_evidence_state=reload_succeeded"
       echo "runtime_subscription_apply_path=$apply_path"
@@ -93,7 +102,7 @@ case "$action" in
   classify)
     state=profile_file_matches_cache
     [ -s "$cache" ] && [ -s "$apply_path" ] && [ "$cache" != "$apply_path" ] || { echo "subscription_consumption_state=$state"; exit 0; }
-    command -v cmp >/dev/null 2>&1 && cmp -s "$cache" "$apply_path" || { echo "subscription_consumption_state=live_profile_differs_from_cache"; exit 0; }
+    which cmp >/dev/null 2>&1 && cmp -s "$cache" "$apply_path" || { echo "subscription_consumption_state=live_profile_differs_from_cache"; exit 0; }
     evidence_path_is_safe && [ -f "$evidence" ] || { echo "subscription_consumption_state=$state"; echo "subscription_runtime_evidence_state=missing_or_unsafe"; exit 0; }
     validate_number HOME_EDGE_EVIDENCE_MAX_AGE_SEC "$max_age"
     validate_number HOME_EDGE_NOW_EPOCH "$now"

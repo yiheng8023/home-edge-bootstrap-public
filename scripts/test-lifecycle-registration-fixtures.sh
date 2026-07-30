@@ -70,11 +70,15 @@ cat >"$root/jffs/scripts/home-edge-self-heal-cron.sh" <<'EOF'
 #!/bin/sh
 exit 0
 EOF
+cat >"$root/jffs/scripts/home-edge-start-shellcrash.sh" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
 cat >"$root/jffs/scripts/services-start" <<'EOF'
 #!/bin/sh
 echo preserved-user-start
 EOF
-chmod 755 "$root/jffs/scripts/home-edge-self-heal-cron.sh" "$root/jffs/scripts/services-start"
+chmod 755 "$root/jffs/scripts/home-edge-self-heal-cron.sh" "$root/jffs/scripts/home-edge-start-shellcrash.sh" "$root/jffs/scripts/services-start"
 cp "$sut" "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
 chmod 755 "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
 
@@ -86,10 +90,13 @@ run_reconciler() {
 output=$(run_reconciler --install)
 printf '%s\n' "$output" | grep -q '^self_heal_registration_state=ready$' || fail "install did not report ready registration"
 printf '%s\n' "$output" | grep -q '^self_heal_boot_hook_state=ready$' || fail "install did not report ready boot hook"
+printf '%s\n' "$output" | grep -q '^shellcrash_boot_hook_state=ready$' || fail "install did not report ready ShellCrash boot hook"
 printf '%s\n' "$output" | grep -q '^self_heal_policy_mode=dry_run$' || fail "install did not preserve dry-run policy"
 grep -q '^echo preserved-user-start$' "$root/jffs/scripts/services-start" || fail "existing services-start content was not preserved"
 [ "$(grep -c '^# BEGIN home-edge-bootstrap self-heal lifecycle$' "$root/jffs/scripts/services-start")" -eq 1 ] || fail "managed hook begin marker count is not one"
 [ "$(grep -c '^# END home-edge-bootstrap self-heal lifecycle$' "$root/jffs/scripts/services-start")" -eq 1 ] || fail "managed hook end marker count is not one"
+grep -Fq '/jffs/scripts/home-edge-start-shellcrash.sh' "$root/jffs/scripts/services-start" ||
+  fail "managed hook did not include ShellCrash boot recovery"
 [ "$(grep -c '#home_edge_selfheal#' "$state")" -eq 1 ] || fail "initial reconciliation did not create exactly one cron job"
 
 lock_dir="$tmp/global-write.lock"

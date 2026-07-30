@@ -31,6 +31,15 @@
 摘要。`SBOM.spdx.json` 是发布专用 SBOM，与 `config/sbom.json` 中的源码 checkout
 SBOM 分离。
 
+发布者应保留契约文件名，并采用 `docs/zh-CN/RELEASE_NOTES.md` 中的精确人类可读资源标签。
+发布前，每个上传资源的标签都必须非空。
+
+普通用户不需要下载全部九个文件，最小下载组合是一个归档加 `SHA256SUMS`。只有在运行时
+已存在、仅需脚本或文档时，才选择相应格式的源码包。manifest、SBOM 与独立完整源码归档
+用于审计和保障源码可获得性，不是额外安装部件。GitHub 自动生成的 **Source code** 归档
+不属于上述精确发布表面，也不能替代契约内归档。`docs/zh-CN/RELEASE_NOTES.md` 中的版本
+专用已知限制优先于资源的一般预期角色。
+
 ## 源码包与离线包分离
 
 源码归档只包含由 `config/public-release-files.txt` 选择的已提交路径，以及 `VERSION`、
@@ -79,6 +88,28 @@ sh scripts/verify-public-release.sh --repo . --version v0.1.0 --dist /path/to/di
 
 稳定成功标记为 `public_release_state=ready`。构建失败不会留下部分输出。构建和验证都不会
 创建 Git 标签、发布 GitHub Release、改变仓库可见性或接触路由器。
+
+创建或编辑 GitHub Release 前，应针对目标仓库和版本，使用
+`scripts/render-release-body.py` 渲染 `docs/RELEASE_NOTES.md`。该步骤会把仓库链接转换为
+固定到 tag 的 URL；若直接把文档文件作为 Release 正文，相对链接可能从错误目录解析。
+
+生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
+仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
+已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## 下一版本验收合同
+
+v0.1.1 发布必须同时满足：
+
+- 创建新 tag 和新的版本化资源；不得替换 v0.1.0 资源，也不得把它描述为已修复。
+- 保留九类契约资源，验证 `SHA256SUMS`、发布 manifest、SPDX SBOM、许可证与完整对应源码，
+  并为每个上传资源应用精确的非空标签。
+- 从已审阅 v0.1.1 tag 生成 Release 正文，并验证所有固定到 tag 的链接。
+- 在受支持的真实官方 Asuswrt-Merlin 目标上证明：辅助命令回退、大型运行时载荷在持久
+  JFFS 之外临时暂存、安装中断清理、回滚、重启存续、客户端检查与安装收官均通过。
+- 记录精确源码提交与现场证据；仅有 fixture 与主机 CI 通过不足以满足真实环境验收门。
+
+以上是候选要求，不是 v0.1.1 已就绪或已发布的证据。
 
 ## 敏感出口限制
 

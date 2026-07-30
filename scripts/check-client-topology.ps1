@@ -19,6 +19,51 @@ function Get-RouterHost {
   return $Value
 }
 
+function ConvertTo-PrefixLength {
+  param([string]$Mask)
+  try {
+    $Bytes = [System.Net.IPAddress]::Parse($Mask).GetAddressBytes()
+    if ($Bytes.Count -ne 4) { return -1 }
+    $Bits = ([string]::Join("", @(
+      foreach ($Byte in $Bytes) {
+        [Convert]::ToString($Byte, 2).PadLeft(8, "0")
+      }
+    )))
+    if ($Bits -notmatch "^1*0*$") { return -1 }
+    return ($Bits -replace "0", "").Length
+  }
+  catch {
+    return -1
+  }
+}
+
+function Get-WindowsRouteRows {
+  try {
+    $Lines = if ($env:CLIENT_TOPOLOGY_FIXTURE_ROUTE_PRINT) {
+      $env:CLIENT_TOPOLOGY_FIXTURE_ROUTE_PRINT -split "`r?`n"
+    }
+    else {
+      @(& route.exe print -4 2>$null)
+    }
+    foreach ($Line in $Lines) {
+      if ([string]$Line -match "^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s*$") {
+        $PrefixLength = ConvertTo-PrefixLength $Matches[2]
+        if ($PrefixLength -lt 0) { continue }
+        [pscustomobject]@{
+          DestinationPrefix = "$($Matches[1])/$PrefixLength"
+          NextHop = $Matches[3]
+          InterfaceIndex = $Matches[4]
+          RouteMetric = [int]$Matches[5]
+          InterfaceMetric = 0
+        }
+      }
+    }
+  }
+  catch {
+    return @()
+  }
+}
+
 function Get-DefaultGateway {
   if ($env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY) { return $env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY }
   try {
@@ -27,9 +72,12 @@ function Get-DefaultGateway {
       Select-Object -First 1
     if ($Route) { return [string]$Route.NextHop }
   }
-  catch {
-    return ""
-  }
+  catch {}
+  $FallbackRoute = Get-WindowsRouteRows |
+    Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" } |
+    Sort-Object RouteMetric, InterfaceMetric |
+    Select-Object -First 1
+  if ($FallbackRoute) { return [string]$FallbackRoute.NextHop }
   return ""
 }
 
@@ -40,6 +88,20 @@ function Get-SystemProxyState {
     $env:HTTP_PROXY, $env:HTTPS_PROXY, $env:ALL_PROXY
   ) | Where-Object { $_ }
   if ($EnvProxy.Count -gt 0) { return "env_proxy" }
+
+  try {
+    $UserEnvironment = Get-ItemProperty "HKCU:\Environment" -ErrorAction Stop
+    $UserEnvProxy = @(
+      $UserEnvironment.http_proxy,
+      $UserEnvironment.https_proxy,
+      $UserEnvironment.all_proxy,
+      $UserEnvironment.HTTP_PROXY,
+      $UserEnvironment.HTTPS_PROXY,
+      $UserEnvironment.ALL_PROXY
+    ) | Where-Object { $_ }
+    if ($UserEnvProxy.Count -gt 0) { return "user_env_proxy" }
+  }
+  catch {}
 
   try {
     $Settings = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -ErrorAction Stop
@@ -106,10 +168,22 @@ function Get-BestIPv4Route {
   return $null
 }
 
+function Test-IPv4BenchmarkRange {
+  param([string]$Address)
+  try {
+    $Value = ConvertTo-IPv4UInt32 $Address
+    $Start = ConvertTo-IPv4UInt32 "198.18.0.0"
+    $End = ConvertTo-IPv4UInt32 "198.19.255.255"
+    return ($Value -ge $Start -and $Value -le $End)
+  }
+  catch {
+    return $false
+  }
+}
+
 function Get-LocalTunState {
   param([string]$ProbeAddress)
   if ($env:CLIENT_TOPOLOGY_FIXTURE_TUN_STATE) { return $env:CLIENT_TOPOLOGY_FIXTURE_TUN_STATE }
-  if (-not $ProbeAddress -or $ProbeAddress -notmatch "^\d+\.\d+\.\d+\.\d+$") { return "unknown" }
   try {
     if ($env:CLIENT_TOPOLOGY_FIXTURE_ROUTE_TABLE) {
       $Routes = @(
@@ -127,15 +201,26 @@ function Get-LocalTunState {
       )
     }
     else {
-      $Routes = @(Get-NetRoute -AddressFamily IPv4 -ErrorAction Stop)
+      try {
+        $Routes = @(Get-NetRoute -AddressFamily IPv4 -ErrorAction Stop)
+      }
+      catch {
+        $Routes = @(Get-WindowsRouteRows)
+      }
+      if ($Routes.Count -eq 0) {
+        $Routes = @(Get-WindowsRouteRows)
+      }
     }
     $DefaultRoute = $Routes |
       Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" } |
       Sort-Object RouteMetric, InterfaceMetric |
       Select-Object -First 1
+    if (-not $DefaultRoute) { return "unknown" }
+    if (Test-IPv4BenchmarkRange ([string]$DefaultRoute.NextHop)) { return "present" }
+    if (-not $ProbeAddress -or $ProbeAddress -notmatch "^\d+\.\d+\.\d+\.\d+$") { return "unknown" }
     $EffectiveRoute = Get-BestIPv4Route -Address $ProbeAddress -Routes $Routes
-    if (-not $DefaultRoute -or -not $EffectiveRoute) { return "unknown" }
-    if ([int]$EffectiveRoute.InterfaceIndex -ne [int]$DefaultRoute.InterfaceIndex) { return "present" }
+    if (-not $EffectiveRoute) { return "unknown" }
+    if ([string]$EffectiveRoute.InterfaceIndex -ne [string]$DefaultRoute.InterfaceIndex) { return "present" }
 
     $EffectiveNextHop = [string]$EffectiveRoute.NextHop
     $DefaultNextHop = [string]$DefaultRoute.NextHop
@@ -156,15 +241,39 @@ function Get-LocalTunState {
   }
 }
 
+function ConvertTo-DnsState {
+  param([string]$Address)
+  if (-not $Address) { return "unknown" }
+  if ($Address -match "^(28\.|198\.18\.|198\.19\.)") { return "fake_ip:$Address" }
+  return "ordinary:$Address"
+}
+
 function Get-DnsState {
-  param([string]$HostName)
-  if ($env:CLIENT_TOPOLOGY_FIXTURE_DNS_STATE) { return $env:CLIENT_TOPOLOGY_FIXTURE_DNS_STATE }
+  param(
+    [string]$HostName,
+    [string]$Server = ""
+  )
+  if (-not $Server -and $env:CLIENT_TOPOLOGY_FIXTURE_DNS_STATE) {
+    return $env:CLIENT_TOPOLOGY_FIXTURE_DNS_STATE
+  }
+  if ($Server -and $env:CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE) {
+    return $env:CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE
+  }
+  if ($Server -and -not $HostName) { return "unknown" }
   try {
-    $Address = Resolve-DnsName $HostName -Type A -ErrorAction Stop |
+    $ResolveParams = @{
+      Name = $HostName
+      Type = "A"
+      ErrorAction = "Stop"
+    }
+    if ($Server) {
+      $ResolveParams.Server = $Server
+      $ResolveParams.DnsOnly = $true
+      $ResolveParams.QuickTimeout = $true
+    }
+    $Address = Resolve-DnsName @ResolveParams |
       Select-Object -First 1 -ExpandProperty IPAddress
-    if (-not $Address) { return "unknown" }
-    if ($Address -match "^(28\.|198\.18\.|198\.19\.)") { return "fake_ip:$Address" }
-    return "ordinary:$Address"
+    return ConvertTo-DnsState $Address
   }
   catch {
     return "unknown"
@@ -188,9 +297,31 @@ function Invoke-HttpProbe {
 $ExpectedRouter = Get-RouterHost $Router
 $DefaultGateway = Get-DefaultGateway
 $SystemProxyState = Get-SystemProxyState
-$ClientDnsState = Get-DnsState $DnsSampleHost
+$ClientDnsState = Get-DnsState -HostName $DnsSampleHost
+$RouterDnsState = if ($ExpectedRouter) {
+  Get-DnsState -HostName $DnsSampleHost -Server $ExpectedRouter
+}
+else {
+  "unknown"
+}
+$FakeIpOwner = "not_applicable"
+if ($ClientDnsState -match "^fake_ip:(.+)$") {
+  $ClientFakeAddress = $Matches[1]
+  if ($RouterDnsState -eq "fake_ip:$ClientFakeAddress") {
+    $FakeIpOwner = "router"
+  }
+  elseif ($RouterDnsState -like "ordinary:*") {
+    $FakeIpOwner = "client"
+  }
+  else {
+    $FakeIpOwner = "unknown"
+  }
+}
 $RouteProbeAddress = ""
 if ($ClientDnsState -match "^ordinary:(\d+\.\d+\.\d+\.\d+)$") {
+  $RouteProbeAddress = $Matches[1]
+}
+elseif ($RouterDnsState -match "^ordinary:(\d+\.\d+\.\d+\.\d+)$") {
   $RouteProbeAddress = $Matches[1]
 }
 $LocalTunState = Get-LocalTunState $RouteProbeAddress
@@ -199,12 +330,13 @@ $ClientHttpState = Invoke-HttpProbe $ClientCheckUrl
 $ClientRuntimePresent = "0"
 if ($SystemProxyState -notin @("none", "unknown") -or
   $LocalTunState -eq "present" -or
-  $ClientDnsState -like "fake_ip:*") {
+  $FakeIpOwner -eq "client") {
   $ClientRuntimePresent = "1"
 }
 elseif ($SystemProxyState -eq "unknown" -or
   $LocalTunState -eq "unknown" -or
-  $ClientDnsState -eq "unknown") {
+  $ClientDnsState -eq "unknown" -or
+  $FakeIpOwner -eq "unknown") {
   $ClientRuntimePresent = "unknown"
 }
 
@@ -246,6 +378,8 @@ Write-Kv "gateway_matches_router" $GatewayMatchesRouter
 Write-Kv "system_proxy_state" $SystemProxyState
 Write-Kv "local_tun_state" $LocalTunState
 Write-Kv "client_dns_state" $ClientDnsState
+Write-Kv "router_dns_state" $RouterDnsState
+Write-Kv "fake_ip_owner" $FakeIpOwner
 Write-Kv "client_http_state" $ClientHttpState
 Write-Kv "client_runtime_present" ([string]$ClientRuntimePresent)
 Write-Kv "client_topology_mode" $TopologyMode

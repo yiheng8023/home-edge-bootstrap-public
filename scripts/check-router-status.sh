@@ -121,9 +121,14 @@ else
   echo "self_heal_policy_mode=unknown"
 fi
 echo "--- controller observation ---"
+controller_secret_file=$stable_state_root/CONTROLLER_SECRET.local
+if [ -r "$controller_secret_file" ] && [ ! -L "$controller_secret_file" ]; then
+  CLASH_SECRET_FILE=$controller_secret_file
+  export CLASH_SECRET_FILE
+fi
 runtime_process_state=unknown
 runtime_active_config_path=unknown
-if command -v pidof >/dev/null 2>&1; then
+if which pidof >/dev/null 2>&1; then
   runtime_process_state=not_detected
   for runtime_name in mihomo clash CrashCore sing-box; do
     if runtime_pids=$(pidof "$runtime_name" 2>/dev/null); then
@@ -150,25 +155,65 @@ fi
 echo "runtime_active_config_path=$runtime_active_config_path"
 echo "runtime_process_identity=$runtime_process_identity"
 echo "runtime_process_start_epoch=$runtime_process_start_epoch"
-if [ -x /jffs/scripts/home-edge-self-heal.sh ]; then
-  controller_output=$(HEAL_OBSERVE_ONLY=1 HEAL_LOG_OVERRIDE=/dev/null sh /jffs/scripts/home-edge-self-heal.sh 2>/dev/null || true)
-  printf "%s\n" "$controller_output"
+self_heal_observer=${HOME_EDGE_STATUS_SELF_HEAL_SCRIPT:-/jffs/scripts/home-edge-self-heal.sh}
+case "$self_heal_observer" in /*) ;; *) self_heal_observer=/jffs/scripts/home-edge-self-heal.sh ;; esac
+if [ -x "$self_heal_observer" ] && [ ! -L "$self_heal_observer" ]; then
+  controller_output=$(HEAL_OBSERVE_ONLY=1 HEAL_LOG_OVERRIDE=/dev/null sh "$self_heal_observer" 2>/dev/null)
+  controller_exit=$?
+  controller_state=$(printf "%s\n" "$controller_output" | sed -n "s/^controller_state=//p" | head -n 1)
+  controller_auth_state=$(printf "%s\n" "$controller_output" | sed -n "s/^controller_auth_state=//p" | head -n 1)
   controller_dashboard_config_state=$(printf "%s\n" "$controller_output" | sed -n "s/^dashboard_config_state=//p" | head -n 1)
   controller_observation_state=$(printf "%s\n" "$controller_output" | sed -n "s/^controller_observation_state=//p" | head -n 1)
-  route_output=$(HEAL_VERIFY_ONLY=1 HEAL_LOG_OVERRIDE=/dev/null sh /jffs/scripts/home-edge-self-heal.sh 2>/dev/null || true)
+  [ -n "$controller_state" ] || controller_state=unknown
+  [ -n "$controller_auth_state" ] || controller_auth_state=unknown
+  [ -n "$controller_dashboard_config_state" ] || controller_dashboard_config_state=unknown
+  if [ -z "$controller_observation_state" ]; then
+    if [ "$controller_exit" -eq 0 ]; then
+      controller_observation_state=invalid_response
+    else
+      controller_observation_state=blocked
+    fi
+  fi
+  echo "controller_state=$controller_state"
+  echo "controller_auth_state=$controller_auth_state"
+  echo "dashboard_config_state=$controller_dashboard_config_state"
+  echo "controller_observation_state=$controller_observation_state"
+
+  route_output=$(HEAL_VERIFY_ONLY=1 HEAL_LOG_OVERRIDE=/dev/null sh "$self_heal_observer" 2>/dev/null)
+  route_exit=$?
   route_value() { printf "%s\n" "$route_output" | sed -n "s/^$1=//p" | head -n 1; }
-  echo "route_evidence_probe_id=$(route_value route_probe_id)"
-  echo "route_evidence_identity=$(route_value route_identity)"
-  echo "route_evidence_classification=$(route_value route_classification)"
+  route_probe_id=$(route_value route_probe_id)
+  route_identity=$(route_value route_identity)
+  route_classification=$(route_value route_classification)
+  route_region_constraint=$(route_value route_region_constraint)
   route_verification_state=$(route_value verification_state)
+  [ -n "$route_probe_id" ] || route_probe_id=unknown
+  [ -n "$route_classification" ] || route_classification=unknown
+  [ -n "$route_region_constraint" ] || route_region_constraint=unknown
+  if [ -z "$route_verification_state" ]; then
+    route_verification_state=unavailable
+  elif [ "$route_exit" -ne 0 ] && [ "$route_verification_state" = pass ]; then
+    route_verification_state=invalid_response
+  fi
+  if [ -n "$route_identity" ]; then route_identity_state=present; else route_identity_state=missing; fi
+  echo "route_evidence_probe_id=$route_probe_id"
+  echo "route_evidence_identity_state=$route_identity_state"
+  echo "route_evidence_classification=$route_classification"
+  echo "route_evidence_region_constraint=$route_region_constraint"
   echo "route_evidence_verification_state=$route_verification_state"
 else
   echo "controller_state=unknown"
   echo "controller_auth_state=unknown"
+  echo "dashboard_config_state=unknown"
   echo "controller_observation_state=missing_observer"
+  echo "route_evidence_probe_id=unknown"
+  echo "route_evidence_identity_state=missing"
+  echo "route_evidence_classification=unknown"
+  echo "route_evidence_region_constraint=unknown"
+  echo "route_evidence_verification_state=unavailable"
 fi
 echo "--- files ---"
-  ls -l /jffs/scripts/home-edge-self-heal.sh /jffs/scripts/home-edge-update-sub.sh /jffs/scripts/home-edge-self-heal-cron.sh /jffs/scripts/home-edge-reconcile-self-heal.sh /jffs/scripts/home-edge-policy.env /jffs/scripts/services-start 2>/dev/null || true
+  ls -l /jffs/scripts/home-edge-self-heal.sh /jffs/scripts/home-edge-update-sub.sh /jffs/scripts/home-edge-configure-dns.sh /jffs/scripts/home-edge-prefetch-shellcrash-data.sh /jffs/scripts/home-edge-start-shellcrash.sh /jffs/scripts/home-edge-self-heal-cron.sh /jffs/scripts/home-edge-reconcile-self-heal.sh /jffs/scripts/home-edge-policy.env /jffs/scripts/services-start 2>/dev/null || true
 echo "--- subscription ---"
 sub_file=/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local
 sub_cache=/jffs/home-edge-bootstrap-state/cache/subscription.yaml
@@ -191,7 +236,7 @@ if [ -s "$sub_cache" ] && [ -n "$subscription_apply_path" ]; then
     echo "subscription_consumption_state=live_profile_missing"
   elif [ "$sub_cache" = "$subscription_apply_path" ]; then
     echo "subscription_consumption_state=cache_apply_path_alias"
-  elif command -v cmp >/dev/null 2>&1 && cmp -s "$sub_cache" "$subscription_apply_path" 2>/dev/null; then
+  elif which cmp >/dev/null 2>&1 && cmp -s "$sub_cache" "$subscription_apply_path" 2>/dev/null; then
     consumption_state=profile_file_matches_cache
     if [ -x "$runtime_evidence_helper" ] && [ "$runtime_active_config_path" = "$subscription_apply_path" ] &&
       [ "${controller_observation_state:-}" = ready ] && [ "${route_verification_state:-}" = pass ]; then
@@ -203,7 +248,7 @@ if [ -s "$sub_cache" ] && [ -n "$subscription_apply_path" ]; then
       [ -z "$classified_state" ] || consumption_state=$classified_state
     fi
     echo "subscription_consumption_state=$consumption_state"
-  elif command -v cmp >/dev/null 2>&1; then
+  elif which cmp >/dev/null 2>&1; then
     echo "subscription_consumption_state=live_profile_differs_from_cache"
   else
     echo "subscription_consumption_state=live_profile_comparison_unavailable"

@@ -35,6 +35,17 @@ A release contains exactly these nine files for `v0.1.0`:
 component locks, artifact sizes, and artifact hashes. `SBOM.spdx.json` is release-specific and is
 separate from the source-checkout SBOM in `config/sbom.json`.
 
+Publishers preserve contractual filenames and apply the exact human-readable asset labels in
+`docs/RELEASE_NOTES.md`. Every uploaded asset must have a non-empty label before publication.
+
+Ordinary users do not download all nine files. The minimum download is one archive plus
+`SHA256SUMS`; use the corresponding source archive only when the runtime is already present and only
+scripts or documentation are needed. The manifest, SBOM, and separate complete-source archives are
+audit and source-availability artifacts, not additional installation parts. GitHub's automatic
+**Source code** archives are outside this exact release surface and are not substitutes for the
+contracted archives. Version-specific known limitations in `docs/RELEASE_NOTES.md` override the
+general intended role of an artifact.
+
 ## Source And Offline Separation
 
 The source archives contain only committed paths selected by
@@ -86,6 +97,33 @@ sh scripts/verify-public-release.sh --repo . --version v0.1.0 --dist /path/to/di
 The stable success marker is `public_release_state=ready`. A failed build leaves no partial output.
 Building or verifying does not create a Git tag, publish a GitHub Release, change repository
 visibility, or contact a router.
+
+Before creating or editing a GitHub Release, render `docs/RELEASE_NOTES.md` with
+`scripts/render-release-body.py` for the target repository and version. This converts repository
+links to tag-pinned URLs; using the documentation file directly as the Release body can produce
+links that resolve from the wrong directory.
+
+The renderer's `--source-ref` selects the reviewed commit/tag containing the Release body, while
+`--version` selects the release tag against which repository links are validated. They are normally
+the same new tag. A correction to an existing body must explicitly name a later reviewed
+`--source-ref`; it must not imply that old assets contain later fixes.
+
+## Next Release Acceptance Contract
+
+For v0.1.1, publication is gated on all of the following:
+
+- Create a new tag and new versioned assets; never replace v0.1.0 assets or describe them as fixed.
+- Preserve the nine contractual asset roles, verify `SHA256SUMS`, the release manifest, SPDX SBOM,
+  licenses, and complete corresponding source, and give every uploaded asset its exact non-empty
+  label.
+- Render the Release body from the reviewed v0.1.1 tag and verify every tag-pinned link.
+- On a supported live official Asuswrt-Merlin target, prove helper-command fallbacks, temporary
+  staging of the large runtime payload outside persistent JFFS, safe interrupted-install cleanup,
+  rollback, reboot survival, client checks, and installation closeout.
+- Record the exact source commit and field evidence. Fixture and host CI success alone do not satisfy
+  the live acceptance gate.
+
+These are candidate requirements, not evidence that v0.1.1 is ready or published.
 
 ## Sensitive Egress Limitation
 

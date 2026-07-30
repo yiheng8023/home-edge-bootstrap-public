@@ -12,6 +12,10 @@ fail() {
   exit 1
 }
 
+if grep -q 'command -v' "$repo/scripts/verify-bundle.sh"; then
+  fail "router-side bundle verifier must not depend on command -v"
+fi
+
 hash_file() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | awk '{print $1}'
@@ -47,6 +51,20 @@ sh "$repo/scripts/verify-bundle.sh" "$safe" >"$tmp/safe.out" 2>"$tmp/safe.err" |
   fail "safe fixture bundle was rejected"
 }
 grep -q 'verify-bundle: OK' "$tmp/safe.out" || fail "safe bundle did not report OK"
+
+fallback_bin="$tmp/fallback-bin"
+mkdir -p "$fallback_bin"
+cat >"$fallback_bin/mktemp" <<'EOF'
+#!/bin/sh
+exit 127
+EOF
+chmod 755 "$fallback_bin/mktemp"
+if ! PATH="$fallback_bin:$PATH" sh "$repo/scripts/verify-bundle.sh" "$safe" \
+  >"$tmp/safe-no-mktemp.out" 2>"$tmp/safe-no-mktemp.err"; then
+  cat "$tmp/safe-no-mktemp.err" >&2
+  fail "safe bundle was rejected when mktemp was unavailable"
+fi
+grep -q 'verify-bundle: OK' "$tmp/safe-no-mktemp.out" || fail "mktemp fallback did not report OK"
 
 bad_hash="$tmp/bad-hash"
 mkdir -p "$bad_hash"

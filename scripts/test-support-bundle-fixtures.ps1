@@ -16,7 +16,7 @@ Set-Content -LiteralPath $FakeSsh -Encoding ASCII -Value @(
   "echo stable_subscription_state=present",
   "echo stable_policy_state=present",
   "echo compatibility_bridge_state=present",
-  "echo subscription_url=dummy_subscription_credential",
+  "echo subscription_url=REDACTED-fixture-subscription",
   "exit /b 0"
 )
 
@@ -59,7 +59,7 @@ try {
       throw "support report omitted safe lifecycle state: $Expected; actual=$($Lifecycle -join '|'); router_status=$RouterStatus"
     }
   }
-  if ((Get-ChildItem -LiteralPath $BundleDir -Recurse -File | Get-Content -Raw) -match "dummy_subscription_credential") {
+  if ((Get-ChildItem -LiteralPath $BundleDir -Recurse -File | Get-Content -Raw) -match "REDACTED-fixture-subscription") {
     throw "support report leaked subscription content"
   }
   $Archive = ($Output -split "`r?`n" | Where-Object { $_ -like "support_bundle_archive=*" } | Select-Object -First 1) -replace "^support_bundle_archive=", ""

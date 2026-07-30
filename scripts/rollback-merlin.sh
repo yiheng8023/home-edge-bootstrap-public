@@ -44,7 +44,20 @@ rollback_script="$script_dir/rollback-router-state.sh"
 
 mkdir -p "$(dirname "$known_hosts_file")"
 ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
-remote="base64 -d | ROLLBACK_INSTALL_DIR='$remote_dir' ROLLBACK_APPLY='$apply' ROLLBACK_RUNTIME='$runtime' sh -s"
+remote="
+set -eu
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo 'rollback-merlin: base64 or openssl is required to decode the payload' >&2
+    return 1
+  fi
+}
+decode_payload | ROLLBACK_INSTALL_DIR='$remote_dir' ROLLBACK_APPLY='$apply' ROLLBACK_RUNTIME='$runtime' sh -s
+"
 
 # shellcheck disable=SC2086
 base64 < "$rollback_script" | ssh $ssh_opts -- "$router" "$remote"

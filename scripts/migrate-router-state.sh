@@ -13,12 +13,19 @@ legacy_count=0
 conflict_count=0
 needed=0
 bridge_state=needed
-find_cmd=$(command -v find) || {
-  echo "state-migration: ERROR: find is required" >&2
+find_cmd=${HOME_EDGE_FIND_CMD:-}
+if [ -z "$find_cmd" ]; then
+  find_cmd=$(which find 2>/dev/null) || {
+    echo "state-migration: ERROR: find is required" >&2
+    exit 1
+  }
+  [ ! -x /usr/bin/find ] || find_cmd=/usr/bin/find
+fi
+[ -x "$find_cmd" ] || {
+  echo "state-migration: ERROR: find is not executable" >&2
   exit 1
 }
-[ ! -x /usr/bin/find ] || find_cmd=/usr/bin/find
-sort_cmd=$(command -v sort) || {
+sort_cmd=$(which sort 2>/dev/null) || {
   echo "state-migration: ERROR: sort is required" >&2
   exit 1
 }
@@ -48,6 +55,15 @@ stop_with() {
   printf 'state-migration: ERROR: %s\n' "$message" >&2
   exit 1
 }
+
+secure_temp_helper=${HOME_EDGE_SECURE_TEMP_HELPER:-}
+if [ -z "$secure_temp_helper" ]; then
+  source_dir=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || stop_with blocked "cannot resolve helper directory"
+  secure_temp_helper="$source_dir/home-edge-secure-temp.sh"
+  [ -r "$secure_temp_helper" ] || secure_temp_helper=/jffs/scripts/home-edge-secure-temp.sh
+fi
+[ -r "$secure_temp_helper" ] || stop_with blocked "project secure temporary-path helper is unavailable"
+. "$secure_temp_helper"
 
 case "$apply" in
   0|1) ;;
@@ -104,11 +120,40 @@ for root_path in "$install_path" "$state_path" "$script_path"; do
   [ ! -e "$root_path" ] || [ -d "$root_path" ] || stop_with blocked "managed root has an unexpected type: $root_path"
 done
 
-work=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-state-migration.XXXXXX") || stop_with blocked "cannot create temporary work directory"
+work=$(home_edge_secure_temp -d "${TMPDIR:-/tmp}/home-edge-state-migration.XXXXXX") || stop_with blocked "cannot create temporary work directory"
 cleanup() {
   rm -rf "$work"
 }
 trap cleanup EXIT HUP INT TERM
+
+build_tree_inventory() {
+  tree=$1
+  label=$2
+  tree_inventory="$work/tree.inventory"
+  tree_listing="$work/tree.listing"
+  (CDPATH= cd "$tree" && "$find_cmd" . -print) >"$tree_listing" ||
+    stop_with blocked "cannot enumerate $label"
+  : >"$tree_inventory" || stop_with blocked "cannot stage $label inventory"
+  while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    if [ "$rel" = . ]; then
+      physical_path=$tree
+    else
+      physical_path="$tree/${rel#./}"
+    fi
+    if [ -L "$physical_path" ]; then
+      entry_type=l
+    elif [ -f "$physical_path" ]; then
+      entry_type=f
+    elif [ -d "$physical_path" ]; then
+      entry_type=d
+    else
+      entry_type=o
+    fi
+    printf '%s %s\n' "$entry_type" "$rel" >>"$tree_inventory" ||
+      stop_with blocked "cannot record $label inventory"
+  done <"$tree_listing"
+}
 
 expected_bridge="$work/bridge.expected"
 cat >"$expected_bridge" <<EOF
@@ -191,8 +236,11 @@ validate_tree() {
   label=$2
   [ ! -L "$tree" ] || stop_with blocked "$label is a symbolic link: $tree"
   [ ! -e "$tree" ] || [ -d "$tree" ] || stop_with blocked "$label has an unexpected type: $tree"
-  [ ! -d "$tree" ] || ! "$find_cmd" "$tree" -type l -print | tr -d '\r' | grep . >/dev/null 2>&1 || stop_with blocked "$label contains a symbolic link: $tree"
-  [ ! -d "$tree" ] || ! "$find_cmd" "$tree" ! -type f ! -type d -print | tr -d '\r' | grep . >/dev/null 2>&1 || stop_with blocked "$label contains an unsupported file type: $tree"
+  [ ! -d "$tree" ] || {
+    build_tree_inventory "$tree" "$label"
+    ! grep '^l ' "$tree_inventory" >/dev/null 2>&1 || stop_with blocked "$label contains a symbolic link: $tree"
+    ! grep '^o ' "$tree_inventory" >/dev/null 2>&1 || stop_with blocked "$label contains an unsupported file type: $tree"
+  }
 }
 
 preflight_merge() {
@@ -204,7 +252,8 @@ preflight_merge() {
   [ -d "$source_dir" ] || return 0
   legacy_count=$((legacy_count + 1))
   file_list="$work/merge.$legacy_count"
-  (CDPATH= cd "$source_dir" && "$find_cmd" . -type f -print | tr -d '\r' | LC_ALL=C "$sort_cmd") >"$file_list"
+  build_tree_inventory "$source_dir" "$label source"
+  sed -n 's/^f //p' "$tree_inventory" | tr -d '\r' | LC_ALL=C "$sort_cmd" >"$file_list"
   while IFS= read -r rel; do
     [ -n "$rel" ] || continue
     destination_file="$destination_dir/${rel#./}"
@@ -287,11 +336,12 @@ merge_tree() {
   source_dir=$1
   destination_dir=$2
   [ -d "$source_dir" ] || return 0
-  (CDPATH= cd "$source_dir" && "$find_cmd" . -type d -print | tr -d '\r' | LC_ALL=C "$sort_cmd") | while IFS= read -r rel; do
+  build_tree_inventory "$source_dir" "merge source"
+  sed -n 's/^d //p' "$tree_inventory" | tr -d '\r' | LC_ALL=C "$sort_cmd" | while IFS= read -r rel; do
     [ "$rel" = . ] && continue
     mkdir -p "$destination_dir/${rel#./}"
   done
-  (CDPATH= cd "$source_dir" && "$find_cmd" . -type f -print | tr -d '\r' | LC_ALL=C "$sort_cmd") | while IFS= read -r rel; do
+  sed -n 's/^f //p' "$tree_inventory" | tr -d '\r' | LC_ALL=C "$sort_cmd" | while IFS= read -r rel; do
     source_file="$source_dir/${rel#./}"
     destination_file="$destination_dir/${rel#./}"
     copy_atomic "$source_file" "$destination_file" 0

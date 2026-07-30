@@ -74,6 +74,36 @@ run_migration() {
   sh "$migrator"
 }
 
+fake_find_bin="$tmp/fake-find-bin"
+fake_find_log="$tmp/fake-find.log"
+mkdir -p "$fake_find_bin"
+cat >"$fake_find_bin/find" <<'EOF'
+#!/bin/sh
+set -eu
+for argument in "$@"; do
+  if [ "$argument" = -type ]; then
+    echo "find: -type is unsupported by this Merlin fixture" >&2
+    exit 97
+  fi
+done
+printf '%s\n' "$*" >>"${FAKE_FIND_LOG:?}"
+exec "${REAL_FIND:?}" "$@"
+EOF
+chmod 755 "$fake_find_bin/find"
+
+busybox_find_root=$(new_root busybox-find)
+mkdir -p "$busybox_find_root/jffs/home-edge-bootstrap/cache/nested"
+printf '%s\n' 'cache: true' >"$busybox_find_root/jffs/home-edge-bootstrap/cache/nested/subscription.yaml"
+REAL_FIND="$find_cmd" FAKE_FIND_LOG="$fake_find_log" HOME_EDGE_FIND_CMD="$fake_find_bin/find" \
+  run_migration "$busybox_find_root" 1 >"$tmp/busybox-find.out"
+[ -s "$fake_find_log" ] || fail "Merlin-compatible fake find was not exercised"
+grep -Fxq '. -print' "$fake_find_log" || fail "state migration did not limit find to the portable -print contract"
+grep -Fxq 'state_migration_state=ready' "$tmp/busybox-find.out" ||
+  fail "state migration did not work with find lacking -type"
+cmp "$busybox_find_root/jffs/home-edge-bootstrap/cache/nested/subscription.yaml" \
+  "$busybox_find_root/jffs/home-edge-bootstrap-state/cache/nested/subscription.yaml" >/dev/null ||
+  fail "Merlin-compatible find path did not migrate nested state"
+
 plan_root=$(new_root plan)
 printf '%s\n' 'https://credential.invalid/secret-token' >"$plan_root/jffs/home-edge-bootstrap/SUBSCRIPTION.local"
 plan_before=$(tree_digest "$plan_root")

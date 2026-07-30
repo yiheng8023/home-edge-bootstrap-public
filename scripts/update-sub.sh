@@ -13,6 +13,7 @@ else
 fi
 
 STATE_ROOT="${HOME_EDGE_STATE_ROOT:-/jffs/home-edge-bootstrap-state}"
+SHELLCRASH_DIR="${HOME_EDGE_SHELLCRASH_DIR:-/jffs/ShellCrash}"
 SUB_FILE="${SUBSCRIPTION_FILE:-$STATE_ROOT/SUBSCRIPTION.local}"
 SUB_CACHE="${SUBSCRIPTION_CACHE:-$STATE_ROOT/cache/subscription.yaml}"
 BACKUP_DIR="${SUBSCRIPTION_BACKUP_DIR:-$STATE_ROOT/backups/subscription}"
@@ -31,6 +32,7 @@ ALLOW_REMOTE_CONVERTER="${SUBSCRIPTION_ALLOW_REMOTE_CONVERTER:-0}"
 MIN_BYTES="${SUBSCRIPTION_MIN_BYTES:-64}"
 MAX_BYTES="${SUBSCRIPTION_MAX_BYTES:-10485760}"
 MIHOMO_BIN="${SUBSCRIPTION_MIHOMO_BIN:-}"
+MIHOMO_DATA_DIR="${SUBSCRIPTION_MIHOMO_DATA_DIR:-}"
 CURL_BIN="${CURL_BIN:-}"
 JQ_BIN="${JQ_BIN:-}"
 LOCK_DIR="${SUBSCRIPTION_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
@@ -51,6 +53,29 @@ fi
 log() { echo "$(date '+%F %T') update-sub: $*" >> "$LOG"; }
 die() { log "ERROR: $*"; echo "ERROR: $*" >&2; exit 1; }
 say() { echo "$*"; log "$*"; }
+
+case "$SHELLCRASH_DIR" in
+  /*) ;;
+  *) die "HOME_EDGE_SHELLCRASH_DIR must be absolute" ;;
+esac
+case "$SHELLCRASH_DIR" in
+  /|*[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.|*//*)
+    die "unsafe HOME_EDGE_SHELLCRASH_DIR"
+    ;;
+esac
+if [ -z "$MIHOMO_DATA_DIR" ] && [ -d "$SHELLCRASH_DIR" ] && [ ! -L "$SHELLCRASH_DIR" ]; then
+  MIHOMO_DATA_DIR=$SHELLCRASH_DIR
+fi
+
+secure_temp_helper=${HOME_EDGE_SECURE_TEMP_HELPER:-}
+if [ -z "$secure_temp_helper" ]; then
+  source_dir=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd) || die "cannot resolve helper directory"
+  secure_temp_helper="$source_dir/home-edge-secure-temp.sh"
+  [ -r "$secure_temp_helper" ] || secure_temp_helper=/jffs/scripts/home-edge-secure-temp.sh
+fi
+[ -r "$secure_temp_helper" ] || die "project secure temporary-path helper is unavailable"
+. "$secure_temp_helper"
+
 validate_bool() {
   name="$1"
   value="$2"
@@ -128,7 +153,7 @@ acquire_lock() {
 find_cmd() {
   name="$1"
   shift
-  found=$(command -v "$name" 2>/dev/null || true)
+  found=$(which "$name" 2>/dev/null || true)
   if [ -n "$found" ] && [ -x "$found" ]; then
     printf '%s\n' "$found"
     return 0
@@ -317,9 +342,9 @@ validate_apply_path() {
 
 file_sha256() {
   target=$1
-  if command -v sha256sum >/dev/null 2>&1; then
+  if which sha256sum >/dev/null 2>&1; then
     sha256sum "$target" | awk '{print $1}'
-  elif command -v openssl >/dev/null 2>&1; then
+  elif which openssl >/dev/null 2>&1; then
     openssl dgst -sha256 "$target" | awk '{print $NF}'
   else
     return 1
@@ -371,7 +396,7 @@ validate_mihomo_semantics() {
   if [ -n "$validator" ]; then
     [ -x "$validator" ] || die "SUBSCRIPTION_MIHOMO_BIN is not executable: $validator"
   else
-    for candidate in /jffs/home-edge-bootstrap/bundle/mihomo-linux-arm64 /jffs/ShellCrash/CrashCore /jffs/ShellClash/CrashCore; do
+    for candidate in /jffs/home-edge-bootstrap/bundle/mihomo-linux-arm64 "$SHELLCRASH_DIR/CrashCore" /tmp/ShellCrash/CrashCore /jffs/ShellClash/CrashCore; do
       [ -x "$candidate" ] && { validator="$candidate"; break; }
     done
   fi
@@ -383,7 +408,25 @@ validate_mihomo_semantics() {
     fi
     return 0
   fi
-  "$validator" -t -f "$f" >/dev/null 2>&1 || die "Mihomo rejected the downloaded configuration"
+
+  if [ -n "$MIHOMO_DATA_DIR" ]; then
+    case "$MIHOMO_DATA_DIR" in
+      /*) ;;
+      *) die "SUBSCRIPTION_MIHOMO_DATA_DIR must be absolute" ;;
+    esac
+    case "$MIHOMO_DATA_DIR" in
+      /|*[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.|*//*)
+        die "unsafe SUBSCRIPTION_MIHOMO_DATA_DIR"
+        ;;
+    esac
+    [ -d "$MIHOMO_DATA_DIR" ] || die "SUBSCRIPTION_MIHOMO_DATA_DIR is not a directory"
+    [ ! -L "$MIHOMO_DATA_DIR" ] || die "SUBSCRIPTION_MIHOMO_DATA_DIR must not be a symbolic link"
+    "$validator" -d "$MIHOMO_DATA_DIR" -t -f "$f" >/dev/null 2>&1 ||
+      die "Mihomo rejected the downloaded configuration"
+  else
+    "$validator" -t -f "$f" >/dev/null 2>&1 ||
+      die "Mihomo rejected the downloaded configuration"
+  fi
   say "subscription_semantic_validation=ok"
 }
 
@@ -406,7 +449,7 @@ apply_live_profile() {
     chmod 600 "$live_backup" 2>/dev/null || die "cannot secure live config backup"
   fi
 
-  tmp_live=$(mktemp "$apply_dir/.home-edge-live.XXXXXX") || die "cannot create secure live config staging file"
+  tmp_live=$(home_edge_secure_temp "$apply_dir/.home-edge-live.XXXXXX") || die "cannot create secure live config staging file"
   cp "$SUB_CACHE" "$tmp_live" || { rm -f "$tmp_live"; die "live config staging failed"; }
   chmod 600 "$tmp_live" 2>/dev/null || { rm -f "$tmp_live"; die "cannot secure live config staging file"; }
   mv "$tmp_live" "$APPLY_PATH" || { rm -f "$tmp_live"; die "apply failed: $APPLY_PATH"; }
@@ -460,7 +503,7 @@ rotate_log
 cache_dir=$(dirname "$SUB_CACHE")
 mkdir -p "$cache_dir" "$BACKUP_DIR" 2>/dev/null || die "cannot prepare subscription cache directories"
 chmod 700 "$cache_dir" "$BACKUP_DIR" 2>/dev/null || die "cannot secure subscription cache directories"
-tmp=$(mktemp "$cache_dir/.subscription.XXXXXX") || die "cannot create secure subscription staging file"
+tmp=$(home_edge_secure_temp "$cache_dir/.subscription.XXXXXX") || die "cannot create secure subscription staging file"
 
 fetch_subscription
 validate_subscription "$tmp"

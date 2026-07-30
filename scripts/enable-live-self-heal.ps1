@@ -29,12 +29,26 @@ $SshArgs = @(
   $Router
 )
 $Payload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($RouterScript))
+$Remote = @'
+set -eu
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "enable-live-self-heal: base64 or openssl is required to decode the payload" >&2
+    return 1
+  fi
+}
+decode_payload | sh -s
+'@
 $ExitCode = 1
 $Failure = $null
 
 Start-Transcript -Path $LogPath -Force
 try {
-  $Payload | ssh @SshArgs "base64 -d | sh -s"
+  $Payload | ssh @SshArgs $Remote
   $ExitCode = if ($null -ne $LASTEXITCODE) { [int]$LASTEXITCODE } else { 1 }
   Write-Host ""
   Write-Host "Enable live self-heal finished with exit code: $ExitCode"

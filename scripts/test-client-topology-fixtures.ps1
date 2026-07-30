@@ -23,7 +23,9 @@ function Invoke-Case {
     [string]$Gateway,
     [string]$Proxy,
     [string]$Tun,
-    [string]$Dns
+    [string]$Dns,
+    [string]$RouterDns,
+    [string]$ExpectedFakeIpOwner
   )
 
   $env:CLIENT_TOPOLOGY_FIXTURE_OS = "windows"
@@ -31,6 +33,7 @@ function Invoke-Case {
   $env:CLIENT_TOPOLOGY_FIXTURE_PROXY_STATE = $Proxy
   $env:CLIENT_TOPOLOGY_FIXTURE_TUN_STATE = $Tun
   $env:CLIENT_TOPOLOGY_FIXTURE_DNS_STATE = $Dns
+  $env:CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE = $RouterDns
   $env:CLIENT_TOPOLOGY_FIXTURE_HTTP_STATE = "ok:204"
 
   try {
@@ -42,6 +45,7 @@ function Invoke-Case {
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_PROXY_STATE -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_TUN_STATE -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_DNS_STATE -ErrorAction SilentlyContinue
+    Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_HTTP_STATE -ErrorAction SilentlyContinue
   }
 
@@ -49,11 +53,13 @@ function Invoke-Case {
   $Runtime = Get-StateValue $Output "client_runtime_present"
   $Risk = Get-StateValue $Output "client_conflict_risk"
   $TunState = Get-StateValue $Output "local_tun_state"
+  $FakeIpOwner = Get-StateValue $Output "fake_ip_owner"
 
   if ($Mode -ne $ExpectedMode) { throw "$Name expected mode=$ExpectedMode got=$Mode" }
   if ($Runtime -ne $ExpectedRuntime) { throw "$Name expected runtime=$ExpectedRuntime got=$Runtime" }
   if ($Risk -ne $ExpectedRisk) { throw "$Name expected risk=$ExpectedRisk got=$Risk" }
   if ($TunState -ne $Tun) { throw "$Name expected local_tun_state=$Tun got=$TunState" }
+  if ($FakeIpOwner -ne $ExpectedFakeIpOwner) { throw "$Name expected fake_ip_owner=$ExpectedFakeIpOwner got=$FakeIpOwner" }
 }
 
 function Invoke-RouteCase {
@@ -69,6 +75,7 @@ function Invoke-RouteCase {
   $env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY = "192.168.50.1"
   $env:CLIENT_TOPOLOGY_FIXTURE_PROXY_STATE = "none"
   $env:CLIENT_TOPOLOGY_FIXTURE_DNS_STATE = "ordinary:142.250.0.1"
+  $env:CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE = "ordinary:142.250.0.1"
   $env:CLIENT_TOPOLOGY_FIXTURE_HTTP_STATE = "ok:204"
   $env:CLIENT_TOPOLOGY_FIXTURE_ROUTE_TABLE = $RouteTable
 
@@ -80,6 +87,7 @@ function Invoke-RouteCase {
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_PROXY_STATE -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_DNS_STATE -ErrorAction SilentlyContinue
+    Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_ROUTER_DNS_STATE -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_HTTP_STATE -ErrorAction SilentlyContinue
     Remove-Item Env:\CLIENT_TOPOLOGY_FIXTURE_ROUTE_TABLE -ErrorAction SilentlyContinue
   }
@@ -92,16 +100,20 @@ function Invoke-RouteCase {
   if ($Mode -ne $ExpectedMode) { throw "$Name expected mode=$ExpectedMode got=$Mode" }
 }
 
-Invoke-Case router_primary router_primary 0 low 192.168.50.1 none absent ordinary:142.250.0.1
-Invoke-Case hybrid hybrid 1 medium 192.168.50.1 none present fake_ip:198.18.0.2
-Invoke-Case client_fallback client_fallback 1 low 192.168.99.1 env_proxy absent ordinary:142.250.0.1
-Invoke-Case not_using_router not_using_router 0 medium 192.168.99.1 none absent ordinary:142.250.0.1
-Invoke-Case pac_proxy hybrid 1 medium 192.168.50.1 pac_proxy absent ordinary:142.250.0.1
-Invoke-Case fake_ip_without_visible_route hybrid 1 medium 192.168.50.1 none unknown fake_ip:198.18.0.2
-Invoke-Case unnamed_path_interceptor hybrid 1 medium 192.168.50.1 none present ordinary:142.250.0.1
-Invoke-Case inspection_unknown unknown unknown unknown 192.168.50.1 unknown unknown unknown
-Invoke-Case overlay_not_on_path router_primary 0 low 192.168.50.1 none absent ordinary:142.250.0.1
+Invoke-Case router_primary router_primary 0 low 192.168.50.1 none absent ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
+Invoke-Case hybrid hybrid 1 medium 192.168.50.1 none present fake_ip:198.18.0.2 fake_ip:198.18.0.2 router
+Invoke-Case client_fallback client_fallback 1 low 192.168.99.1 env_proxy absent ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
+Invoke-Case persistent_user_proxy hybrid 1 medium 192.168.50.1 user_env_proxy absent ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
+Invoke-Case not_using_router not_using_router 0 medium 192.168.99.1 none absent ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
+Invoke-Case pac_proxy hybrid 1 medium 192.168.50.1 pac_proxy absent ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
+Invoke-Case fake_ip_without_visible_route hybrid 1 medium 192.168.50.1 none unknown fake_ip:198.18.0.2 ordinary:142.250.0.1 client
+Invoke-Case router_fake_ip_without_client_runtime router_primary 0 low 192.168.50.1 none absent fake_ip:28.0.0.42 fake_ip:28.0.0.42 router
+Invoke-Case unattributed_fake_ip unknown unknown unknown 192.168.50.1 none absent fake_ip:28.0.0.42 unknown unknown
+Invoke-Case unnamed_path_interceptor hybrid 1 medium 192.168.50.1 none present ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
+Invoke-Case inspection_unknown unknown unknown unknown 192.168.50.1 unknown unknown unknown unknown not_applicable
+Invoke-Case overlay_not_on_path router_primary 0 low 192.168.50.1 none absent ordinary:142.250.0.1 ordinary:142.250.0.1 not_applicable
 Invoke-RouteCase route_owned_by_unnamed_interceptor "0.0.0.0/0|192.168.50.1|10|25|25;142.250.0.0/16|0.0.0.0|20|1|1" present 1 hybrid
+Invoke-RouteCase benchmark_default_interceptor "0.0.0.0/0|198.18.0.2|48|0|0" present 1 hybrid
 Invoke-RouteCase unrelated_overlay_route "0.0.0.0/0|192.168.50.1|10|25|25;100.64.0.0/10|0.0.0.0|20|1|1" absent 0 router_primary
 
 $ProductCatalogPattern = "(?i)flclash|tailscale|zerotier|hiddify"
@@ -109,6 +121,9 @@ foreach ($Detector in @("scripts\check-client-topology.ps1", "scripts\check-clie
   $Source = Get-Content -LiteralPath (Join-Path $Repo $Detector) -Raw
   if ($Source -match $ProductCatalogPattern) {
     throw "$Detector still classifies client topology through product names"
+  }
+  if ($Source -notmatch [regex]::Escape("HKCU:\Environment")) {
+    throw "$Detector does not inspect persistent Windows proxy environment"
   }
 }
 

@@ -26,7 +26,7 @@ function Get-Python3Command {
     & $Command.Source -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'
     if ($LASTEXITCODE -eq 0) { return [string]$Command.Source }
   }
-  throw "Python 3 is required for POSIX local verification; Python 2 is unsupported"
+  throw "Python 3 is required for public local verification; Python 2 is unsupported"
 }
 
 function Assert-PublicSbom([string]$Path) {
@@ -75,6 +75,9 @@ if ($HasSh) {
 }
 else { Write-Host "sh_syntax=skipped_no_sh" }
 
+$Python3Command = Get-Python3Command
+Write-Host "python3_runtime_state=ready"
+
 $RequiredPowerShellFixtures = @(
   "test-host-ssh-fixtures.ps1",
   "test-client-topology-fixtures.ps1",
@@ -94,11 +97,13 @@ $RequiredPowerShellFixtures = @(
 foreach ($Fixture in $RequiredPowerShellFixtures) { Run-RequiredPowerShellFixture $Fixture }
 
 if ($HasSh) {
-  $Python3Command = Get-Python3Command
-  Write-Host "python3_runtime_state=ready"
   $RequiredShellFixtures = @(
     "test-host-ssh-fixtures.sh",
     "test-self-heal-fixtures.sh",
+    "test-shellcrash-dns-fixtures.sh",
+    "test-shellcrash-data-fixtures.sh",
+    "test-shellcrash-boot-fixtures.sh",
+    "test-shellcrash-service-rules-fixtures.sh",
     "test-enable-live-self-heal-fixtures.sh",
     "test-merlin-adapter-fixtures.sh",
     "test-bundle-fixtures.sh",
@@ -120,7 +125,12 @@ if ($HasSh) {
     "test-public-release-fixtures.sh"
   )
   foreach ($Fixture in $RequiredShellFixtures) { Run-RequiredShellFixture $Fixture }
+  & sh (Join-Path $Repo "scripts/test-self-heal-fixtures.sh") "--verify-readonly-only"
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
+
+& $Python3Command (Join-Path $Repo "scripts\test-release-body-fixtures.py") "--repo-root" $Repo "--surface" "public"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & (Join-Path $Repo "scripts\verify-compatibility-matrix.ps1") -Repo $Repo
 & (Join-Path $Repo "scripts\scan-secrets.ps1") -Repo $Repo -ScanPath $Repo

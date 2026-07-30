@@ -195,7 +195,7 @@ for tool in sh nvram cru curl grep sed awk sort wc date; do
     risk_count=$((risk_count + 1))
   fi
 done
-for tool in tar gzip base64; do
+for tool in tar gzip; do
   if has_cmd "$tool"; then
     print_kv "tool_$tool" "present"
   else
@@ -203,6 +203,14 @@ for tool in tar gzip base64; do
     risk_count=$((risk_count + 1))
   fi
 done
+if has_cmd base64; then
+  print_kv tool_base64 present
+elif has_cmd openssl; then
+  print_kv tool_base64 fallback_openssl
+else
+  print_kv tool_base64 missing
+  risk_count=$((risk_count + 1))
+fi
 for tool in sha256sum mktemp; do
   if has_cmd "$tool"; then
     print_kv "tool_$tool" "present"

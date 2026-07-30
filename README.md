@@ -4,6 +4,9 @@ English | [简体中文](README.zh-CN.md)
 
 Shortest path: [Quick start](QUICKSTART.md).
 
+Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
+[what to download](docs/RELEASE_NOTES.md) · [release contract](docs/PUBLIC_RELEASE.md).
+
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
 and small-organization network edges. It coordinates a safe path from an unprepared edge gateway to
 an observable, recoverable, self-healing proxy path while keeping human decisions explicit.
@@ -162,6 +165,13 @@ A separately published offline release may include checksum-bound runtime payloa
 licenses, complete corresponding source, an SPDX SBOM, and a release manifest. Verify the release
 checksums before extraction. Artifact availability does not broaden the declared device, firmware,
 architecture, or support boundary.
+
+For downloads, start at [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases).
+You need one archive for your operator host plus `SHA256SUMS`, not every file shown by GitHub.
+The [release notes](docs/RELEASE_NOTES.md) provide a Windows/macOS/Linux download matrix and commands
+that verify only the selected asset. The [public release contract](docs/PUBLIC_RELEASE.md) explains
+the source/offline split, manifest, SBOM, complete corresponding-source files, and why GitHub's
+automatic **Source code** archives are not installation packages.
 
 This distinction protects the no-wall bootstrap path: before `proxy_state=verified`, required steps
 must not depend on the proxy already working. Use the local checkout, LAN management, LAN SSH, files

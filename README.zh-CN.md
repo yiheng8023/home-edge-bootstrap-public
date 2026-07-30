@@ -4,6 +4,10 @@
 
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
+发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
+[应该下载哪些文件](docs/zh-CN/RELEASE_NOTES.md) ·
+[发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
+
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
 它将未准备好的边缘网关渐进式引导为可观测、可恢复、可自愈的代理路径，同时把必须由人
 判断的事项保留为明确边界。
@@ -147,6 +151,13 @@ EOF、中断、无效输入或任何不符合要求的确认内容都会取消�
 单独发布的离线发布物可以包含受校验和约束的运行时载荷、第三方许可证、完整对应源码、
 SPDX SBOM 与发布清单。解压前必须校验发布物摘要。制品可用性不会扩大已声明的设备、固件、
 架构或支持边界。
+
+下载时从 [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases)
+开始。普通用户只需按操作电脑选择一个归档，并同时下载 `SHA256SUMS`，不需要把 GitHub
+显示的所有文件全部下载。[发布说明](docs/zh-CN/RELEASE_NOTES.md)提供
+Windows/macOS/Linux 下载矩阵，以及只校验所选资源的命令；[公开发布契约](docs/zh-CN/PUBLIC_RELEASE.md)
+说明源码包与离线包的区别、manifest、SBOM、完整对应源码文件，以及 GitHub 自动生成的
+**Source code** 为什么不是安装包。
 
 这一区分用于保护无代理前置路径：在 `proxy_state=verified` 之前，必需步骤不能依赖代理已经
 可用。应使用本地 checkout、局域网管理、局域网 SSH、目标上已有文件，或此前已校验的离线

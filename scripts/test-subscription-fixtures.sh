@@ -84,6 +84,7 @@ chmod 755 "$fake_bin/jq"
 
 cat >"$fake_bin/mihomo" <<'EOF'
 #!/bin/sh
+[ -z "${SUBSCRIPTION_MIHOMO_ARGS_LOG:-}" ] || printf '%s\n' "$@" >"$SUBSCRIPTION_MIHOMO_ARGS_LOG"
 [ "${SUBSCRIPTION_SEMANTIC_FIXTURE:-valid}" != "invalid" ]
 EOF
 chmod 755 "$fake_bin/mihomo"
@@ -105,6 +106,84 @@ fail() {
   echo "$*" >&2
   exit 1
 }
+
+store_script="$repo/scripts/store-subscription.sh"
+grep -Fq '/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local' "$store_script" ||
+  fail "POSIX subscription helper does not default to the stable state root"
+grep -Fq '/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local' "$repo/scripts/store-subscription.ps1" ||
+  fail "PowerShell subscription helper does not default to the stable state root"
+grep -Fq 'tmp_path="${remote_path}.tmp.$$"' "$store_script" ||
+  fail "POSIX subscription helper does not stage credentials beside the stable target"
+grep -Fq 'mv -f "$tmp_path" "$remote_path"' "$store_script" ||
+  fail "POSIX subscription helper does not atomically commit the stable credential"
+grep -Fq 'tmp_path="${remote_path}.tmp.$$"' "$repo/scripts/store-subscription.ps1" ||
+  fail "PowerShell subscription helper does not stage credentials beside the stable target"
+grep -Fq 'mv -f "$tmp_path" "$remote_path"' "$repo/scripts/store-subscription.ps1" ||
+  fail "PowerShell subscription helper does not atomically commit the stable credential"
+grep -Fq '[ ! -L "$remote_path" ]' "$store_script" ||
+  fail "POSIX subscription helper does not reject a symbolic-link target"
+grep -Fq '[ ! -L "$remote_path" ]' "$repo/scripts/store-subscription.ps1" ||
+  fail "PowerShell subscription helper does not reject a symbolic-link target"
+grep -Fq "decode_payload | tr -d '\\r' | sh -s" "$repo/scripts/refresh-subscription.ps1" ||
+  fail "PowerShell subscription refresh does not normalize decoded CRLF for Merlin"
+store_signal_bin="$tmp_root/store-signal-bin"
+store_signal_log="$tmp_root/store-signal-stty.log"
+store_signal_fifo="$tmp_root/store-signal-input"
+mkdir -p "$store_signal_bin"
+cat >"$store_signal_bin/stty" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+  -g)
+    printf '%s\n' saved-terminal-state
+    ;;
+  -echo)
+    printf '%s\n' echo-disabled >>"${STORE_SIGNAL_LOG:?}"
+    ;;
+  saved-terminal-state)
+    printf '%s\n' echo-restored >>"${STORE_SIGNAL_LOG:?}"
+    ;;
+  *)
+    exit 2
+    ;;
+esac
+EOF
+cat >"$store_signal_bin/ssh" <<'EOF'
+#!/bin/sh
+echo "store-subscription fixture must not reach ssh" >&2
+exit 98
+EOF
+chmod 755 "$store_signal_bin/stty" "$store_signal_bin/ssh"
+mkfifo "$store_signal_fifo"
+exec 3<>"$store_signal_fifo"
+STORE_SIGNAL_LOG="$store_signal_log" HOME_EDGE_STDIN_IS_TTY=1 \
+  PATH="$store_signal_bin:$PATH" KNOWN_HOSTS_FILE="$tmp_root/known-hosts" \
+  sh "$store_script" fixture-router <&3 >"$tmp_root/store-signal.out" 2>"$tmp_root/store-signal.err" &
+store_signal_pid=$!
+store_signal_wait=0
+while [ ! -s "$store_signal_log" ] && [ "$store_signal_wait" -lt 100 ]; do
+  sleep 0.01
+  store_signal_wait=$((store_signal_wait + 1))
+done
+[ -s "$store_signal_log" ] || {
+  kill -TERM "$store_signal_pid" 2>/dev/null || true
+  wait "$store_signal_pid" 2>/dev/null || true
+  exec 3>&-
+  fail "store-subscription fixture did not disable terminal echo"
+}
+kill -TERM "$store_signal_pid"
+if wait "$store_signal_pid"; then
+  exec 3>&-
+  fail "store-subscription unexpectedly succeeded after TERM"
+else
+  store_signal_status=$?
+fi
+exec 3>&-
+[ "$store_signal_status" -eq 143 ] ||
+  fail "store-subscription returned unexpected TERM status: $store_signal_status"
+grep -Fxq echo-disabled "$store_signal_log" ||
+  fail "store-subscription did not disable terminal echo"
+grep -Fxq echo-restored "$store_signal_log" ||
+  fail "store-subscription did not restore terminal echo after TERM"
 
 write_url() {
   file="$1"
@@ -134,6 +213,53 @@ output=$(run_update direct_yaml env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_R
 printf '%s\n' "$output" | grep -q 'subscription_dry_run=ok' || fail "direct YAML dry-run did not pass"
 printf '%s\n' "$output" | grep -q 'subscription_cache=unchanged' || fail "dry-run should not update cache"
 printf '%s\n' "$output" | grep -q 'provider.example' && fail "subscription URL leaked to stdout"
+
+mihomo_data_dir="$tmp_root/mihomo-data"
+mihomo_args_log="$tmp_root/mihomo-args.log"
+mkdir -p "$mihomo_data_dir"
+output=$(run_update semantic_data_dir env \
+  SUBSCRIPTION_FIXTURE=yaml \
+  SUBSCRIPTION_DRY_RUN=1 \
+  SUBSCRIPTION_MIHOMO_DATA_DIR="$mihomo_data_dir" \
+  SUBSCRIPTION_MIHOMO_ARGS_LOG="$mihomo_args_log")
+printf '%s\n' "$output" | grep -q 'subscription_semantic_validation=ok' ||
+  fail "Mihomo data-directory semantic validation did not pass"
+[ "$(sed -n '1p' "$mihomo_args_log")" = "-d" ] ||
+  fail "Mihomo validator did not receive -d first"
+[ "$(sed -n '2p' "$mihomo_args_log")" = "$mihomo_data_dir" ] ||
+  fail "Mihomo validator did not receive the configured data directory"
+[ "$(sed -n '3p' "$mihomo_args_log")" = "-t" ] ||
+  fail "Mihomo validator did not receive semantic-test mode after its data directory"
+[ "$(sed -n '4p' "$mihomo_args_log")" = "-f" ] ||
+  fail "Mihomo validator did not receive the candidate profile flag"
+
+default_shellcrash_dir="$tmp_root/default-ShellCrash"
+default_shellcrash_args_log="$tmp_root/default-ShellCrash.args.log"
+mkdir -p "$default_shellcrash_dir"
+output=$(run_update semantic_default_shellcrash_dir env \
+  SUBSCRIPTION_FIXTURE=yaml \
+  SUBSCRIPTION_DRY_RUN=1 \
+  HOME_EDGE_SHELLCRASH_DIR="$default_shellcrash_dir" \
+  SUBSCRIPTION_MIHOMO_DATA_DIR= \
+  SUBSCRIPTION_MIHOMO_ARGS_LOG="$default_shellcrash_args_log")
+printf '%s\n' "$output" | grep -q 'subscription_semantic_validation=ok' ||
+  fail "default ShellCrash data-directory semantic validation did not pass"
+[ "$(sed -n '1p' "$default_shellcrash_args_log")" = "-d" ] ||
+  fail "default ShellCrash validation did not receive -d first"
+[ "$(sed -n '2p' "$default_shellcrash_args_log")" = "$default_shellcrash_dir" ] ||
+  fail "default ShellCrash validation did not bind the ShellCrash data directory"
+[ "$(sed -n '3p' "$default_shellcrash_args_log")" = "-t" ] ||
+  fail "default ShellCrash validation omitted semantic-test mode"
+
+if run_update invalid_semantic_data_dir env \
+  SUBSCRIPTION_FIXTURE=yaml \
+  SUBSCRIPTION_DRY_RUN=1 \
+  SUBSCRIPTION_MIHOMO_DATA_DIR=relative/path \
+  >"$tmp_root/invalid-semantic-data-dir.out" 2>"$tmp_root/invalid-semantic-data-dir.err"; then
+  fail "relative Mihomo data directory should be rejected"
+fi
+grep -q 'SUBSCRIPTION_MIHOMO_DATA_DIR' "$tmp_root/invalid-semantic-data-dir.err" ||
+  fail "relative Mihomo data-directory rejection message missing"
 
 if run_update invalid_semantics env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_SEMANTIC_FIXTURE=invalid SUBSCRIPTION_DRY_RUN=1 >"$tmp_root/invalid-semantics.out" 2>"$tmp_root/invalid-semantics.err"; then
   fail "Mihomo semantic rejection should fail the refresh"
