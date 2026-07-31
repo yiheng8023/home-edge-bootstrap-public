@@ -14,7 +14,8 @@
 - GitHub checkout action 更新至当前基于 Node 24 的主版本；PowerShell 验证实时输出，并为
   宿主矩阵失败写入受限的末尾日志注解。
 - 发布候选版本从所推送 tag 或手动触发时的显式输入取得，不再错误构建标为 v0.1.0 的制品。
-- 创建 self-heal fixture 临时目录前，先规范化 macOS `TMPDIR` 末尾的路径分隔符。
+- 在投影、部署、验证、秘密扫描与 fixture 临时目录中统一规范化 macOS `TMPDIR` 末尾的
+  路径分隔符。
 - 将一个结构完整的旧 ShellCrash `services-start` 块迁移为唯一规范生命周期块；标记缺失、
   重复、逆序或交叠时在改写无关钩子内容前阻断，decommission 同样识别该旧表面。
 - 在真实 RT-AX86U Pro 手动从官方固件 `3006.102.8_0` 更新至 `3006.102.8_2` 后验证该迁移：

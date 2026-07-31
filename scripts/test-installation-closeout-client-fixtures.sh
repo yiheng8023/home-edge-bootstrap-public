@@ -3,7 +3,8 @@
 set -eu
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-fixture_root=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-closeout-client-fixture.XXXXXX")
+tmp_parent=${TMPDIR:-/tmp}
+fixture_root=$(mktemp -d "${tmp_parent%/}/home-edge-closeout-client-fixture.XXXXXX")
 fixture_scripts="$fixture_root/scripts"
 mkdir -p "$fixture_scripts"
 trap 'rm -rf "$fixture_root"' EXIT HUP INT TERM

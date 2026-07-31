@@ -10,7 +10,8 @@ if [ -x /usr/bin/find ]; then
 fi
 checked=0
 skipped=0
-scan_tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-secret-scan.XXXXXX") || {
+tmp_parent=${TMPDIR:-/tmp}
+scan_tmp=$(mktemp -d "${tmp_parent%/}/home-edge-secret-scan.XXXXXX") || {
   echo "secret_scan_state=failed" >&2
   echo "secret_scan_error=cannot_allocate_temporary_directory" >&2
   exit 1

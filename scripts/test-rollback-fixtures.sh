@@ -3,7 +3,8 @@
 set -eu
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-rollback-test.XXXXXX") || exit 1
+tmp_parent=${TMPDIR:-/tmp}
+tmp_root=$(mktemp -d "${tmp_parent%/}/home-edge-rollback-test.XXXXXX") || exit 1
 rollback_lock=$(mktemp -d "/tmp/home-edge-rollback-lock.XXXXXX") || { rm -rf "$tmp_root"; exit 1; }
 rmdir "$rollback_lock" || { rm -rf "$tmp_root" "$rollback_lock"; exit 1; }
 export ROLLBACK_LOCK_DIR="$rollback_lock"

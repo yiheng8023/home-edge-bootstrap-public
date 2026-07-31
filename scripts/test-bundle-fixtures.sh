@@ -3,7 +3,8 @@
 set -eu
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-bundle-test.XXXXXX") || exit 1
+tmp_parent=${TMPDIR:-/tmp}
+tmp=$(mktemp -d "${tmp_parent%/}/home-edge-bundle-test.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 
 fail() {

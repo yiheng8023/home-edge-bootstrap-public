@@ -3,7 +3,8 @@
 set -eu
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-deploy-test.XXXXXX") || exit 1
+tmp_parent=${TMPDIR:-/tmp}
+tmp_root=$(mktemp -d "${tmp_parent%/}/home-edge-deploy-test.XXXXXX") || exit 1
 fake_bin="$tmp_root/bin"
 fixture_bundle="$tmp_root/bundle"
 fixture_shellcrash="$tmp_root/shellcrash"

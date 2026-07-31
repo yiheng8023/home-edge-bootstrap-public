@@ -298,7 +298,8 @@ remote_script=$(printf '%s' "$remote_script" |
   sed "s#__REMOTE_DIR__#$remote_dir#g; s#__MODE__#$mode#g; s#__RUNTIME_FOLLOWS__#$runtime_install#g")
 
 # Stage first so provenance hashes the exact bytes sent to the router.
-deploy_stage=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-deploy-stage.XXXXXX") || exit 1
+tmp_parent=${TMPDIR:-/tmp}
+deploy_stage=$(mktemp -d "${tmp_parent%/}/home-edge-deploy-stage.XXXXXX") || exit 1
 # shellcheck disable=SC2086
 tar -C "$repo" -cf - $archive_items | tar -C "$deploy_stage" -xf -
 sh "$repo/scripts/new-deployment-provenance.sh" "$deploy_stage" "$repo" || exit 1

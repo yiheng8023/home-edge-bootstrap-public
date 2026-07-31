@@ -4,7 +4,8 @@ set -eu
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 wrapper="$repo/scripts/decommission-merlin.sh"
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-decommission-host-test.XXXXXX") || exit 1
+tmp_parent=${TMPDIR:-/tmp}
+tmp=$(mktemp -d "${tmp_parent%/}/home-edge-decommission-host-test.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 fakebin="$tmp/bin"
 ssh_log="$tmp/ssh.log"

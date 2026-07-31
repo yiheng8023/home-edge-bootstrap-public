@@ -17,7 +17,8 @@ network certification.
   output, and publish bounded failure-tail annotations for diagnosable host-matrix failures.
 - Derive release-candidate versions from the pushed tag or explicit manual-dispatch input instead
   of building mislabeled v0.1.0 artifacts.
-- Normalize a trailing macOS `TMPDIR` separator before creating self-heal fixture directories.
+- Normalize a trailing macOS `TMPDIR` separator across projection, deployment, verification, secret
+  scanning, and fixture temporary directories.
 - Migrate one well-formed legacy ShellCrash `services-start` block into the single canonical
   lifecycle block. Malformed, duplicated, reversed, or overlapping markers fail closed without
   rewriting unrelated hook content; decommission recognizes the same legacy surface.
