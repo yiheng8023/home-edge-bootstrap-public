@@ -22,6 +22,10 @@ sha256_of() {
   sha256sum "$1" | awk '{print $1}'
 }
 
+mode_of() {
+  stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1" 2>/dev/null
+}
+
 run_data() {
   HOME_EDGE_SHELLCRASH_DIR="$shellcrash" \
   HOME_EDGE_STATE_ROOT="$state" \
@@ -284,9 +288,9 @@ printf '%s\n' "$success_output" | grep -q '^shellcrash_data_state=ready$' ||
   fail "successful apply did not commit Country.mmdb"
 [ "$(sha256_of "$failure_root/ShellCrash/ruleset/cn.mrs")" = "$new_cn_sha" ] ||
   fail "successful apply did not commit cn.mrs"
-[ "$(stat -c '%a' "$failure_root/ShellCrash/Country.mmdb")" = 644 ] ||
+[ "$(mode_of "$failure_root/ShellCrash/Country.mmdb")" = 644 ] ||
   fail "Country.mmdb permissions are not 0644"
-[ "$(stat -c '%a' "$failure_root/ShellCrash/ruleset/cn.mrs")" = 644 ] ||
+[ "$(mode_of "$failure_root/ShellCrash/ruleset/cn.mrs")" = 644 ] ||
   fail "cn.mrs permissions are not 0644"
 
 echo "shellcrash_data_fixture_tests=ok"
