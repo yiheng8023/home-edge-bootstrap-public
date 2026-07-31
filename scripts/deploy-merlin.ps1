@@ -25,7 +25,11 @@ foreach ($Name in @("BOOTSTRAP_INSTALL_RUNTIME", "BOOTSTRAP_REPLACE_RUNTIME", "B
   }
 }
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$BundleDir = Join-Path $Repo "bundle"
+$BundleDir = if ($env:DEPLOY_BUNDLE_DIR) {
+  [System.IO.Path]::GetFullPath($env:DEPLOY_BUNDLE_DIR)
+} else {
+  Join-Path $Repo "bundle"
+}
 $RuntimeRequested = ($InstallRuntime -or $env:BOOTSTRAP_INSTALL_RUNTIME -eq "1")
 $ReplaceRequested = ($ReplaceRuntime -or $env:BOOTSTRAP_REPLACE_RUNTIME -eq "1")
 $ReplaceCoreRequested = ($ReplaceCore -or $env:BOOTSTRAP_REPLACE_CORE -eq "1")

@@ -3,10 +3,32 @@ $ErrorActionPreference = "Stop"
 $Deploy = Join-Path $Repo "scripts\deploy-merlin.ps1"
 $Plan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0 -or $Plan -notmatch 'deploy_state=plan') { throw "PowerShell deploy plan failed" }
-$RuntimePlan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -InstallRuntime 2>&1 | Out-String
-if ($LASTEXITCODE -ne 0 -or $RuntimePlan -notmatch '(?m)^include_bundle=0\r?$') { throw "PowerShell runtime plan persists the bundle in JFFS" }
-if ($RuntimePlan -notmatch '(?m)^runtime_bundle_transport=temporary\r?$') { throw "PowerShell runtime plan does not disclose temporary bundle transport" }
+$FixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("home-edge-deploy-ps-" + [guid]::NewGuid().ToString("N"))
+$FixtureBundle = Join-Path $FixtureRoot "bundle"
+$PreviousBundleDir = $env:DEPLOY_BUNDLE_DIR
+try {
+  New-Item -ItemType Directory -Force -Path $FixtureBundle | Out-Null
+  [System.IO.File]::WriteAllBytes(
+    (Join-Path $FixtureBundle "mihomo-linux-arm64"),
+    [byte[]](0x7f, 0x45, 0x4c, 0x46, 0x0a)
+  )
+  Set-Content -LiteralPath (Join-Path $FixtureBundle "ShellCrash.tar.gz") -Value "fixture" -NoNewline
+  Set-Content -LiteralPath (Join-Path $FixtureBundle "MANIFEST.json") -Value '{"schema":1}' -NoNewline
+  $ChecksumLines = foreach ($Name in @("mihomo-linux-arm64", "ShellCrash.tar.gz")) {
+    $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $FixtureBundle $Name)).Hash.ToLowerInvariant()
+    "$Hash  $Name"
+  }
+  Set-Content -LiteralPath (Join-Path $FixtureBundle "SHA256SUMS") -Value $ChecksumLines
+  $env:DEPLOY_BUNDLE_DIR = $FixtureBundle
+  $RuntimePlan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -InstallRuntime 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0 -or $RuntimePlan -notmatch '(?m)^include_bundle=0\r?$') { throw "PowerShell runtime plan persists the bundle in JFFS" }
+  if ($RuntimePlan -notmatch '(?m)^runtime_bundle_transport=temporary\r?$') { throw "PowerShell runtime plan does not disclose temporary bundle transport" }
+} finally {
+  $env:DEPLOY_BUNDLE_DIR = $PreviousBundleDir
+  Remove-Item -LiteralPath $FixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 $Source = Get-Content -LiteralPath $Deploy -Raw
+if ($Source -notmatch 'DEPLOY_BUNDLE_DIR') { throw "PowerShell deploy lacks a temporary bundle override for fixture and offline use" }
 if ($Source -notmatch 'new-deployment-provenance\.ps1') { throw "PowerShell deploy does not generate provenance from staged bytes" }
 if ($Source -notmatch 'DEPLOYMENT-CONTENT-SHA256SUMS') { throw "PowerShell deploy lacks provenance archive contract" }
 if ($Source -notmatch '/jffs/home-edge-bootstrap-state/lifecycle/state\.env') { throw "PowerShell deploy does not verify stable state schema" }

@@ -2,6 +2,11 @@ name: Release candidate
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Release version to verify
+        required: true
+        default: v0.1.2
   push:
     tags:
       - "v*"
@@ -9,35 +14,80 @@ on:
 permissions:
   contents: read
 
+env:
+  RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+
 jobs:
   linux:
     name: Linux local verification
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: sh scripts/verify-local.sh
+      - uses: actions/checkout@v7
+      - name: Verify
+        shell: bash
+        run: |
+          set +e
+          log="$RUNNER_TEMP/home-edge-verify-local.log"
+          sh scripts/verify-local.sh 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python3 - "$log" <<'PY'
+          import pathlib, sys
+          lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines()[-30:]
+          message = "\n".join(lines).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error file=scripts/verify-local.sh,title=Local verification failed::{message}")
+          PY
+            exit "$status"
+          fi
 
   macos:
     name: macOS local verification
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: sh scripts/verify-local.sh
+      - uses: actions/checkout@v7
+      - name: Verify
+        shell: bash
+        run: |
+          set +e
+          log="$RUNNER_TEMP/home-edge-verify-local.log"
+          sh scripts/verify-local.sh 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python3 - "$log" <<'PY'
+          import pathlib, sys
+          lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines()[-30:]
+          message = "\n".join(lines).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error file=scripts/verify-local.sh,title=Local verification failed::{message}")
+          PY
+            exit "$status"
+          fi
 
   windows:
     name: Windows local verification
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1
+        run: |
+          $Log = Join-Path $env:RUNNER_TEMP "home-edge-verify-local.log"
+          $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1 2>&1
+          $Status = $LASTEXITCODE
+          $Output | Tee-Object -FilePath $Log
+          if ($Status -ne 0) {
+            $Message = ((Get-Content -LiteralPath $Log -Tail 30) -join "`n").
+              Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+            Write-Host "::error file=scripts/verify-local.ps1,title=Local verification failed::$Message"
+            exit $Status
+          }
 
   release-candidate:
-    name: Verified v0.1.0 release candidate
+    name: Verified release candidate
     needs: [linux, macos, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -82,20 +132,20 @@ jobs:
         run: |
           sh scripts/build-public-release.sh \
             --repo . \
-            --version v0.1.0 \
+            --version "$RELEASE_VERSION" \
             --prepared-dir "$RUNNER_TEMP/home-edge-prepared" \
             --output "$RUNNER_TEMP/home-edge-dist" \
             --commit "$GITHUB_SHA"
           sh scripts/verify-public-release.sh \
             --repo . \
-            --version v0.1.0 \
+            --version "$RELEASE_VERSION" \
             --dist "$RUNNER_TEMP/home-edge-dist" \
             --commit "$GITHUB_SHA"
 
       - name: Upload verified candidate
         uses: actions/upload-artifact@v4
         with:
-          name: home-edge-bootstrap-v0.1.0-${{ github.sha }}
+          name: home-edge-bootstrap-${{ env.RELEASE_VERSION }}-${{ github.sha }}
           path: ${{ runner.temp }}/home-edge-dist/
           if-no-files-found: error
           retention-days: 14

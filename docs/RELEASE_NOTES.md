@@ -2,6 +2,53 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.2 (2026-07-31)
+
+This patch release supersedes v0.1.1 for cross-platform host verification. The live RT-AX86U Pro
+evidence, router-side runtime, and declared support boundary remain those recorded for v0.1.1; this
+release does not claim new hardware or provider certification.
+
+- Make the PowerShell deployment path honor the same temporary `DEPLOY_BUNDLE_DIR` override as the
+  POSIX path, and test its runtime plan with a small synthetic bundle rather than expecting a source
+  checkout to contain the production runtime.
+- Let macOS verification use native `shasum -a 256` through a temporary compatibility command when
+  GNU `sha256sum` is absent, without installing packages or modifying the host environment.
+- Upgrade GitHub checkout actions to the current Node 24-based major and publish bounded
+  failure-tail annotations for diagnosable host-matrix failures.
+- Derive release-candidate versions from the pushed tag or explicit manual-dispatch input instead
+  of building mislabeled v0.1.0 artifacts.
+
+v0.1.1 assets remain immutable. You do not need all nine v0.1.2 files. Choose one package and
+download `SHA256SUMS` with it:
+
+| Need | Download | Required with it |
+|---|---|---|
+| Windows offline package, runtime included | [`home-edge-bootstrap-v0.1.2-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-offline.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+| macOS/Linux offline package, runtime included | [`home-edge-bootstrap-v0.1.2-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-offline.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+| Windows scripts/docs only; runtime already present | [`home-edge-bootstrap-v0.1.2-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-source.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+| macOS/Linux scripts/docs only; runtime already present | [`home-edge-bootstrap-v0.1.2-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-source.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+
+The manifest, SBOM, and complete-source archives are not additional installation parts:
+
+| Asset | Purpose | Required for normal installation |
+|---|---|---|
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/RELEASE-MANIFEST.json) | Records the public commit, component locks, sizes, and digests | No |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SBOM.spdx.json) | Release-specific software inventory and license metadata | No |
+| [`mihomo-v1.19.28-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/mihomo-v1.19.28-source-complete.tar.gz) | Complete corresponding source for Mihomo | No |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/shellcrash-1.9.4-source-complete.tar.gz) | Complete corresponding source for ShellCrash | No |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.2-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.2-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.2-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.2-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.28-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.1 (2026-07-31)
 
 Maintenance release incorporating the RT-AX86U Pro field-recovery findings. It does not assign a

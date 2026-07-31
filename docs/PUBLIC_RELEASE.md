@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.1`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.2`, they are:
 
-- `home-edge-bootstrap-v0.1.1-source.zip`
-- `home-edge-bootstrap-v0.1.1-source.tar.gz`
-- `home-edge-bootstrap-v0.1.1-offline.zip`
-- `home-edge-bootstrap-v0.1.1-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.2-source.zip`
+- `home-edge-bootstrap-v0.1.2-source.tar.gz`
+- `home-edge-bootstrap-v0.1.2-offline.zip`
+- `home-edge-bootstrap-v0.1.2-offline.tar.gz`
 - `mihomo-v1.19.28-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -71,7 +71,7 @@ Prepare verified third-party material outside the Git checkout with
 ```powershell
 .\scripts\build-public-release.ps1 `
   -Repo (Get-Location) `
-  -Version v0.1.0 `
+  -Version v0.1.2 `
   -PreparedDir C:\path\to\verified-prepared-material `
   -Output C:\path\to\dist
 ```
@@ -79,7 +79,7 @@ Prepare verified third-party material outside the Git checkout with
 ```sh
 sh scripts/build-public-release.sh \
   --repo . \
-  --version v0.1.0 \
+  --version v0.1.2 \
   --prepared-dir /path/to/verified-prepared-material \
   --output /path/to/dist
 ```
@@ -87,11 +87,11 @@ sh scripts/build-public-release.sh \
 Verify without contacting a router or network:
 
 ```powershell
-.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version v0.1.0 -Dist C:\path\to\dist
+.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version v0.1.2 -Dist C:\path\to\dist
 ```
 
 ```sh
-sh scripts/verify-public-release.sh --repo . --version v0.1.0 --dist /path/to/dist
+sh scripts/verify-public-release.sh --repo . --version v0.1.2 --dist /path/to/dist
 ```
 
 The stable success marker is `public_release_state=ready`. A failed build leaves no partial output.
@@ -108,15 +108,18 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
 
-## v0.1.1 Acceptance Contract
+## v0.1.2 Acceptance Contract
 
-v0.1.1 publication is gated on all of the following:
+v0.1.2 publication is gated on all of the following:
 
-- Create a new tag and new versioned assets; never replace v0.1.0 assets or describe them as fixed.
+- Create a new tag and new versioned assets; never replace v0.1.1 assets or imply that its assets
+  contain the later host-verification fixes.
 - Preserve the nine contractual asset roles, verify `SHA256SUMS`, the release manifest, SPDX SBOM,
   licenses, and complete corresponding source, and give every uploaded asset its exact non-empty
   label.
-- Render the Release body from the reviewed v0.1.1 tag and verify every tag-pinned link.
+- Render the Release body from the reviewed v0.1.2 tag and verify every tag-pinned link.
+- Verify the exact tagged checkout through the Linux, macOS, and Windows host paths; a green router
+  runtime or one host path does not substitute for the other host jobs.
 - Record supported live official Asuswrt-Merlin evidence for the running core, boot survival,
   controller/UI reachability, transparent and explicit-proxy paths, client checks, and installation
   closeout.

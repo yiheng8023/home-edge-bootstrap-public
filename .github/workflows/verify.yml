@@ -14,23 +14,63 @@ jobs:
     name: Linux local verification
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify
-        run: sh scripts/verify-local.sh
+        shell: bash
+        run: |
+          set +e
+          log="$RUNNER_TEMP/home-edge-verify-local.log"
+          sh scripts/verify-local.sh 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python3 - "$log" <<'PY'
+          import pathlib, sys
+          lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines()[-30:]
+          message = "\n".join(lines).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error file=scripts/verify-local.sh,title=Local verification failed::{message}")
+          PY
+            exit "$status"
+          fi
 
   macos:
     name: macOS local verification
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify
-        run: sh scripts/verify-local.sh
+        shell: bash
+        run: |
+          set +e
+          log="$RUNNER_TEMP/home-edge-verify-local.log"
+          sh scripts/verify-local.sh 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            python3 - "$log" <<'PY'
+          import pathlib, sys
+          lines = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines()[-30:]
+          message = "\n".join(lines).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error file=scripts/verify-local.sh,title=Local verification failed::{message}")
+          PY
+            exit "$status"
+          fi
 
   windows:
     name: Windows local verification
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify
         shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1
+        run: |
+          $Log = Join-Path $env:RUNNER_TEMP "home-edge-verify-local.log"
+          $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1 2>&1
+          $Status = $LASTEXITCODE
+          $Output | Tee-Object -FilePath $Log
+          if ($Status -ne 0) {
+            $Message = ((Get-Content -LiteralPath $Log -Tail 30) -join "`n").
+              Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+            Write-Host "::error file=scripts/verify-local.ps1,title=Local verification failed::$Message"
+            exit $Status
+          }

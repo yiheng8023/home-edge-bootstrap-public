@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.1` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.2` 对应：
 
-- `home-edge-bootstrap-v0.1.1-source.zip`
-- `home-edge-bootstrap-v0.1.1-source.tar.gz`
-- `home-edge-bootstrap-v0.1.1-offline.zip`
-- `home-edge-bootstrap-v0.1.1-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.2-source.zip`
+- `home-edge-bootstrap-v0.1.2-source.tar.gz`
+- `home-edge-bootstrap-v0.1.2-offline.zip`
+- `home-edge-bootstrap-v0.1.2-offline.tar.gz`
 - `mihomo-v1.19.28-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -63,7 +63,7 @@ ZIP 和 tar 必须只有一个安全包根目录，不得包含路径穿越或�
 ```powershell
 .\scripts\build-public-release.ps1 `
   -Repo (Get-Location) `
-  -Version v0.1.0 `
+  -Version v0.1.2 `
   -PreparedDir C:\path\to\verified-prepared-material `
   -Output C:\path\to\dist
 ```
@@ -71,7 +71,7 @@ ZIP 和 tar 必须只有一个安全包根目录，不得包含路径穿越或�
 ```sh
 sh scripts/build-public-release.sh \
   --repo . \
-  --version v0.1.0 \
+  --version v0.1.2 \
   --prepared-dir /path/to/verified-prepared-material \
   --output /path/to/dist
 ```
@@ -79,11 +79,11 @@ sh scripts/build-public-release.sh \
 验证过程不接触路由器或网络：
 
 ```powershell
-.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version v0.1.0 -Dist C:\path\to\dist
+.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version v0.1.2 -Dist C:\path\to\dist
 ```
 
 ```sh
-sh scripts/verify-public-release.sh --repo . --version v0.1.0 --dist /path/to/dist
+sh scripts/verify-public-release.sh --repo . --version v0.1.2 --dist /path/to/dist
 ```
 
 稳定成功标记为 `public_release_state=ready`。构建失败不会留下部分输出。构建和验证都不会
@@ -97,14 +97,17 @@ sh scripts/verify-public-release.sh --repo . --version v0.1.0 --dist /path/to/di
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
 
-## v0.1.1 验收合同
+## v0.1.2 验收合同
 
-v0.1.1 发布必须同时满足：
+v0.1.2 发布必须同时满足：
 
-- 创建新 tag 和新的版本化资源；不得替换 v0.1.0 资源，也不得把它描述为已修复。
+- 创建新 tag 和新的版本化资源；不得替换 v0.1.1 资源，也不得暗示其资源已包含后续宿主
+  验证修复。
 - 保留九类契约资源，验证 `SHA256SUMS`、发布 manifest、SPDX SBOM、许可证与完整对应源码，
   并为每个上传资源应用精确的非空标签。
-- 从已审阅 v0.1.1 tag 生成 Release 正文，并验证所有固定到 tag 的链接。
+- 从已审阅 v0.1.2 tag 生成 Release 正文，并验证所有固定到 tag 的链接。
+- 使用精确 tag checkout 分别通过 Linux、macOS 与 Windows 宿主路径；路由器运行正常或单一
+  宿主路径通过，不能替代另外两个宿主任务。
 - 记录受支持真实官方 Asuswrt-Merlin 环境中运行内核、启动存续、controller/UI、透明与
   显式代理路径、客户端检查和安装收官证据。
 - 针对精确 tag 实现验证辅助命令回退、持久 JFFS 外的临时运行时 staging、安装中断清理和

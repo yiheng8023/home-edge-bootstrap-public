@@ -5,6 +5,7 @@ set -eu
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 sbom_path="$repo/config/sbom.json"
 sbom_only=0
+checksum_shim_dir=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --sbom) [ "$#" -ge 2 ] || { echo 'missing --sbom value' >&2; exit 2; }; sbom_path=$2; shift 2 ;;
@@ -12,6 +13,26 @@ while [ "$#" -gt 0 ]; do
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+cleanup_checksum_shim() {
+  [ -z "$checksum_shim_dir" ] || rm -rf "$checksum_shim_dir"
+}
+trap cleanup_checksum_shim EXIT HUP INT TERM
+
+if ! command -v sha256sum >/dev/null 2>&1; then
+  command -v shasum >/dev/null 2>&1 || {
+    echo 'local_verification_error=sha256_tool_required' >&2
+    exit 1
+  }
+  checksum_shim_dir=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-sha256.XXXXXX") || exit 1
+  cat >"$checksum_shim_dir/sha256sum" <<'EOF'
+#!/bin/sh
+exec shasum -a 256 "$@"
+EOF
+  chmod 755 "$checksum_shim_dir/sha256sum"
+  PATH="$checksum_shim_dir:$PATH"
+  export PATH
+fi
 
 py=
 for candidate in python3 python; do

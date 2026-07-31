@@ -2,6 +2,50 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.2（2026-07-31）
+
+本补丁版本在跨平台宿主验证层面取代 v0.1.1。真实 RT-AX86U Pro 证据、路由器侧运行时与
+已声明支持边界仍以 v0.1.1 记录为准；本版本不声明新增硬件或服务商认证。
+
+- PowerShell 部署路径与 POSIX 路径一致支持临时 `DEPLOY_BUNDLE_DIR` 覆盖；运行时计划测试
+  使用小型合成 bundle，不再假设源码 checkout 含有生产运行时。
+- macOS 缺少 GNU `sha256sum` 时，通过临时兼容命令使用系统原生 `shasum -a 256`，不安装
+  软件包，也不修改宿主环境。
+- GitHub checkout action 更新至当前基于 Node 24 的主版本，并为宿主矩阵失败写入受限的
+  末尾日志注解。
+- 发布候选版本从所推送 tag 或手动触发时的显式输入取得，不再错误构建标为 v0.1.0 的制品。
+
+v0.1.1 资源保持不可变。v0.1.2 的九个文件不需要全部下载；选择一个包，并同时下载
+`SHA256SUMS`：
+
+| 使用场景 | 下载文件 | 同时需要 |
+|---|---|---|
+| Windows 离线包，包含运行时 | [`home-edge-bootstrap-v0.1.2-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-offline.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+| macOS/Linux 离线包，包含运行时 | [`home-edge-bootstrap-v0.1.2-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-offline.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+| Windows 仅脚本/文档，运行时已存在 | [`home-edge-bootstrap-v0.1.2-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-source.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+| macOS/Linux 仅脚本/文档，运行时已存在 | [`home-edge-bootstrap-v0.1.2-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/home-edge-bootstrap-v0.1.2-source.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SHA256SUMS) |
+
+manifest、SBOM 与完整源码归档不是额外安装部件：
+
+| 资源 | 用途 | 普通安装是否需要 |
+|---|---|---|
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/RELEASE-MANIFEST.json) | 记录公开提交、组件锁、大小与摘要 | 否 |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/SBOM.spdx.json) | 发布专用软件清单与许可证元数据 | 否 |
+| [`mihomo-v1.19.28-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/mihomo-v1.19.28-source-complete.tar.gz) | Mihomo 完整对应源码 | 否 |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.2/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash 完整对应源码 | 否 |
+
+| 文件名 | GitHub 标签 |
+|---|---|
+| `home-edge-bootstrap-v0.1.2-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.2-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.2-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.2-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.28-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.1（2026-07-31）
 
 本维护版本纳入 RT-AX86U Pro 真实恢复中发现的问题；它不授予已验证适配器成熟阶段，也不
