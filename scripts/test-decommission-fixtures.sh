@@ -125,6 +125,11 @@ if [ -x /jffs/scripts/home-edge-reconcile-self-heal.sh ]; then
   HOME_EDGE_WRITE_LOCK_HELD=1 sh /jffs/scripts/home-edge-reconcile-self-heal.sh --reconcile || true
 fi
 # END home-edge-bootstrap self-heal lifecycle
+# BEGIN home-edge-bootstrap shellcrash lifecycle
+if [ -x /jffs/scripts/home-edge-start-shellcrash.sh ]; then
+  /jffs/scripts/home-edge-start-shellcrash.sh &
+fi
+# END home-edge-bootstrap shellcrash lifecycle
 echo preserved-after
 EOF
   chmod 755 "$scripts/services-start"
@@ -234,6 +239,14 @@ malformed_before=$(tree_digest "$malformed_root")
 if run_decommission "$malformed_root" 1 DECOMMISSION >"$tmp/malformed.out" 2>&1; then fail "malformed marker apply succeeded"; fi
 [ "$(tree_digest "$malformed_root")" = "$malformed_before" ] || fail "malformed marker blocker wrote state"
 grep -Fxq 'decommission_state=blocked' "$tmp/malformed.out" || fail "malformed marker was not blocked"
+
+legacy_malformed_root=$(setup_target malformed-legacy-marker)
+grep -Fv '# END home-edge-bootstrap shellcrash lifecycle' "$legacy_malformed_root/jffs/scripts/services-start" >"$legacy_malformed_root/jffs/scripts/services-start.tmp"
+mv "$legacy_malformed_root/jffs/scripts/services-start.tmp" "$legacy_malformed_root/jffs/scripts/services-start"
+legacy_malformed_before=$(tree_digest "$legacy_malformed_root")
+if run_decommission "$legacy_malformed_root" 1 DECOMMISSION >"$tmp/legacy-malformed.out" 2>&1; then fail "malformed legacy marker apply succeeded"; fi
+[ "$(tree_digest "$legacy_malformed_root")" = "$legacy_malformed_before" ] || fail "malformed legacy marker blocker wrote state"
+grep -Fxq 'decommission_state=blocked' "$tmp/legacy-malformed.out" || fail "malformed legacy marker was not blocked"
 
 cron_root=$(setup_target ambiguous-cron)
 printf '%s\n' '*/7 * * * * sh /jffs/scripts/home-edge-self-heal-cron.sh #home_edge_selfheal#' >>"$cron_root/tmp/cru.state"

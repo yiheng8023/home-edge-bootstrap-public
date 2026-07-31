@@ -65,6 +65,11 @@ manuals, stock firmware, and recovery tools. ASUS availability alone does not pr
 support. Follow the [official installation guide](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation).
 This project does not download or flash router firmware.
 
+On the current ASUS manual-update page, choosing the firmware file may immediately start the upload
+and reboot without a separate apply button. Treat file selection as the write boundary: export router
+settings and a JFFS backup first, verify the exact model and published digest, keep LAN access, and
+expect a temporary outage before choosing the file.
+
 If the official site is unreachable before the proxy works, use the official
 [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) or another official
 endpoint currently listed by the download page. A third-party community or support site may be

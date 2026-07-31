@@ -4,19 +4,27 @@
 
 ## v0.1.2 (2026-07-31)
 
-This patch release supersedes v0.1.1 for cross-platform host verification. The live RT-AX86U Pro
-evidence, router-side runtime, and declared support boundary remain those recorded for v0.1.1; this
-release does not claim new hardware or provider certification.
+This patch release supersedes v0.1.1 for cross-platform host verification and lifecycle migration.
+It incorporates the final RT-AX86U Pro field findings without claiming new hardware, provider, or
+network certification.
 
 - Make the PowerShell deployment path honor the same temporary `DEPLOY_BUNDLE_DIR` override as the
   POSIX path, and test its runtime plan with a small synthetic bundle rather than expecting a source
   checkout to contain the production runtime.
 - Let macOS verification use native `shasum -a 256` through a temporary compatibility command when
   GNU `sha256sum` is absent, without installing packages or modifying the host environment.
-- Upgrade GitHub checkout actions to the current Node 24-based major and publish bounded
-  failure-tail annotations for diagnosable host-matrix failures.
+- Upgrade GitHub checkout actions to the current Node 24-based major, stream PowerShell verification
+  output, and publish bounded failure-tail annotations for diagnosable host-matrix failures.
 - Derive release-candidate versions from the pushed tag or explicit manual-dispatch input instead
   of building mislabeled v0.1.0 artifacts.
+- Normalize a trailing macOS `TMPDIR` separator before creating self-heal fixture directories.
+- Migrate one well-formed legacy ShellCrash `services-start` block into the single canonical
+  lifecycle block. Malformed, duplicated, reversed, or overlapping markers fail closed without
+  rewriting unrelated hook content; decommission recognizes the same legacy surface.
+- Verify the migration on a live RT-AX86U Pro after a manual official-firmware update from
+  `3006.102.8_0` to `3006.102.8_2`: CrashCore remained available, controller authentication and
+  Yacd returned healthy responses, the legacy block was removed, and one startup command remained.
+  This is bounded field evidence, not certification of other models, providers, or networks.
 
 v0.1.1 assets remain immutable. You do not need all nine v0.1.2 files. Choose one package and
 download `SHA256SUMS` with it:

@@ -13,6 +13,8 @@ shellcrash_starter_rel="${HOME_EDGE_SHELLCRASH_STARTER_PATH:-/jffs/scripts/home-
 job_name="${HOME_EDGE_CRON_JOB_NAME:-home_edge_selfheal}"
 begin_marker='# BEGIN home-edge-bootstrap self-heal lifecycle'
 end_marker='# END home-edge-bootstrap self-heal lifecycle'
+legacy_begin_marker='# BEGIN home-edge-bootstrap shellcrash lifecycle'
+legacy_end_marker='# END home-edge-bootstrap shellcrash lifecycle'
 tmp_hook=""
 lock_dir="${HOME_EDGE_WRITE_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
 lock_stale_sec="${HOME_EDGE_WRITE_LOCK_STALE_SEC:-1800}"
@@ -119,15 +121,21 @@ load_policy() {
 hook_marker_counts() {
   hook_begin_count=0
   hook_end_count=0
+  legacy_hook_begin_count=0
+  legacy_hook_end_count=0
   if [ -f "$services_start" ]; then
     hook_begin_count=$(grep -Fxc "$begin_marker" "$services_start" 2>/dev/null || true)
     hook_end_count=$(grep -Fxc "$end_marker" "$services_start" 2>/dev/null || true)
+    legacy_hook_begin_count=$(grep -Fxc "$legacy_begin_marker" "$services_start" 2>/dev/null || true)
+    legacy_hook_end_count=$(grep -Fxc "$legacy_end_marker" "$services_start" 2>/dev/null || true)
   fi
 }
 
 boot_hook_state() {
   hook_marker_counts
-  if [ "$hook_begin_count" -eq 0 ] && [ "$hook_end_count" -eq 0 ]; then
+  if [ "$legacy_hook_begin_count" -ne 0 ] || [ "$legacy_hook_end_count" -ne 0 ]; then
+    printf '%s\n' drifted
+  elif [ "$hook_begin_count" -eq 0 ] && [ "$hook_end_count" -eq 0 ]; then
     printf '%s\n' missing
   elif [ "$hook_begin_count" -eq 1 ] && [ "$hook_end_count" -eq 1 ]; then
     actual_block=$(awk -v begin="$begin_marker" -v end="$end_marker" '
@@ -220,15 +228,35 @@ install_boot_hook() {
   ' "$services_start"; then
     die "invalid managed lifecycle marker order in services-start"
   fi
+  [ "$legacy_hook_begin_count" -eq "$legacy_hook_end_count" ] && [ "$legacy_hook_begin_count" -le 1 ] ||
+    die "unbalanced legacy ShellCrash lifecycle markers in services-start"
+  if [ "$legacy_hook_begin_count" -eq 1 ] && ! awk -v begin="$legacy_begin_marker" -v end="$legacy_end_marker" '
+    $0 == begin { if (state != 0) invalid=1; state=1 }
+    $0 == end { if (state != 1) invalid=1; state=2 }
+    END { exit (invalid || state != 2) }
+  ' "$services_start"; then
+    die "invalid legacy ShellCrash lifecycle marker order in services-start"
+  fi
+  if ! awk -v begin="$begin_marker" -v end="$end_marker" \
+    -v legacy_begin="$legacy_begin_marker" -v legacy_end="$legacy_end_marker" '
+    $0 == begin { if (state != 0) invalid=1; state=1; next }
+    $0 == legacy_begin { if (state != 0) invalid=1; state=2; next }
+    $0 == end { if (state != 1) invalid=1; state=0; next }
+    $0 == legacy_end { if (state != 2) invalid=1; state=0; next }
+    END { exit (invalid || state != 0) }
+  ' "$services_start"; then
+    die "overlapping lifecycle markers in services-start"
+  fi
 
   tmp_hook="${services_start}.tmp.$$"
   if ! cp -p "$services_start" "$tmp_hook" 2>/dev/null; then
     : >"$tmp_hook" || die "cannot stage services-start"
     chmod 700 "$tmp_hook" || die "cannot secure staged services-start"
   fi
-  awk -v begin="$begin_marker" -v end="$end_marker" '
-    $0 == begin { managed=1; next }
-    $0 == end { managed=0; next }
+  awk -v begin="$begin_marker" -v end="$end_marker" \
+    -v legacy_begin="$legacy_begin_marker" -v legacy_end="$legacy_end_marker" '
+    $0 == begin || $0 == legacy_begin { managed=1; next }
+    $0 == end || $0 == legacy_end { managed=0; next }
     !managed { print }
   ' "$services_start" >"${tmp_hook}.content" || die "cannot stage services-start"
   if sed -n '1p' "${tmp_hook}.content" | grep -q '^#!'; then

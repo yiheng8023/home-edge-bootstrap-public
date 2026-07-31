@@ -3,7 +3,8 @@
 set -u
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-self-heal-test.XXXXXX") || exit 1
+tmp_parent=${TMPDIR:-/tmp}
+tmp_root=$(mktemp -d "${tmp_parent%/}/home-edge-self-heal-test.XXXXXX") || exit 1
 router_tmp_root=$(mktemp -d "/tmp/home-edge-self-heal-router-test.XXXXXX") || { rm -rf "$tmp_root"; exit 1; }
 export HEAL_LOCK_DIR="$router_tmp_root/write.lock"
 fake_bin="$tmp_root/bin"

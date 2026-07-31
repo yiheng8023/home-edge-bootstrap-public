@@ -17,6 +17,8 @@ lock_root=/tmp/home-edge-bootstrap-write.lock
 job_name=home_edge_selfheal
 begin_marker='# BEGIN home-edge-bootstrap self-heal lifecycle'
 end_marker='# END home-edge-bootstrap self-heal lifecycle'
+legacy_begin_marker='# BEGIN home-edge-bootstrap shellcrash lifecycle'
+legacy_end_marker='# END home-edge-bootstrap shellcrash lifecycle'
 helper_names='home-edge-policy.env
 home-edge-policy.local
 home-edge-self-heal.sh
@@ -209,22 +211,48 @@ classify_registration() {
   end_count=0
   begin_line=0
   end_line=0
+  legacy_begin_count=0
+  legacy_end_count=0
+  legacy_begin_line=0
+  legacy_end_line=0
   if [ -f "$services_path" ]; then
     begin_count=$(grep -Fxc "$begin_marker" "$services_path" 2>/dev/null || true)
     end_count=$(grep -Fxc "$end_marker" "$services_path" 2>/dev/null || true)
     begin_line=$(grep -nFx "$begin_marker" "$services_path" 2>/dev/null | sed -n 's/:.*//p' | head -n 1)
     end_line=$(grep -nFx "$end_marker" "$services_path" 2>/dev/null | sed -n 's/:.*//p' | head -n 1)
+    legacy_begin_count=$(grep -Fxc "$legacy_begin_marker" "$services_path" 2>/dev/null || true)
+    legacy_end_count=$(grep -Fxc "$legacy_end_marker" "$services_path" 2>/dev/null || true)
+    legacy_begin_line=$(grep -nFx "$legacy_begin_marker" "$services_path" 2>/dev/null | sed -n 's/:.*//p' | head -n 1)
+    legacy_end_line=$(grep -nFx "$legacy_end_marker" "$services_path" 2>/dev/null | sed -n 's/:.*//p' | head -n 1)
     [ -n "$begin_line" ] || begin_line=0
     [ -n "$end_line" ] || end_line=0
+    [ -n "$legacy_begin_line" ] || legacy_begin_line=0
+    [ -n "$legacy_end_line" ] || legacy_end_line=0
   fi
-  if [ "$begin_count" -eq 0 ] && [ "$end_count" -eq 0 ]; then
-    marker_state=absent
-  elif [ "$begin_count" -eq 1 ] && [ "$end_count" -eq 1 ] && [ "$begin_line" -lt "$end_line" ]; then
-    marker_state=present
-  else
+  if ! { [ "$begin_count" -eq 0 ] && [ "$end_count" -eq 0 ]; } &&
+    ! { [ "$begin_count" -eq 1 ] && [ "$end_count" -eq 1 ] && [ "$begin_line" -lt "$end_line" ]; }; then
     marker_state=drift
     project_registration_state=drift
     stop_before_mutation "managed services-start markers are malformed or duplicated"
+  fi
+  if ! { [ "$legacy_begin_count" -eq 0 ] && [ "$legacy_end_count" -eq 0 ]; } &&
+    ! { [ "$legacy_begin_count" -eq 1 ] && [ "$legacy_end_count" -eq 1 ] && [ "$legacy_begin_line" -lt "$legacy_end_line" ]; }; then
+    marker_state=drift
+    project_registration_state=drift
+    stop_before_mutation "legacy ShellCrash services-start markers are malformed or duplicated"
+  fi
+  if [ "$begin_count" -eq 1 ] && [ "$legacy_begin_count" -eq 1 ]; then
+    if { [ "$begin_line" -lt "$legacy_begin_line" ] && [ "$legacy_begin_line" -lt "$end_line" ]; } ||
+      { [ "$legacy_begin_line" -lt "$begin_line" ] && [ "$begin_line" -lt "$legacy_end_line" ]; }; then
+      marker_state=drift
+      project_registration_state=drift
+      stop_before_mutation "managed services-start marker blocks overlap"
+    fi
+  fi
+  if [ "$begin_count" -eq 0 ] && [ "$legacy_begin_count" -eq 0 ]; then
+    marker_state=absent
+  else
+    marker_state=present
   fi
 
   which cru >/dev/null 2>&1 || stop_before_mutation "cru is unavailable"
@@ -385,9 +413,10 @@ if [ "$marker_state" = present ]; then
   services_path=$(physical "$services_start")
   services_tmp="$services_path.decommission.$$"
   mode=$(stat -c '%a' "$services_path" 2>/dev/null || stat -f '%Lp' "$services_path" 2>/dev/null) || stop_apply "cannot read services-start mode"
-  awk -v begin="$begin_marker" -v end="$end_marker" '
-    $0 == begin { managed=1; next }
-    $0 == end && managed { managed=0; next }
+  awk -v begin="$begin_marker" -v end="$end_marker" \
+    -v legacy_begin="$legacy_begin_marker" -v legacy_end="$legacy_end_marker" '
+    $0 == begin || $0 == legacy_begin { managed=1; next }
+    ($0 == end || $0 == legacy_end) && managed { managed=0; next }
     !managed { print }
   ' "$services_path" >"$services_tmp" || stop_apply "cannot build services-start replacement"
   chmod "$mode" "$services_tmp" || stop_apply "cannot preserve services-start mode"

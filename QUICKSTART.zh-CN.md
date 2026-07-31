@@ -62,6 +62,10 @@ sh scripts/doctor.sh
 华硕仍提供资料不代表梅林当前仍支持。刷写遵循
 [梅林官方安装指南](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Installation)；本项目不会下载或刷写固件。
 
+当前 ASUS 手动更新页在选定固件文件后，可能无需再次点击“应用”便立即上传并重启。应把
+“选定文件”视为写入边界：先导出路由器设置与 JFFS 备份，核对准确型号和官方摘要，保留
+局域网管理路径，并在选定文件前预期一次临时断网。
+
 代理可用前无法访问官网时，使用官方
 [SourceForge 发布区](https://sourceforge.net/projects/asuswrt-merlin/files/)，或官方下载页当前列出的
 其他官方入口。第三方社区或支持网站可能只面向某个国家或地区，也可能分发改版固件；不要

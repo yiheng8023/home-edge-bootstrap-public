@@ -65,9 +65,10 @@ jobs:
         shell: powershell
         run: |
           $Log = Join-Path $env:RUNNER_TEMP "home-edge-verify-local.log"
-          $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1 2>&1
+          $ErrorActionPreference = "Continue"
+          & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1 2>&1 |
+            Tee-Object -FilePath $Log
           $Status = $LASTEXITCODE
-          $Output | Tee-Object -FilePath $Log
           if ($Status -ne 0) {
             $Message = ((Get-Content -LiteralPath $Log -Tail 30) -join "`n").
               Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")

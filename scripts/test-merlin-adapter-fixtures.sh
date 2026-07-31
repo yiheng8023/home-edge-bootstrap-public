@@ -324,8 +324,10 @@ grep -Fxq 'state_migration_state=ready' "$tmp/core.out" || fail "adapter did not
 [ -x "$core/jffs/scripts/home-edge-start-shellcrash.sh" ] || fail "ShellCrash boot starter was not deployed"
 [ -x "$core/jffs/scripts/home-edge-configure-service-rules.sh" ] || fail "ShellCrash service-rule profile helper was not deployed"
 grep -Fq '# BEGIN home-edge-bootstrap self-heal lifecycle' "$core/jffs/scripts/services-start" || fail "persistent lifecycle hook was not installed"
-grep -Fq '/jffs/scripts/home-edge-start-shellcrash.sh' "$core/jffs/scripts/services-start" ||
-  fail "persistent lifecycle hook does not start ShellCrash conservatively"
+[ "$(grep -Ec 'home-edge-start-shellcrash\.sh" &$' "$core/jffs/scripts/services-start")" -eq 1 ] ||
+  fail "persistent lifecycle hook did not converge to one conservative ShellCrash start"
+! grep -Fq '# BEGIN home-edge-bootstrap shellcrash lifecycle' "$core/jffs/scripts/services-start" ||
+  fail "legacy ShellCrash lifecycle hook remained after adapter reconciliation"
 [ "$(grep -c '#home_edge_selfheal#' "$cru_state")" -eq 1 ] || fail "adapter did not leave exactly one self-heal cron job"
 cron_wrapper="$core/jffs/scripts/home-edge-self-heal-cron.sh"
 grep -Fq '/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local' "$cron_wrapper" ||

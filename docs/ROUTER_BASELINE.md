@@ -44,6 +44,10 @@ Recommended defaults:
   [SourceForge release area](https://sourceforge.net/projects/asuswrt-merlin/files/) linked by the
   download page. A third-party support site may serve only one country or region; do not assume that
   a corresponding site exists elsewhere or that it is an official source.
+- On the current ASUS manual-update page, selecting a firmware file can immediately begin the upload
+  and reboot without a separate apply button. Treat file selection as the write boundary: export the
+  router settings and JFFS backup first, verify the exact model and published digest, keep LAN access,
+  and expect a temporary outage before choosing the file.
 - Keep JFFS custom scripts/configs enabled after SSH is available.
 - Keep router administration LAN-side; do not expose the web UI to WAN.
 - Disable WPS.

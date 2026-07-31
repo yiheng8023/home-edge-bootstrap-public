@@ -77,6 +77,11 @@ EOF
 cat >"$root/jffs/scripts/services-start" <<'EOF'
 #!/bin/sh
 echo preserved-user-start
+# BEGIN home-edge-bootstrap shellcrash lifecycle
+if [ -x "/jffs/scripts/home-edge-start-shellcrash.sh" ]; then
+  "/jffs/scripts/home-edge-start-shellcrash.sh" &
+fi
+# END home-edge-bootstrap shellcrash lifecycle
 EOF
 chmod 755 "$root/jffs/scripts/home-edge-self-heal-cron.sh" "$root/jffs/scripts/home-edge-start-shellcrash.sh" "$root/jffs/scripts/services-start"
 cp "$sut" "$root/jffs/scripts/home-edge-reconcile-self-heal.sh"
@@ -95,8 +100,12 @@ printf '%s\n' "$output" | grep -q '^self_heal_policy_mode=dry_run$' || fail "ins
 grep -q '^echo preserved-user-start$' "$root/jffs/scripts/services-start" || fail "existing services-start content was not preserved"
 [ "$(grep -c '^# BEGIN home-edge-bootstrap self-heal lifecycle$' "$root/jffs/scripts/services-start")" -eq 1 ] || fail "managed hook begin marker count is not one"
 [ "$(grep -c '^# END home-edge-bootstrap self-heal lifecycle$' "$root/jffs/scripts/services-start")" -eq 1 ] || fail "managed hook end marker count is not one"
-grep -Fq '/jffs/scripts/home-edge-start-shellcrash.sh' "$root/jffs/scripts/services-start" ||
-  fail "managed hook did not include ShellCrash boot recovery"
+[ "$(grep -Ec 'home-edge-start-shellcrash\.sh" &$' "$root/jffs/scripts/services-start")" -eq 1 ] ||
+  fail "managed hook did not converge to one ShellCrash boot recovery command"
+! grep -Fq '# BEGIN home-edge-bootstrap shellcrash lifecycle' "$root/jffs/scripts/services-start" ||
+  fail "legacy ShellCrash hook begin marker remained after migration"
+! grep -Fq '# END home-edge-bootstrap shellcrash lifecycle' "$root/jffs/scripts/services-start" ||
+  fail "legacy ShellCrash hook end marker remained after migration"
 [ "$(grep -c '#home_edge_selfheal#' "$state")" -eq 1 ] || fail "initial reconciliation did not create exactly one cron job"
 
 lock_dir="$tmp/global-write.lock"
@@ -231,5 +240,37 @@ if run_reconciler --install >"$tmp/reversed.out" 2>"$tmp/reversed.err"; then
 fi
 grep -q 'invalid managed lifecycle marker order' "$tmp/reversed.err" || fail "reversed marker rejection message missing"
 cmp -s "$root/jffs/scripts/services-start" "$tmp/services-start.reversed" || fail "reversed marker rejection overwrote user content"
+
+cat >"$root/jffs/scripts/services-start" <<'EOF'
+#!/bin/sh
+echo preserved-before-malformed-legacy-marker
+# BEGIN home-edge-bootstrap shellcrash lifecycle
+echo preserved-inside-malformed-legacy-marker
+EOF
+cp "$root/jffs/scripts/services-start" "$tmp/services-start.malformed-legacy"
+if run_reconciler --install >"$tmp/malformed-legacy.out" 2>"$tmp/malformed-legacy.err"; then
+  fail "malformed legacy ShellCrash hook should be rejected"
+fi
+grep -q 'unbalanced legacy ShellCrash lifecycle markers' "$tmp/malformed-legacy.err" ||
+  fail "malformed legacy ShellCrash hook rejection message missing"
+cmp -s "$root/jffs/scripts/services-start" "$tmp/services-start.malformed-legacy" ||
+  fail "malformed legacy ShellCrash hook rejection overwrote user content"
+
+cat >"$root/jffs/scripts/services-start" <<'EOF'
+#!/bin/sh
+echo preserved-before-reversed-legacy-markers
+# END home-edge-bootstrap shellcrash lifecycle
+echo preserved-between-reversed-legacy-markers
+# BEGIN home-edge-bootstrap shellcrash lifecycle
+echo preserved-after-reversed-legacy-markers
+EOF
+cp "$root/jffs/scripts/services-start" "$tmp/services-start.reversed-legacy"
+if run_reconciler --install >"$tmp/reversed-legacy.out" 2>"$tmp/reversed-legacy.err"; then
+  fail "reversed legacy ShellCrash hook markers should be rejected"
+fi
+grep -q 'invalid legacy ShellCrash lifecycle marker order' "$tmp/reversed-legacy.err" ||
+  fail "reversed legacy ShellCrash hook rejection message missing"
+cmp -s "$root/jffs/scripts/services-start" "$tmp/services-start.reversed-legacy" ||
+  fail "reversed legacy ShellCrash hook rejection overwrote user content"
 
 echo "lifecycle_registration_fixture_tests=ok"
