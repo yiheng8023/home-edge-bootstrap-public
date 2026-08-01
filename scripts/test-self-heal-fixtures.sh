@@ -6,13 +6,13 @@ repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 tmp_parent=${TMPDIR:-/tmp}
 tmp_root=$(mktemp -d "${tmp_parent%/}/home-edge-self-heal-test.XXXXXX") || exit 1
 router_tmp_root=$(mktemp -d "/tmp/home-edge-self-heal-router-test.XXXXXX") || { rm -rf "$tmp_root"; exit 1; }
-export HEAL_LOCK_DIR="$router_tmp_root/write.lock"
 fake_bin="$tmp_root/bin"
 mkdir -p "$fake_bin"
 
 cleanup() {
-  case "$tmp_root" in */home-edge-self-heal-test.*) rm -rf "$tmp_root" ;; esac
-  case "$router_tmp_root" in /tmp/home-edge-self-heal-router-test.*) rm -rf "$router_tmp_root" ;; esac
+  . "$repo/scripts/lib/remove-tree.sh"
+  case "$tmp_root" in */home-edge-self-heal-test.*) home_edge_remove_tree_with_retry "$tmp_root" ;; esac
+  case "$router_tmp_root" in /tmp/home-edge-self-heal-router-test.*) home_edge_remove_tree_with_retry "$router_tmp_root" ;; esac
 }
 trap cleanup EXIT HUP INT TERM
 
@@ -498,6 +498,7 @@ run_case() {
   HEAL_LOG="$log_file" \
   HEAL_API_CACHE="$api_cache" \
   HEAL_STATE_DIR="$state_dir" \
+  HEAL_LOCK_DIR="$router_tmp_root/$fixture-write.lock" \
   HEAL_DELAY_PROBES=1 \
   HEAL_DELAY_TIMEOUT_MS=1000 \
   "$@" sh "$repo/scripts/self-heal.sh" || {

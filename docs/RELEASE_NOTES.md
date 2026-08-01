@@ -2,6 +2,51 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.3 (2026-08-01)
+
+This corrective release supersedes v0.1.2 for release-document integrity. Runtime payloads,
+component locks, deployment behavior, and the declared compatibility boundary are unchanged. No
+new hardware, provider, network, or live-router certification is claimed.
+
+- Render only the exact target version section into each GitHub Release body, so a current Release
+  page cannot expose historical download matrices as current guidance.
+- Derive fixture versions from the release notes, require English and Chinese current sections to
+  agree, reject historical download tags, and require the complete current asset contract.
+- Use version-neutral build guidance in the packaged source documentation, make Windows fixture
+  cleanup deterministic, and explicitly prefer POSIX `find` during source preparation so Git Bash
+  cannot select the incompatible Windows command.
+
+v0.1.2 assets remain immutable and checksum-verifiable. Use v0.1.3 for the corrected release
+presentation and validation contract. Choose one package plus `SHA256SUMS`:
+
+| Need | Download | Required with it |
+|---|---|---|
+| Windows offline package, runtime included | [`home-edge-bootstrap-v0.1.3-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/home-edge-bootstrap-v0.1.3-offline.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/SHA256SUMS) |
+| macOS/Linux offline package, runtime included | [`home-edge-bootstrap-v0.1.3-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/home-edge-bootstrap-v0.1.3-offline.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/SHA256SUMS) |
+| Windows scripts/docs only; runtime already present | [`home-edge-bootstrap-v0.1.3-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/home-edge-bootstrap-v0.1.3-source.zip) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/SHA256SUMS) |
+| macOS/Linux scripts/docs only; runtime already present | [`home-edge-bootstrap-v0.1.3-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/home-edge-bootstrap-v0.1.3-source.tar.gz) | [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/SHA256SUMS) |
+
+The remaining assets support audit and corresponding-source availability:
+
+| Asset | Purpose | Required for normal installation |
+|---|---|---|
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/RELEASE-MANIFEST.json) | Records the public commit, component locks, sizes, and digests | No |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/SBOM.spdx.json) | Release-specific software inventory and license metadata | No |
+| [`mihomo-v1.19.28-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/mihomo-v1.19.28-source-complete.tar.gz) | Complete corresponding source for Mihomo | No |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.3/shellcrash-1.9.4-source-complete.tar.gz) | Complete corresponding source for ShellCrash | No |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.3-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.3-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.3-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.3-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.28-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.2 (2026-07-31)
 
 This patch release supersedes v0.1.1 for cross-platform host verification and lifecycle migration.

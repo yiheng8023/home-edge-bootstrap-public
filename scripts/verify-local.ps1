@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "lib\resolve-python.ps1")
 
 function Run-RequiredPowerShellFixture([string]$Name) {
   $Path = Join-Path $Repo "scripts\$Name"
@@ -17,16 +18,6 @@ function Run-RequiredShellFixture([string]$Name) {
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "missing required POSIX fixture: $Name" }
   & sh $Path
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-
-function Get-Python3Command {
-  foreach ($Name in @("python3", "python")) {
-    $Command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($null -eq $Command) { continue }
-    & $Command.Source -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'
-    if ($LASTEXITCODE -eq 0) { return [string]$Command.Source }
-  }
-  throw "Python 3 is required for public local verification; Python 2 is unsupported"
 }
 
 function Assert-PublicSbom([string]$Path) {
@@ -75,7 +66,7 @@ if ($HasSh) {
 }
 else { Write-Host "sh_syntax=skipped_no_sh" }
 
-$Python3Command = Get-Python3Command
+$Python3Command = Resolve-Python3 -FailureMessage "Python 3 is required for public local verification; Python 2 is unsupported"
 Write-Host "python3_runtime_state=ready"
 
 $RequiredPowerShellFixtures = @(

@@ -1,14 +1,8 @@
 param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
 $ErrorActionPreference = "Stop"
 $Root = Join-Path ([System.IO.Path]::GetTempPath()) ("home-edge-third-party-fixtures-" + [guid]::NewGuid().ToString("N"))
-$Python = $null
-foreach ($Name in @("python3", "python")) {
-  $Command = Get-Command $Name -ErrorAction SilentlyContinue
-  if ($null -eq $Command) { continue }
-  & $Command.Source -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'
-  if ($LASTEXITCODE -eq 0) { $Python = [string]$Command.Source; break }
-}
-if (-not $Python) { throw "Python 3 is required" }
+. (Join-Path $PSScriptRoot "lib\resolve-python.ps1")
+$Python = Resolve-Python3
 $PowerShell = (Get-Command powershell -ErrorAction Stop).Source
 
 $Code = @'

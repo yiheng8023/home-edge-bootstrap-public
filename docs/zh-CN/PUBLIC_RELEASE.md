@@ -63,7 +63,7 @@ ZIP 和 tar 必须只有一个安全包根目录，不得包含路径穿越或�
 ```powershell
 .\scripts\build-public-release.ps1 `
   -Repo (Get-Location) `
-  -Version v0.1.2 `
+  -Version vX.Y.Z `
   -PreparedDir C:\path\to\verified-prepared-material `
   -Output C:\path\to\dist
 ```
@@ -71,7 +71,7 @@ ZIP 和 tar 必须只有一个安全包根目录，不得包含路径穿越或�
 ```sh
 sh scripts/build-public-release.sh \
   --repo . \
-  --version v0.1.2 \
+  --version vX.Y.Z \
   --prepared-dir /path/to/verified-prepared-material \
   --output /path/to/dist
 ```
@@ -79,23 +79,39 @@ sh scripts/build-public-release.sh \
 验证过程不接触路由器或网络：
 
 ```powershell
-.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version v0.1.2 -Dist C:\path\to\dist
+.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version vX.Y.Z -Dist C:\path\to\dist
 ```
 
 ```sh
-sh scripts/verify-public-release.sh --repo . --version v0.1.2 --dist /path/to/dist
+sh scripts/verify-public-release.sh --repo . --version vX.Y.Z --dist /path/to/dist
 ```
 
 稳定成功标记为 `public_release_state=ready`。构建失败不会留下部分输出。构建和验证都不会
 创建 Git 标签、发布 GitHub Release、改变仓库可见性或接触路由器。
 
 创建或编辑 GitHub Release 前，应针对目标仓库和版本，使用
-`scripts/render-release-body.py` 渲染 `docs/RELEASE_NOTES.md`。该步骤会把仓库链接转换为
-固定到 tag 的 URL；若直接把文档文件作为 Release 正文，相对链接可能从错误目录解析。
+`scripts/render-release-body.py` 渲染 `docs/RELEASE_NOTES.md`。生成器会保留文档前言，只选择
+精确的 `## <version>` 章节，并把仓库链接转换为固定到 tag 的 URL。若直接把完整文档作为
+Release 正文，历史下载矩阵会混入当前发布，相对链接也可能从错误目录解析。
 
 生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## v0.1.3 验收合同
+
+v0.1.3 是文档与发布合同完整性的勘误版本，发布必须同时满足：
+
+- 创建新 tag 和九项新的版本化资源；不得替换 v0.1.2 资源。
+- Release 正文只渲染已审阅的 v0.1.3 章节，任何下载 URL 的 tag 不是 v0.1.3 都必须失败。
+- 对精确 tag checkout 验证完整资源清单、标签、`SHA256SUMS`、发布 manifest、SPDX SBOM、
+  许可证与完整对应源码。
+- 对精确 tag 运行 Linux、macOS 与 Windows 宿主验证，包括 Release 正文和公开投影 fixture。
+- 证明运行时组件锁与部署行为未改变；不得把 v0.1.2 的有日期现场观测冒充本次新鲜验证。
+- 发布后匿名验证 README、Release 页面、校验和、manifest 与一个有界的软件包下载。
+
+该修订只改变文档和工具，不改变路由器载荷或部署路径，因此无需访问路由器。任何更宽的
+运行时声明仍需单独授权的新鲜现场证据。
 
 ## v0.1.2 验收合同
 

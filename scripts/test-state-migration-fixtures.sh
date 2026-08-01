@@ -6,7 +6,8 @@ repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 tmp_base=${TMPDIR:-/tmp}
 [ "$tmp_base" = "/" ] || tmp_base=${tmp_base%/}
 tmp=$(mktemp -d "$tmp_base/home-edge-state-migration-test.XXXXXX") || exit 1
-trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+. "$repo/scripts/lib/remove-tree.sh"
+trap 'home_edge_remove_tree_with_retry "$tmp"' EXIT HUP INT TERM
 find_cmd=$(command -v find) || exit 1
 [ ! -x /usr/bin/find ] || find_cmd=/usr/bin/find
 sort_cmd=$(command -v sort) || exit 1

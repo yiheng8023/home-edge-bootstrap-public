@@ -5,7 +5,8 @@ English | [简体中文](README.zh-CN.md)
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[what to download](docs/RELEASE_NOTES.md) · [release contract](docs/PUBLIC_RELEASE.md).
+[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/latest) ·
+[release contract](docs/PUBLIC_RELEASE.md).
 
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
 and small-organization network edges. It coordinates a safe path from an unprepared edge gateway to

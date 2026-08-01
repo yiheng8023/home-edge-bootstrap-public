@@ -34,16 +34,7 @@ if (-not $Output -or -not $PayloadDir) { throw "required: --output and --payload
 
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 if (-not $Lock) { $Lock = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "config\third-party-lock.json" }
-
-function Get-Python3 {
-  foreach ($Name in @("python3", "python")) {
-    $Command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($null -eq $Command) { continue }
-    & $Command.Source -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'
-    if ($LASTEXITCODE -eq 0) { return [string]$Command.Source }
-  }
-  throw "Python 3 is required"
-}
+. (Join-Path $PSScriptRoot "lib\resolve-python.ps1")
 
 function Invoke-Checked([string]$Program, [string[]]$Arguments, [string]$Failure) {
   & $Program @Arguments
@@ -376,7 +367,7 @@ foreach ($Component in @($Mihomo, $ShellCrash)) {
   if ($ExpectedRepository.EndsWith(".git", [StringComparison]::Ordinal)) { $ExpectedRepository = $ExpectedRepository.Substring(0, $ExpectedRepository.Length - 4) }
   if (([string]($Entry[0].version) -cne [string]$Component.version) -or ([string]($Entry[0].path) -cne $ExpectedPath) -or ([string]($Entry[0].sourceRepository) -cne $ExpectedRepository) -or ([string]($Entry[0].sha256) -cne [string]$Component.payload_sha256)) { throw "payload manifest drift: $($Component.id)" }
 }
-$Python = Get-Python3
+$Python = Resolve-Python3
 Assert-SafeArchive $Python $Payloads.shellcrash
 
 $Stage = $OutputPath + ".stage-" + [guid]::NewGuid().ToString("N")

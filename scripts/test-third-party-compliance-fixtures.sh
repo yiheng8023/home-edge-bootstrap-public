@@ -3,7 +3,7 @@ set -eu
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 py=
 for candidate in python3 python; do
-  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'; then py=$candidate; break; fi
+  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)' 2>/dev/null; then py=$candidate; break; fi
 done
 [ -n "$py" ] || { echo 'Python 3 is required' >&2; exit 1; }
 root=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-third-party-fixtures.XXXXXX")

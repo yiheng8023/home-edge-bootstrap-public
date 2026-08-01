@@ -9,15 +9,8 @@ $PublicRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if (-not $Lock) { $Lock = Join-Path $PublicRoot "config\third-party-lock.json" }
 if (-not $Sbom) { $Sbom = Join-Path $PublicRoot "config\sbom.json" }
 if (-not $Notice) { $Notice = Join-Path $PublicRoot "THIRD_PARTY_NOTICES.md" }
-
-$Python = $null
-foreach ($Name in @("python3", "python")) {
-  $Command = Get-Command $Name -ErrorAction SilentlyContinue
-  if ($null -eq $Command) { continue }
-  & $Command.Source -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'
-  if ($LASTEXITCODE -eq 0) { $Python = [string]$Command.Source; break }
-}
-if (-not $Python) { throw "Python 3 is required" }
+. (Join-Path $PSScriptRoot "lib\resolve-python.ps1")
+$Python = Resolve-Python3
 
 $Code = @'
 import hashlib, json, pathlib, re, sys, tarfile

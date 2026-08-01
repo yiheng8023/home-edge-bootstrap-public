@@ -41,7 +41,7 @@ done
 
 python_cmd=
 for candidate in python3 python; do
-  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)'; then python_cmd=$candidate; break; fi
+  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)' 2>/dev/null; then python_cmd=$candidate; break; fi
 done
 [ -n "$python_cmd" ] || { echo 'Python 3 is required' >&2; exit 1; }
 
@@ -300,7 +300,9 @@ target.write_text(json.dumps({'schema_version':1,'module_count':len(modules),'pa
 PY
 )
 [ -f "$mihomo_tree/vendor/modules.txt" ] || { echo 'Mihomo vendored module source is incomplete' >&2; exit 1; }
-vendor_count=$(find "$mihomo_tree/vendor" -type f ! -name modules.txt | wc -l | tr -d ' ')
+find_cmd=find
+if [ -x /usr/bin/find ]; then find_cmd=/usr/bin/find; fi
+vendor_count=$("$find_cmd" "$mihomo_tree/vendor" -type f ! -name modules.txt | wc -l | tr -d ' ')
 [ "$vendor_count" -gt 0 ] || { echo 'Mihomo vendored module source is incomplete' >&2; exit 1; }
 
 mihomo_epoch=$(git -C "$stage/.acquire/mihomo" show -s --format=%ct HEAD)

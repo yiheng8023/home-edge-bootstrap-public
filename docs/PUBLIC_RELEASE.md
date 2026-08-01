@@ -71,7 +71,7 @@ Prepare verified third-party material outside the Git checkout with
 ```powershell
 .\scripts\build-public-release.ps1 `
   -Repo (Get-Location) `
-  -Version v0.1.2 `
+  -Version vX.Y.Z `
   -PreparedDir C:\path\to\verified-prepared-material `
   -Output C:\path\to\dist
 ```
@@ -79,7 +79,7 @@ Prepare verified third-party material outside the Git checkout with
 ```sh
 sh scripts/build-public-release.sh \
   --repo . \
-  --version v0.1.2 \
+  --version vX.Y.Z \
   --prepared-dir /path/to/verified-prepared-material \
   --output /path/to/dist
 ```
@@ -87,11 +87,11 @@ sh scripts/build-public-release.sh \
 Verify without contacting a router or network:
 
 ```powershell
-.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version v0.1.2 -Dist C:\path\to\dist
+.\scripts\verify-public-release.ps1 -Repo (Get-Location) -Version vX.Y.Z -Dist C:\path\to\dist
 ```
 
 ```sh
-sh scripts/verify-public-release.sh --repo . --version v0.1.2 --dist /path/to/dist
+sh scripts/verify-public-release.sh --repo . --version vX.Y.Z --dist /path/to/dist
 ```
 
 The stable success marker is `public_release_state=ready`. A failed build leaves no partial output.
@@ -99,14 +99,37 @@ Building or verifying does not create a Git tag, publish a GitHub Release, chang
 visibility, or contact a router.
 
 Before creating or editing a GitHub Release, render `docs/RELEASE_NOTES.md` with
-`scripts/render-release-body.py` for the target repository and version. This converts repository
-links to tag-pinned URLs; using the documentation file directly as the Release body can produce
-links that resolve from the wrong directory.
+`scripts/render-release-body.py` for the target repository and version. The renderer retains the
+document preamble, selects only the exact `## <version>` section, and converts repository links to
+tag-pinned URLs. Using the documentation file directly as the Release body can mix historical
+download matrices into the current Release and can produce links that resolve from the wrong
+directory.
 
 The renderer's `--source-ref` selects the reviewed commit/tag containing the Release body, while
 `--version` selects the release tag against which repository links are validated. They are normally
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
+
+## v0.1.3 Acceptance Contract
+
+v0.1.3 is a corrective release for documentation and release-contract integrity. Publication is
+gated on all of the following:
+
+- Create a new tag and nine new versioned assets; never replace v0.1.2 assets.
+- Render only the reviewed v0.1.3 section into the Release body and reject every download URL whose
+  tag is not v0.1.3.
+- Verify the complete asset list, labels, `SHA256SUMS`, release manifest, SPDX SBOM, licenses, and
+  complete corresponding source against the exact tagged checkout.
+- Run the Linux, macOS, and Windows host verification paths for the exact tag, including the
+  release-body and public-projection fixtures.
+- Prove that runtime component locks and deployment behavior are unchanged; do not present the
+  dated v0.1.2 field observations as fresh router verification.
+- Verify anonymous README, Release page, checksum, manifest, and one bounded package download after
+  publication.
+
+No router access is required for this documentation/tooling-only correction because it does not
+change the router payload or deployment path. Any broader runtime claim still requires fresh,
+separately authorized field evidence.
 
 ## v0.1.2 Acceptance Contract
 

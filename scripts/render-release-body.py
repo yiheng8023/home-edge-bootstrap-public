@@ -15,6 +15,7 @@ REPOSITORY_RE = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 LINK_RE = re.compile(r"(?P<prefix>!?\[[^\]\r\n]*\]\()(?P<target>[^)\s]+)(?P<suffix>\))")
 EXTERNAL_SCHEMES = ("http://", "https://", "mailto:")
+SECTION_HEADING_RE = re.compile(r"^##[ \t]+", re.MULTILINE)
 
 
 def fail(message: str) -> None:
@@ -115,6 +116,30 @@ def render(
     return LINK_RE.sub(replace, text).replace("\r\n", "\n").replace("\r", "\n").rstrip("\n") + "\n"
 
 
+def extract_release_section(text: str, version: str) -> str:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    version_heading = re.compile(
+        rf"^##[ \t]+{re.escape(version)}(?=$|[ \t(（])",
+        re.MULTILINE,
+    )
+    matches = list(version_heading.finditer(normalized))
+    if len(matches) != 1:
+        fail(f"expected exactly one release section for {version}; found {len(matches)}")
+
+    target = matches[0]
+    headings = list(SECTION_HEADING_RE.finditer(normalized))
+    first_heading = headings[0].start() if headings else target.start()
+    section_end = len(normalized)
+    for heading in headings:
+        if heading.start() > target.start():
+            section_end = heading.start()
+            break
+
+    preamble = normalized[:first_heading].rstrip("\n")
+    section = normalized[target.start():section_end].rstrip("\n")
+    return f"{preamble}\n\n{section}\n" if preamble else f"{section}\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Convert repository-relative Markdown links to tag-pinned GitHub URLs."
@@ -157,8 +182,9 @@ def main() -> None:
         ["show", f"{source_ref}:{source_relative.as_posix()}"],
         text=False,
     )
+    release_section = extract_release_section(source_bytes.decode("utf-8", "strict"), arguments.version)
     rendered = render(
-        source_bytes.decode("utf-8", "strict"),
+        release_section,
         source_relative=source_relative,
         root=root,
         repository=arguments.repository,

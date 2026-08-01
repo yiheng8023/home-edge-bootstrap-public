@@ -5,7 +5,7 @@
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
 发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](docs/zh-CN/RELEASE_NOTES.md) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/latest) ·
 [发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
 
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
