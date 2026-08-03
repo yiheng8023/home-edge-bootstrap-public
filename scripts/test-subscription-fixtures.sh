@@ -18,14 +18,17 @@ cat >"$fake_bin/curl" <<'EOF'
 #!/bin/sh
 out=""
 url=""
+[ -z "${SUBSCRIPTION_CURL_ARGS_LOG:-}" ] || printf '%s\n' "$@" >"$SUBSCRIPTION_CURL_ARGS_LOG"
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -o)
       shift
-      out="${1:-}"
+      [ "$#" -gt 0 ] || exit 3
+      out="$1"
       ;;
-    -x|--proxy)
+    -x|--proxy|--proto|--proto-redir|--connect-timeout|--max-time)
       shift
+      [ "$#" -gt 0 ] || exit 3
       ;;
     http://*|https://*)
       url="$1"
@@ -193,13 +196,20 @@ write_url() {
 run_update() {
   name="$1"
   shift
+  run_update_with_url "$name" 'https://provider.example/subscription-token-redacted' "$@"
+}
+
+run_update_with_url() {
+  name="$1"
+  test_url="$2"
+  shift 2
   case_dir="$tmp_root/$name"
   mkdir -p "$case_dir/cache" "$case_dir/backups"
   sub_file="$case_dir/SUBSCRIPTION.local"
   cache_file="$case_dir/cache/subscription.yaml"
   backup_dir="$case_dir/backups"
   log_file="$case_dir/update-sub.log"
-  write_url "$sub_file"
+  printf '%s\n' "$test_url" >"$sub_file"
 
   PATH="$fake_bin:$PATH" \
   SUBSCRIPTION_FILE="$sub_file" \
@@ -208,6 +218,32 @@ run_update() {
   SUBSCRIPTION_LOG="$log_file" \
   "$@" sh "$repo/scripts/update-sub.sh"
 }
+
+if run_update_with_url direct_http_reject 'http://provider.example/subscription-token-redacted' \
+  env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_RUN=1 \
+  >"$tmp_root/direct-http.out" 2>"$tmp_root/direct-http.err"; then
+  fail "direct HTTP subscription URL should be rejected"
+fi
+grep -q 'direct subscription URL must use HTTPS' "$tmp_root/direct-http.err" ||
+  fail "direct HTTP rejection message missing"
+
+if run_update_with_url direct_file_reject 'file:///tmp/provider-subscription' \
+  env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_RUN=1 \
+  >"$tmp_root/direct-file.out" 2>"$tmp_root/direct-file.err"; then
+  fail "direct file subscription URL should be rejected"
+fi
+grep -q 'direct subscription URL must use HTTPS' "$tmp_root/direct-file.err" ||
+  fail "direct file rejection message missing"
+
+direct_curl_args="$tmp_root/direct-curl.args"
+output=$(run_update direct_https_protocols env \
+  SUBSCRIPTION_FIXTURE=yaml \
+  SUBSCRIPTION_DRY_RUN=1 \
+  SUBSCRIPTION_CURL_ARGS_LOG="$direct_curl_args")
+awk 'previous == "--proto" && $0 == "=https" { found=1 } { previous=$0 } END { exit !found }' "$direct_curl_args" ||
+  fail "direct fetch does not restrict the initial protocol to HTTPS"
+awk 'previous == "--proto-redir" && $0 == "=https" { found=1 } { previous=$0 } END { exit !found }' "$direct_curl_args" ||
+  fail "direct fetch does not restrict redirect protocols to HTTPS"
 
 output=$(run_update direct_yaml env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_RUN=1)
 printf '%s\n' "$output" | grep -q 'subscription_dry_run=ok' || fail "direct YAML dry-run did not pass"
@@ -299,9 +335,16 @@ done
 output=$(run_update explicit_tool_paths env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_RUN=1 CURL_BIN="$fake_bin/curl" JQ_BIN="$fake_bin/jq")
 printf '%s\n' "$output" | grep -q 'subscription_dry_run=ok' || fail "explicit CURL_BIN/JQ_BIN dry-run did not pass"
 
-output=$(run_update fetch_proxy env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_RUN=1 SUBSCRIPTION_FETCH_PROXY=http://127.0.0.1:7890)
+proxy_curl_args="$tmp_root/proxy-curl.args"
+output=$(run_update fetch_proxy env SUBSCRIPTION_FIXTURE=yaml SUBSCRIPTION_DRY_RUN=1 \
+  SUBSCRIPTION_FETCH_PROXY=http://127.0.0.1:7890 \
+  SUBSCRIPTION_CURL_ARGS_LOG="$proxy_curl_args")
 printf '%s\n' "$output" | grep -q 'subscription_dry_run=ok' || fail "fetch proxy dry-run did not pass"
 printf '%s\n' "$output" | grep -q 'provider.example' && fail "subscription URL leaked to stdout with fetch proxy"
+awk 'previous == "--proto" && $0 == "=https" { found=1 } { previous=$0 } END { exit !found }' "$proxy_curl_args" ||
+  fail "proxied fetch does not restrict the initial protocol to HTTPS"
+awk 'previous == "--proto-redir" && $0 == "=https" { found=1 } { previous=$0 } END { exit !found }' "$proxy_curl_args" ||
+  fail "proxied fetch does not restrict redirect protocols to HTTPS"
 
 apply_dir="$tmp_root/apply"
 mkdir -p "$apply_dir/cache" "$apply_dir/backups"

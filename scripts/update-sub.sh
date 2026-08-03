@@ -248,6 +248,13 @@ converter_url() {
   printf '%s\n' "$out"
 }
 
+validate_direct_subscription_url() {
+  case "$url" in
+    https://?*) return 0 ;;
+    *) die "direct subscription URL must use HTTPS" ;;
+  esac
+}
+
 fetch_subscription() {
   resolve_curl
   if [ -n "$FETCH_PROXY" ]; then
@@ -264,11 +271,12 @@ fetch_subscription() {
       "$CURL_BIN" -fsSL --connect-timeout 8 --max-time 90 "$converted_url" -o "$tmp" || die "converted subscription download failed"
     fi
   else
+    validate_direct_subscription_url
     log "downloading subscription directly"
     if [ -n "$FETCH_PROXY" ]; then
-      "$CURL_BIN" -x "$FETCH_PROXY" -fsSL --connect-timeout 8 --max-time 60 "$url" -o "$tmp" || die "download failed"
+      "$CURL_BIN" -x "$FETCH_PROXY" -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 8 --max-time 60 "$url" -o "$tmp" || die "download failed"
     else
-      "$CURL_BIN" -fsSL --connect-timeout 8 --max-time 60 "$url" -o "$tmp" || die "download failed"
+      "$CURL_BIN" -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 8 --max-time 60 "$url" -o "$tmp" || die "download failed"
     fi
   fi
 }
