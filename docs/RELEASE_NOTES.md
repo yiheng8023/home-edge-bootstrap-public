@@ -19,10 +19,20 @@ The earlier archives remain unchanged and do not contain these fixes.
   that provide only Python 3.
 
 Mihomo v1.19.28 and ShellCrash 1.9.4 payloads and source locks are unchanged. This release does not
-claim new live-router acceptance or broader compatibility. The upstream applicability of
-[CVE-2025-56499](https://github.com/advisories/GHSA-7m6g-3fpv-8gmx) to the pinned Mihomo version
-remains unresolved; this project-script fix is not a clearance of that separate upstream issue.
-Existing installations are not automatically updated by publishing this release.
+claim new live-router acceptance or broader compatibility. Existing installations are not
+automatically updated by publishing this release.
+
+**Security evidence correction (2026-09-06):** The previous statement that
+[CVE-2025-56499](https://github.com/advisories/GHSA-7m6g-3fpv-8gmx) remained unresolved for the pinned
+source is superseded. Upstream [PR #2177](https://github.com/MetaCubeX/mihomo/pull/2177), included in
+[v1.19.12](https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.12), is retained in the locked
+v1.19.28 source. Existing isolated source regression evidence supports the fix under the default
+path policy: path checks enabled, no additional allowed paths, and a non-CMFA build. Static review
+found no path-policy overrides in the shipped startup scripts. This is a source-level disposition,
+not a new execution test of the shipped binary or a live-router security acceptance, and it does
+not close independent upstream authenticity requirements. Published tags and downloadable archives
+remain unchanged and therefore retain the earlier wording; this dated correction updates the
+documentation and release-page explanation only.
 
 Choose one package plus `SHA256SUMS`. Source-only packages, where offered, do not include runtime
 payloads. The manifest, SBOM and complete-source archives are audit material, not extra installation
