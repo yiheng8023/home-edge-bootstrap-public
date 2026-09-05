@@ -68,14 +68,14 @@ function Get-DefaultGateway {
   if ($env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY) { return $env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY }
   try {
     $Route = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction Stop |
-      Sort-Object RouteMetric, InterfaceMetric |
+      Sort-Object { [long]$_.RouteMetric + [long]$_.InterfaceMetric } |
       Select-Object -First 1
     if ($Route) { return [string]$Route.NextHop }
   }
   catch {}
   $FallbackRoute = Get-WindowsRouteRows |
     Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" } |
-    Sort-Object RouteMetric, InterfaceMetric |
+    Sort-Object { [long]$_.RouteMetric + [long]$_.InterfaceMetric } |
     Select-Object -First 1
   if ($FallbackRoute) { return [string]$FallbackRoute.NextHop }
   return ""
@@ -161,8 +161,7 @@ function Get-BestIPv4Route {
 
   $Selected = $Candidates |
     Sort-Object @{ Expression = "PrefixLength"; Descending = $true },
-      @{ Expression = { [int]$_.Route.RouteMetric }; Descending = $false },
-      @{ Expression = { [int]$_.Route.InterfaceMetric }; Descending = $false } |
+      @{ Expression = { [long]$_.Route.RouteMetric + [long]$_.Route.InterfaceMetric }; Descending = $false } |
     Select-Object -First 1
   if ($Selected) { return $Selected.Route }
   return $null
@@ -213,7 +212,7 @@ function Get-LocalTunState {
     }
     $DefaultRoute = $Routes |
       Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" } |
-      Sort-Object RouteMetric, InterfaceMetric |
+      Sort-Object { [long]$_.RouteMetric + [long]$_.InterfaceMetric } |
       Select-Object -First 1
     if (-not $DefaultRoute) { return "unknown" }
     if (Test-IPv4BenchmarkRange ([string]$DefaultRoute.NextHop)) { return "present" }

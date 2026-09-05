@@ -11,6 +11,7 @@ function Run-RequiredPowerShellFixture([string]$Name) {
   $Path = Join-Path $Repo "scripts\$Name"
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "missing required PowerShell fixture: $Name" }
   & $Path -Repo $Repo
+  if (-not $?) { exit 1 }
 }
 
 function Run-RequiredShellFixture([string]$Name) {
@@ -124,8 +125,11 @@ if ($HasSh) {
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & (Join-Path $Repo "scripts\verify-compatibility-matrix.ps1") -Repo $Repo
+if (-not $?) { exit 1 }
 & (Join-Path $Repo "scripts\scan-secrets.ps1") -Repo $Repo -ScanPath $Repo
+if (-not $?) { exit 1 }
 & (Join-Path $Repo "scripts\verify-media-kit.ps1") -Root $Repo
+if (-not $?) { exit 1 }
 
 foreach ($Required in @("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md")) {
   if (-not (Test-Path -LiteralPath (Join-Path $Repo $Required) -PathType Leaf)) { throw "missing license material: $Required" }

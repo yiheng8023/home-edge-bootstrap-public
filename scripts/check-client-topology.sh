@@ -42,7 +42,7 @@ default_gateway() {
     return
   fi
   if command -v powershell.exe >/dev/null 2>&1; then
-    powershell.exe -NoProfile -Command "Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric, InterfaceMetric | Select-Object -First 1 -ExpandProperty NextHop" 2>/dev/null |
+    powershell.exe -NoProfile -Command 'Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Sort-Object { [long]$_.RouteMetric + [long]$_.InterfaceMetric } | Select-Object -First 1 -ExpandProperty NextHop' 2>/dev/null |
       tr -d '\r' | awk 'NF { print; exit }'
   fi
 }

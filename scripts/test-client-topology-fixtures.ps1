@@ -115,6 +115,37 @@ Invoke-Case overlay_not_on_path router_primary 0 low 192.168.50.1 none absent or
 Invoke-RouteCase route_owned_by_unnamed_interceptor "0.0.0.0/0|192.168.50.1|10|25|25;142.250.0.0/16|0.0.0.0|20|1|1" present 1 hybrid
 Invoke-RouteCase benchmark_default_interceptor "0.0.0.0/0|198.18.0.2|48|0|0" present 1 hybrid
 Invoke-RouteCase unrelated_overlay_route "0.0.0.0/0|192.168.50.1|10|25|25;100.64.0.0/10|0.0.0.0|20|1|1" absent 0 router_primary
+Invoke-RouteCase combined_metric_specific_route "0.0.0.0/0|192.168.50.1|10|25|25;142.250.0.0/16|0.0.0.0|20|1|100;142.250.0.0/16|192.168.50.1|10|20|5" absent 0 router_primary
+Invoke-RouteCase combined_metric_default_route "0.0.0.0/0|198.18.0.2|20|1|100;0.0.0.0/0|192.168.50.1|10|20|5;142.250.0.0/16|192.168.50.1|10|20|5" absent 0 router_primary
+Invoke-RouteCase longest_prefix_before_metric "0.0.0.0/0|192.168.50.1|10|1|1;142.250.0.0/16|0.0.0.0|20|100|100" present 1 hybrid
+
+
+# Exercise the real Windows gateway selectors without reading host networking.
+function Test-CombinedGatewayMetric {
+  $SavedGateway = $env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY
+  try {
+    $env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY = $null
+    function Get-NetRoute {
+      [CmdletBinding()]
+      param([string]$DestinationPrefix)
+      [pscustomobject]@{ NextHop = '198.18.0.2'; RouteMetric = 1; InterfaceMetric = 100 }
+      [pscustomobject]@{ NextHop = '192.168.50.1'; RouteMetric = 20; InterfaceMetric = 5 }
+    }
+    $Tokens = $null
+    $Errors = $null
+    $Ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $Repo 'scripts/check-client-topology.ps1'), [ref]$Tokens, [ref]$Errors)
+    $Function = $Ast.Find({ param($Node) $Node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $Node.Name -eq 'Get-DefaultGateway' }, $true)
+    if (-not $Function -or $Errors.Count) { throw 'gateway fixture source invalid' }
+    . ([scriptblock]::Create($Function.Extent.Text))
+    if ((Get-DefaultGateway) -ne '192.168.50.1') { throw 'PowerShell gateway ignored combined metric' }
+    $Shell = [IO.File]::ReadAllText((Join-Path $Repo 'scripts/check-client-topology.sh'))
+    $Command = [regex]::Match($Shell, "(?m)powershell.exe -NoProfile -Command '([^'\r\n]*Get-NetRoute[^'\r\n]*)'")
+    if (-not $Command.Success) { throw 'Windows shell gateway fixture source missing' }
+    if ((& ([scriptblock]::Create($Command.Groups[1].Value))) -ne '192.168.50.1') { throw 'Windows shell gateway ignored combined metric' }
+  }
+  finally { $env:CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY = $SavedGateway }
+}
+Test-CombinedGatewayMetric
 
 $ProductCatalogPattern = "(?i)flclash|tailscale|zerotier|hiddify"
 foreach ($Detector in @("scripts\check-client-topology.ps1", "scripts\check-client-topology.sh")) {

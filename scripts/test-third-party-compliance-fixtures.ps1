@@ -6,7 +6,7 @@ $Python = Resolve-Python3
 $PowerShell = (Get-Command powershell -ErrorAction Stop).Source
 
 $Code = @'
-import gzip, hashlib, io, json, os, pathlib, shutil, subprocess, sys, tarfile, zipfile
+import shlex, gzip, hashlib, io, json, os, pathlib, shutil, subprocess, sys, tarfile, zipfile
 root, public, powershell = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
 prepare=public/'scripts/prepare-public-sources.ps1'; verify=public/'scripts/verify-third-party-compliance.ps1'; verify_sh=public/'scripts/verify-third-party-compliance.sh'
 root.mkdir(parents=True,exist_ok=True)
@@ -56,8 +56,8 @@ def make_fixture(name,missing_license=False,wrong_tag=False,wrong_hash=False,lic
     license_hash=hashlib.sha256(b'fixture GPL-3.0-only license\n').hexdigest()
     fake_archive=f/'fake-archive.py'; write(fake_archive,"import gzip,io,pathlib,sys,tarfile\nsource,archive,prefix,epoch=pathlib.Path(sys.argv[1]),pathlib.Path(sys.argv[2]),sys.argv[3],int(sys.argv[4])\nwith archive.open('wb') as raw:\n with gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=epoch,compresslevel=9) as gz:\n  with tarfile.open(fileobj=gz,mode='w',format=tarfile.PAX_FORMAT) as tf:\n   dirs=sorted((p for p in source.rglob('*') if p.is_dir()),key=lambda p:p.relative_to(source).as_posix()); files=sorted((p for p in source.rglob('*') if p.is_file()),key=lambda p:p.relative_to(source).as_posix())\n   for p in [source]+dirs:\n    rel='' if p==source else p.relative_to(source).as_posix(); i=tarfile.TarInfo(prefix+('/'+rel if rel else '')); i.type,i.mode,i.uid,i.gid,i.uname,i.gname,i.mtime=tarfile.DIRTYPE,0o755,0,0,'','',epoch; tf.addfile(i)\n   for p in files:\n    rel=p.relative_to(source).as_posix(); data=p.read_bytes(); i=tarfile.TarInfo(prefix+'/'+rel); i.size,i.mode,i.uid,i.gid,i.uname,i.gname,i.mtime=len(data),(0o755 if p.suffix=='.sh' else 0o644),0,0,'','',epoch; tf.addfile(i,io.BytesIO(data))\n")
     fake_py=f/'fake-go.py'; write(fake_py,"import json,pathlib,subprocess,sys\na=sys.argv[1:]\nif a==['version']: print('go version go1.20.99 fixture/amd64')\nelif a[:2]==['mod','download']:\n print(json.dumps({'Path':'example.invalid/dep-a','Version':'v0.0.0','Sum':'h1:fixture-a'},separators=(',',':'))); print(json.dumps({'Path':'example.invalid/dep-b','Version':'v0.0.0','Sum':'h1:fixture-b'},separators=(',',':')))\nelif a[:2]==['mod','verify']: print('all modules verified')\nelif a[:2]==['mod','vendor']:\n for name in ('dep-a','dep-b'):\n  p=pathlib.Path('vendor/example.invalid')/name; p.mkdir(parents=True,exist_ok=True); (p/'dep.go').write_bytes(b'package dep\\n')\n pathlib.Path('vendor/modules.txt').write_bytes(b'# example.invalid/dep-a v0.0.0\\n## explicit\\nexample.invalid/dep-a\\n# example.invalid/dep-b v0.0.0\\n## explicit\\nexample.invalid/dep-b\\n')\nelif a[:1]==['run']: raise SystemExit(subprocess.run([sys.executable,pathlib.Path(__file__).with_name('fake-archive.py'),*a[2:]]).returncode)\nelse: raise SystemExit(1)\n")
-    fake=f/'fake-go.cmd'; write(fake,'@echo off\r\npython "%~dp0fake-go.py" %*\r\n')
-    fake_sh=f/'fake-go.sh'; write(fake_sh,"#!/bin/sh\nexec python \"$(dirname \"$0\")/fake-go.py\" \"$@\"\n"); os.chmod(fake_sh,0o755)
+    fake=f/'fake-go.cmd'; write(fake,'@echo off\r\n"' + sys.executable.replace('%', '%%') + '" "%~dp0fake-go.py" %*\r\n')
+    fake_sh=f/'fake-go.sh'; write(fake_sh,"#!/bin/sh\nexec " + shlex.quote(sys.executable.replace(chr(92), '/')) + " \"$(dirname \"$0\")/fake-go.py\" \"$@\"\n"); os.chmod(fake_sh,0o755)
     toolchains=[]
     for tool_os,tool_arch in [('windows','amd64'),('windows','arm64'),('linux','amd64'),('linux','arm64'),('darwin','amd64'),('darwin','arm64')]:
       filename=f"go1.20.99.{tool_os}-{tool_arch}."+('zip' if tool_os=='windows' else 'tar.gz'); archive=f/filename
@@ -81,7 +81,7 @@ def prepare_cmd(f,m,s,payload,archive,out,tool_os='windows',tool_arch='amd64'):
     return [powershell,'-NoProfile','-ExecutionPolicy','Bypass','-File',prepare,'--output',out,'--payload-dir',payload,'--lock',f/'lock.json','--mihomo-url',m,'--shellcrash-url',s,'--go-archive',archive,'--go-work-root',f/'go-work','--fixture-mode','--fixture-os',tool_os,'--fixture-arch',tool_arch]
 def replace_tool(f,archive,body):
     py=f/'replacement-go.py'; cmd=f/'replacement-go.cmd'; sh=f/'replacement-go.sh'
-    write(py,body); write(cmd,'@echo off\r\npython "%~dp0fake-go.py" %*\r\n'); write(sh,"#!/bin/sh\nexec python \"$(dirname \"$0\")/fake-go.py\" \"$@\"\n"); os.chmod(sh,0o755)
+    write(py,body); write(cmd,'@echo off\r\n"' + sys.executable.replace('%', '%%') + '" "%~dp0fake-go.py" %*\r\n'); write(sh,"#!/bin/sh\nexec " + shlex.quote(sys.executable.replace(chr(92), '/')) + " \"$(dirname \"$0\")/fake-go.py\" \"$@\"\n"); os.chmod(sh,0o755)
     with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED) as z:
       z.write(cmd,'go/bin/go.cmd'); z.write(sh,'go/bin/go'); z.write(py,'go/bin/fake-go.py')
     lock=json.loads((f/'lock.json').read_text(encoding='utf-8')); selected=[x for x in lock['source_acquisition']['go_toolchains'] if x['filename']==archive.name]
