@@ -2,6 +2,49 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.4（2026-09-06）
+
+本补丁版本在订阅传输安全和宿主验证方面取代 v0.1.3。旧归档保持不变，不包含这些修复。
+
+- 直接服务商订阅在下载前拒绝非 HTTPS 地址；普通与代理获取分支均将初始请求和重定向
+  限定为 HTTPS，避免凭据明文传输。
+- 保留独立的本地/私网 HTTP 转换器策略；这不允许使用 HTTP 服务商订阅。服务商必须提供
+  HTTPS 订阅端点。
+- PowerShell 子检查失败时，Windows 验证立即失败；增加验证链不同位置失败的回归覆盖。
+- Windows 路由选择在最长前缀匹配后比较路由 metric 与接口 metric 之和，避免误判本机代理/TUN。
+- 第三方合规测试使用已选定的 Python 解释器，兼容仅提供 Python 3 的宿主。
+
+Mihomo v1.19.28、ShellCrash 1.9.4 载荷及源码锁保持不变。不声明新增真实路由器验收或扩大
+兼容性。[CVE-2025-56499](https://github.com/advisories/GHSA-7m6g-3fpv-8gmx) 对所固定 Mihomo
+版本的适用性仍未明确；本项目脚本修复不代表该独立上游问题已解除。发布不会自动更新既有安装。
+
+请选择一个软件包并同时下载 `SHA256SUMS`。如选择仅源码包，其中不含运行时载荷。
+manifest、SBOM 和完整对应源码用于审计，不是额外安装步骤。
+
+| 下载 | 用途 / GitHub 标签 |
+|---|---|
+| [`home-edge-bootstrap-v0.1.4-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/home-edge-bootstrap-v0.1.4-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.4-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/home-edge-bootstrap-v0.1.4-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.4-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/home-edge-bootstrap-v0.1.4-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.4-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/home-edge-bootstrap-v0.1.4-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.28-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/mihomo-v1.19.28-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.4/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| 文件名 | GitHub 标签 |
+|---|---|
+| `home-edge-bootstrap-v0.1.4-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.4-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.4-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.4-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.28-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.3（2026-08-01）
 
 该勘误版本在发布文档完整性方面取代 v0.1.2。运行时载荷、组件锁、部署行为与已声明

@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.2` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.4` 对应：
 
-- `home-edge-bootstrap-v0.1.2-source.zip`
-- `home-edge-bootstrap-v0.1.2-source.tar.gz`
-- `home-edge-bootstrap-v0.1.2-offline.zip`
-- `home-edge-bootstrap-v0.1.2-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.4-source.zip`
+- `home-edge-bootstrap-v0.1.4-source.tar.gz`
+- `home-edge-bootstrap-v0.1.4-offline.zip`
+- `home-edge-bootstrap-v0.1.4-offline.tar.gz`
 - `mihomo-v1.19.28-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -97,6 +97,22 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## v0.1.4 验收合同
+
+v0.1.4 交付已有订阅 HTTPS 修复及宿主验证、路由诊断修复。发布要求：
+
+- 新 tag 与九项标签正确的资源；保留全部历史 tag 和资源。
+- 精确提交的 Linux、macOS、Windows 验证，包括订阅协议锁回归；归档须与同一提交核验。
+- 中英文说明、渲染后的 Release 链接、包元数据、校验和、manifest、SPDX SBOM、许可证和
+  完整对应源码均与目标版本一致。
+- 运行时载荷及源码锁不变。复用准备材料必须重新对照已提交锁复算摘要；不能将旧项目脚本包
+  冒充为新制品。
+- 匿名验证 README、Release 页、校验和、manifest 和一个源码包下载。
+
+直接非 HTTPS 服务商订阅会被有意拒绝；独立的本地/私网 HTTP 转换器策略保留。
+本次发布不访问路由器，也不执行部署。离线协议/重定向夹具不代表新的现场验收。
+既有兼容性与上游公告限制继续明确保留，不声明上游漏洞已经解除。
 
 ## v0.1.3 验收合同
 

@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.2`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.4`, they are:
 
-- `home-edge-bootstrap-v0.1.2-source.zip`
-- `home-edge-bootstrap-v0.1.2-source.tar.gz`
-- `home-edge-bootstrap-v0.1.2-offline.zip`
-- `home-edge-bootstrap-v0.1.2-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.4-source.zip`
+- `home-edge-bootstrap-v0.1.4-source.tar.gz`
+- `home-edge-bootstrap-v0.1.4-offline.zip`
+- `home-edge-bootstrap-v0.1.4-offline.tar.gz`
 - `mihomo-v1.19.28-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -109,6 +109,25 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 `--version` selects the release tag against which repository links are validated. They are normally
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
+
+## v0.1.4 Acceptance Contract
+
+v0.1.4 delivers the existing subscription HTTPS fix and host verification/route-diagnostic fixes.
+Publication requires:
+
+- A new tag and nine correctly labeled assets; preserve all earlier tags and assets.
+- Exact-commit Linux, macOS and Windows verification, including subscription protocol-lock
+  regression coverage; verify the resulting archives against that same commit.
+- Version-matched English/Chinese notes, rendered Release links, package metadata, checksums,
+  manifest, SPDX SBOM, licenses and complete corresponding source.
+- Unchanged runtime payload/source locks. Reused prepared material must be rehashed against the
+  committed locks before building; do not reuse old project-script archives as new artifacts.
+- Anonymous README, Release page, checksum, manifest and one source-package download verification.
+
+Direct non-HTTPS provider subscriptions are intentionally rejected; the separate local/private
+HTTP converter policy is preserved. No router access or deployment is part of this release.
+Offline protocol/redirect fixtures are not new field acceptance. Existing compatibility and
+upstream advisory limitations remain explicit; no upstream vulnerability clearance is claimed.
 
 ## v0.1.3 Acceptance Contract
 
