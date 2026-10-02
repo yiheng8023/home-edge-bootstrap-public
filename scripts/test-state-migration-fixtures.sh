@@ -194,4 +194,33 @@ else
   rm -f "$symlink_root/jffs/home-edge-bootstrap/SUBSCRIPTION.local"
 fi
 
+auto_cache_root=$(new_root auto-cache-handoff)
+mkdir -p "$auto_cache_root/jffs/home-edge-bootstrap/cache"
+printf 'old-provider-cache\n' >"$auto_cache_root/jffs/home-edge-bootstrap/cache/subscription.yaml"
+cp "$auto_cache_root/jffs/home-edge-bootstrap/cache/subscription.yaml" "$tmp/auto-cache-original"
+HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE=1 run_migration "$auto_cache_root" 0 >"$tmp/auto-cache-plan.out"
+[ -f "$auto_cache_root/jffs/home-edge-bootstrap/cache/subscription.yaml" ] || fail "retirement plan moved its input"
+HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE=1 run_migration "$auto_cache_root" 1 >"$tmp/auto-cache-handoff.out"
+grep -Fxq 'legacy_subscription_cache_state=retired' "$tmp/auto-cache-handoff.out" || fail "cache handoff was not recorded"
+retired_cache=$("$find_cmd" "$auto_cache_root/jffs/home-edge-bootstrap-state/backups/subscription" -print | grep '/subscription.yaml$')
+[ -n "$retired_cache" ] && cmp "$tmp/auto-cache-original" "$retired_cache" >/dev/null || fail "legacy cache recovery bytes changed"
+# This is the normal auto updater's stable-cache publication. A later standard
+# deploy runs migration again and must not treat the consumed old copy as active.
+printf 'fresh-auto-cache\n' >"$auto_cache_root/jffs/home-edge-bootstrap-state/cache/subscription.yaml"
+run_migration "$auto_cache_root" 1 >"$tmp/auto-cache-redeploy.out"
+grep -Fxq 'state_migration_state=ready' "$tmp/auto-cache-redeploy.out" || fail "normal auto refresh blocked a later deployment"
+grep -Fxq 'fresh-auto-cache' "$auto_cache_root/jffs/home-edge-bootstrap-state/cache/subscription.yaml" || fail "redeploy overwrote current cache"
+cmp "$tmp/auto-cache-original" "$retired_cache" >/dev/null || fail "redeploy changed retained recovery bytes"
+# A new divergent legacy write still requires a decision; retirement never hides it.
+printf 'new-unaccepted-legacy-cache\n' >"$auto_cache_root/jffs/home-edge-bootstrap/cache/subscription.yaml"
+set +e
+HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE=1 run_migration "$auto_cache_root" 1 >"$tmp/auto-cache-conflict.out" 2>&1
+auto_cache_conflict_status=$?
+set -e
+[ "$auto_cache_conflict_status" -ne 0 ] || fail "divergent cache was silently retired"
+grep -Fxq 'state_migration_state=conflict' "$tmp/auto-cache-conflict.out" || fail "divergent cache conflict gate changed"
+grep -Fxq 'new-unaccepted-legacy-cache' "$auto_cache_root/jffs/home-edge-bootstrap/cache/subscription.yaml" || fail "conflict changed legacy input"
+grep -Fxq 'fresh-auto-cache' "$auto_cache_root/jffs/home-edge-bootstrap-state/cache/subscription.yaml" || fail "conflict changed canonical cache"
+echo state_migration_case=auto_cache_handoff_and_redeploy:pass
+
 echo "state_migration_fixture_tests=ok"

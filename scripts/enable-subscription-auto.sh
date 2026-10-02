@@ -50,6 +50,10 @@ chmod 700 "$stage/parser"
 printf 'probe: true\n' >"$stage/probe.yaml"
 "$stage/parser" decode "$stage/probe.yaml" "$stage/probe.json"
 jq -e '.probe==true' "$stage/probe.json" >/dev/null
+# Close the legacy-cache writer handoff before periodic refresh can change it.
+HOME_EDGE_STATE_APPLY=1 HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE=1 \
+  sh /jffs/home-edge-bootstrap/scripts/migrate-router-state.sh >"$stage/migration.log"
+grep -Eq '^legacy_subscription_cache_state=(retired|absent)$' "$stage/migration.log"
 mkdir -p "$state/runtime"
 cp "$stage/parser.gz" "$state/runtime/yamlbridge.gz.new"
 printf '%s\n' "$digest" >"$state/runtime/yamlbridge.sha256.new"

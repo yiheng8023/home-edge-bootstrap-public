@@ -4,6 +4,7 @@ set -eu
 umask 077
 
 apply=${HOME_EDGE_STATE_APPLY:-0}
+retire_subscription_cache=${HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE:-0}
 fixture_root=${HOME_EDGE_STATE_FIXTURE_ROOT:-}
 state_root=${HOME_EDGE_STATE_ROOT:-/jffs/home-edge-bootstrap-state}
 install_dir=${HOME_EDGE_INSTALL_DIR:-/jffs/home-edge-bootstrap}
@@ -68,6 +69,10 @@ fi
 case "$apply" in
   0|1) ;;
   *) stop_with blocked "HOME_EDGE_STATE_APPLY must be 0 or 1" ;;
+esac
+case "$retire_subscription_cache" in
+  0|1) ;;
+  *) stop_with blocked "HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE must be 0 or 1" ;;
 esac
 
 validate_logical_root() {
@@ -280,6 +285,9 @@ stable_runtime_backups="$state_path/backups/runtime"
 preflight_merge "$legacy_cache" "$stable_cache" cache
 preflight_merge "$legacy_subscription_backups" "$stable_subscription_backups" subscription_backups
 preflight_merge "$legacy_runtime_backups" "$stable_runtime_backups" runtime_backups
+if [ "$retire_subscription_cache" = 1 ] && [ -f "$legacy_cache/subscription.yaml" ]; then
+  needed=1
+fi
 
 if [ -f "$metadata_path" ]; then
   cmp -s "$metadata_path" "$expected_metadata" || {
@@ -306,6 +314,7 @@ emit_plan() {
 
 if [ "$apply" = 0 ]; then
   emit_plan
+  [ "$retire_subscription_cache" != 1 ] || emit legacy_subscription_cache_state planned
   exit 0
 fi
 
@@ -369,6 +378,26 @@ publish_static() {
 publish_static "$expected_metadata" "$metadata_path" 600
 publish_static "$expected_bridge" "$bridge_path" 600
 bridge_state=ready
+
+# Auto refresh owns the stable cache after activation. Retire only the exact
+# consumed legacy subscription copy, keeping its bytes as private recovery data.
+# The ordinary divergent-source conflict gate above remains unchanged.
+if [ "$retire_subscription_cache" = 1 ]; then
+  legacy_file="$legacy_cache/subscription.yaml"
+  if [ -e "$legacy_file" ]; then
+    [ -f "$legacy_file" ] && [ ! -L "$legacy_file" ] || stop_with blocked "legacy subscription cache is no longer a regular file"
+    cmp -s "$legacy_file" "$stable_cache/subscription.yaml" || stop_with conflict "legacy subscription cache changed before retirement"
+    archive_dir="$state_path/backups/subscription/legacy-cache-$(date +%s)-$$"
+    [ ! -e "$archive_dir" ] || stop_with blocked "legacy cache archive already exists"
+    mkdir "$archive_dir"; chmod 700 "$archive_dir"
+    mv "$legacy_file" "$archive_dir/subscription.yaml"
+    chmod 600 "$archive_dir/subscription.yaml"
+    cmp -s "$archive_dir/subscription.yaml" "$stable_cache/subscription.yaml" || stop_with conflict "archived cache changed during retirement"
+    emit legacy_subscription_cache_state retired
+  else
+    emit legacy_subscription_cache_state absent
+  fi
+fi
 
 emit_common
 emit state_migration_state ready

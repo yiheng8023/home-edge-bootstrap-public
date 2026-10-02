@@ -241,3 +241,13 @@ The project decommission path removes its own cron/helpers. Private credentials 
 needed recovery data follow the existing preservation policy.
 
 After deployment and source binding, activate with `APPLY=1 sh scripts/enable-subscription-auto.sh "$router" SITE_FILTERS.json`. This validates the site-built ARM64 executable and filter mapping before enabling the single registration. The default invocation only shows the plan.
+
+Activation also closes the legacy-cache handoff: it requests
+`HOME_EDGE_STATE_RETIRE_SUBSCRIPTION_CACHE=1` from the existing state migrator before enabling
+the scheduler. Only an old kit `cache/subscription.yaml` proven byte-identical to the adopted
+stable cache is moved into private `backups/subscription/legacy-cache-*/subscription.yaml`.
+Later auto refreshes can change the stable cache without a preserved old active source blocking
+the next deployment. Divergent copies still stop migration and require reconciliation;
+the original bytes remain available as recovery data. Existing installations already carrying
+divergent pre-activation copies need one evidence-backed local reconciliation, not repeated
+manual cache replacement.

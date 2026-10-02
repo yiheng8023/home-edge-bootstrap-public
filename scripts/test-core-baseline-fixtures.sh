@@ -5,6 +5,8 @@ repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 . "$repo/scripts/audit-core-baseline.sh"
 fixture_root=$(mktemp -d /tmp/home-edge-core-baseline.XXXXXX)
 case "$fixture_root" in /tmp/home-edge-core-baseline.*) ;; *) exit 1 ;; esac
+# macOS aliases /tmp to /private/tmp; fixtures bind the physical owned directory.
+fixture_root=$(CDPATH= cd "$fixture_root" && pwd -P)
 cleanup() { rm -rf "$fixture_root"; }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
