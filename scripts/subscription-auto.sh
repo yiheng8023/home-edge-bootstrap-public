@@ -68,7 +68,14 @@ no_links() {
   done
   IFS=$saved_ifs; set +f
 }
-for path in "$state" "$source_profile" "$live_profile" "$lock" "$filters" "$source_file" "$secret_file"; do no_links "$path"; done
+validate_effect_paths=1
+case "$mode:$enabled" in
+  --reconcile:0) validate_effect_paths=0;;
+  --boot:0) [ -d "$transactions" ] || validate_effect_paths=0;;
+esac
+if [ "$validate_effect_paths" = 1 ]; then
+  for path in "$state" "$source_profile" "$live_profile" "$lock" "$filters" "$source_file" "$secret_file"; do no_links "$path"; done
+fi
 case "$api:$canary_api" in http://127.0.0.1:*:http://127.0.0.1:*) ;; *) fail loopback_controller_required;; esac
 sha() { openssl dgst -sha256 "$1" | awk '{print $NF}'; }
 input_stamp() {
