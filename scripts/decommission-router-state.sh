@@ -31,7 +31,12 @@ home-edge-configure-dns.sh
 home-edge-prefetch-shellcrash-data.sh
 home-edge-start-shellcrash.sh
 home-edge-configure-service-rules.sh
-home-edge-self-heal-cron.sh'
+home-edge-self-heal-cron.sh
+home-edge-subscription-auto.sh
+home-edge-subscription-tools.sh
+home-edge-subscription-merge.jq
+home-edge-configure-dashboard-defaults.sh
+home-edge-dashboard-defaults.js'
 
 state_migration_state=unavailable
 project_registration_state=unavailable
@@ -401,6 +406,9 @@ state_migration_state=$(printf '%s\n' "$migration_output" | sed -n 's/^state_mig
 [ "$state_migration_state" = ready ] || stop_apply "stable state migration did not reach ready"
 
 current_action=remove_exact_cron
+if cru l 2>/dev/null | grep -Fq '#home_edge_subscription#'; then
+  cru d home_edge_subscription >/dev/null 2>&1 || stop_apply "cannot remove subscription cron"
+fi
 if [ "$cron_state" = present ]; then
   cru d "$job_name" >/dev/null 2>&1 || stop_apply "cannot remove exact cron registration"
 fi
@@ -426,6 +434,10 @@ marker_state=absent
 project_registration_state=absent
 
 current_action=remove_fixed_helpers
+dashboard_helper=$(physical "$script_root/home-edge-configure-dashboard-defaults.sh")
+if [ -x "$dashboard_helper" ] && [ -f "$(physical /jffs/ShellCrash/ui/index.html)" ]; then
+  HOME_EDGE_DASHBOARD_DIR="$(physical /jffs/ShellCrash/ui)" sh "$dashboard_helper" --remove || stop_apply "cannot detach managed dashboard defaults"
+fi
 scripts_path=$(physical "$script_root")
 old_ifs=$IFS
 IFS='

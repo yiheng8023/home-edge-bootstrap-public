@@ -21,12 +21,14 @@ value() { awk -F= -v key="$1" '$1 == key { print substr($0, index($0, "=") + 1);
 hash_file() {
   if which sha256sum >/dev/null 2>&1; then sha256sum "$1" 2>/dev/null | awk '{print $1}'
   elif which shasum >/dev/null 2>&1; then shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  elif which openssl >/dev/null 2>&1; then openssl dgst -sha256 "$1" 2>/dev/null | awk '{print $NF}'
   else return 127
   fi
 }
 hash_stream() {
   if which sha256sum >/dev/null 2>&1; then sha256sum 2>/dev/null | awk '{print $1}'
   elif which shasum >/dev/null 2>&1; then shasum -a 256 2>/dev/null | awk '{print $1}'
+  elif which openssl >/dev/null 2>&1; then openssl dgst -sha256 2>/dev/null | awk '{print $NF}'
   else return 127
   fi
 }
@@ -94,6 +96,15 @@ do
   [ -f "$install_dir/$source_path" ] && [ -f "$script_dir/$active_name" ] || { emit drift; exit 0; }
   [ "$(hash_file "$install_dir/$source_path")" = "$(hash_file "$script_dir/$active_name")" ] || { emit drift; exit 0; }
 done
+
+# Old kits remain valid; a kit that includes the updater must verify all its active helpers.
+if [ -f "$install_dir/scripts/subscription-auto.sh" ]; then
+  for mapping in 'subscription-auto.sh|home-edge-subscription-auto.sh' 'subscription-tools.sh|home-edge-subscription-tools.sh' 'subscription-merge.jq|home-edge-subscription-merge.jq' 'configure-dashboard-defaults.sh|home-edge-configure-dashboard-defaults.sh' 'dashboard-defaults.js|home-edge-dashboard-defaults.js'; do
+    source_path="scripts/${mapping%%|*}"; active_name=${mapping#*|}
+    [ -f "$install_dir/$source_path" ] && [ -f "$script_dir/$active_name" ] || { emit drift; exit 0; }
+    [ "$(hash_file "$install_dir/$source_path")" = "$(hash_file "$script_dir/$active_name")" ] || { emit drift; exit 0; }
+  done
+fi
 
 [ -f "$install_dir/scripts/migrate-router-state.sh" ] || { emit drift; exit 0; }
 compatibility_bridge="$script_dir/home-edge-policy.local"

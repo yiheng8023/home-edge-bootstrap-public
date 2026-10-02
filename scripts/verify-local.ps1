@@ -110,6 +110,7 @@ if ($HasSh) {
     "test-tui-fixtures.sh",
     "test-guide-router-fixtures.sh",
     "test-deployment-provenance-fixtures.sh",
+    "test-core-baseline-fixtures.sh",
     "test-deploy-fixtures.sh",
     "test-secret-scan-fixtures.sh",
     "test-support-bundle-fixtures.sh",

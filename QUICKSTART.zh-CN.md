@@ -203,3 +203,18 @@ Windows 上是 `C:\tmp\home-edge-support-bundles`，在 macOS/Linux 上是
 
 详细诊断、架构、适配器成熟度、无代理恢复和贡献说明见
 [完整 README](README.zh-CN.md)。
+
+
+## 可选的节点订阅自动刷新
+
+运行时、私有订阅和控制密钥已经配置后，在操作电脑构建解析桥并提供站点分组匹配 JSON：
+
+```sh
+sh scripts/build-subscription-parser.sh .tmp/subscription-parser
+APPLY=1 sh scripts/enable-subscription-auto.sh "$router" SITE_FILTERS.json
+```
+
+开发机需要 Go；路由器不安装 Go。启用入口使用已经保存的私有订阅，不输出凭据。
+核对 `home-edge-subscription-auto.sh --status` 和唯一的 `home_edge_subscription` 任务。
+默认每天刷新，按需触发有冷却、退避、验证和回退；不覆盖手动选中节点。
+此功能属于当前源码，不追溯修改历史 v0.1.4 下载包。

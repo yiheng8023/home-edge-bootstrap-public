@@ -490,6 +490,12 @@ if [ "$OBSERVE_ONLY" = "1" ]; then
   else
     echo "controller_auth_state=not_required"
   fi
+  echo "subscription_automation_enabled=${SUBSCRIPTION_AUTO_ENABLED:-0}"
+  auto_status="${HOME_EDGE_STATE_ROOT:-/jffs/home-edge-bootstrap-state}/subscription-auto/status.json"
+  if [ -s "$auto_status" ] && [ "${SUBSCRIPTION_AUTO_ENABLED:-0}" = 1 ]; then
+    "$JQ_BIN" -r '"subscription_automation_last_result="+(.last_result // "unknown"), "subscription_automation_last_success="+((.last_success // 0)|tostring), "subscription_automation_health_failures="+((.health_failures // 0)|tostring)' "$auto_status" 2>/dev/null || true
+    echo subscription_update_mode=node_only_guarded
+  fi
   dashboard_json=$(capi_url "$API/configs" 2>/dev/null || true)
   if printf '%s\n' "$dashboard_json" | "$JQ_BIN" -e 'type == "object"' >/dev/null 2>&1; then
     if printf '%s\n' "$dashboard_json" | grep -Eq '"external-ui"[[:space:]]*:[[:space:]]*"[^"[:space:]][^"]*"'; then

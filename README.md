@@ -283,3 +283,22 @@ scripts/     Guided operation, deployment, recovery, verification, and fixture e
 Project-original work is licensed under Apache-2.0. Bundled or referenced third-party components
 retain their own licenses and corresponding-source obligations; see
 [Third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Guarded subscription refresh and dashboard defaults
+
+The current source checkout adds opt-in periodic and demand-driven node refresh.
+A five-minute check defaults to a daily fetch; three sustained health failures can
+request an earlier refresh, subject to uplink, cooldown and backoff checks. Unchanged
+nodes do not reload. Changes retain local rules/groups and manual choices, validate
+an isolated candidate, obtain synchronous non-forced reload acknowledgement, and
+roll back failed network verification. A newly removed manual selection is reported
+as a conflict instead of silently replaced.
+
+Supported Yacd-meta initial preferences are latency ascending, unavailable nodes
+hidden, and automatic closing of old connections off. Saved browser choices win.
+
+The parser is compiled on the operator host, so the router needs no Go installation.
+See [Subscription automation](docs/SUBSCRIPTION_AUTOMATION.md) for prerequisites,
+activation and limits. This source feature is not retroactively present in the
+already published v0.1.4 download archives. Site results and offline fixture results
+are distinct; they do not establish broad firmware/provider support.

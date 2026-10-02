@@ -63,7 +63,7 @@
 
 当前 Merlin 实现早于完整适配器隔离。`config/policy.env`、`scripts/self-heal.sh` 与 `scripts/update-sub.sh` 等通用文件仍保留 Merlin/JFFS/ShellCrash 默认值。这些默认值属于当前参考实现表面，不是可移植框架契约；其他适配器不得隐式继承。第二个适配器接入通用 apply 路径前，必须把这些默认值迁移到适配器提供的配置边界之后。
 
-当前 Merlin 适配器会在 `services-start` 中安装带标记边界的受管块。该块调用项目自有 reconciler，恢复恰好一个 `home_edge_selfheal` cron 注册，并保留 `HEAL_CRON_DRY_RUN` 策略。它不会重启运行时、导入订阅、安装 Dashboard，也不会修改防火墙/DNS。未来软路由工作是独立的适配器准入事项，不是这项 Merlin 事务的延伸。
+当前 Merlin 适配器会在 `services-start` 中安装带标记边界的受管块。该块调用项目自有 reconciler，恢复恰好一个 `home_edge_selfheal` cron 注册，并保留 `HEAL_CRON_DRY_RUN` 策略。常规协调不重启已运行的内核，也不修改防火墙/DNS；明确开启订阅自动化后，会恢复未接受的节点事务并注册独立的订阅任务。它不更换订阅供应方或安装新的 Dashboard。未来软路由工作是独立的适配器准入事项，不是这项 Merlin 事务的延伸。
 
 Merlin 生命周期契约固定使用 `/jffs/scripts`。离线夹具即使采用替代 JFFS 根目录，`BOOTSTRAP_SCRIPT_DIR` 仍必须等于 `BOOTSTRAP_JFFS_DIR/scripts`。早于 reconciler 的部署属于升级对象，必须重新运行适配器；注册修复辅助脚本仅用于 reconciler 已部署、但钩子或 cron 已漂移的情形。
 
@@ -108,3 +108,12 @@ GitHub 在中国大陆某些网络下可以直连访问，但速度和稳定性�
 ```
 
 具体标签不是项目契约。脚本会自动发现 Mihomo controller，并按角色/名称启发式推断主可选代理组；如果某个配置结构比较特殊，可通过 `HEAL_GROUP`、`HEAL_GROUP_MATCH_REGEX` 和 `CLASH_API` 显式覆盖。
+
+
+### 已实现的节点更新事务
+
+参考实现新增 `subscription-auto.sh`：周期、按需、手动触发共享入口和全局写锁，
+节点数据单独更新，本地策略/规则保持；隔离校验、同步重载确认、选择恢复和网络验证
+成功后才接受事务。受管启动块先恢复未接受的持久配置，再协调订阅任务和原启动助手。
+这项明确开启的事务扩展了此前仅缓存/人工导入的范围；它不授权自动更换供应方、
+公开转换凭据、修改固件或防火墙。现有手动导入与旧缓存证明仍保持原来的证据边界。

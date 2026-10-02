@@ -271,6 +271,10 @@ run cp "$dns_config_src" "$dns_config_dst"
 run cp "$data_prefetch_src" "$data_prefetch_dst"
 run cp "$shellcrash_boot_src" "$shellcrash_boot_dst"
 run cp "$service_rules_src" "$service_rules_dst"
+for component in subscription-auto.sh subscription-tools.sh subscription-merge.jq configure-dashboard-defaults.sh dashboard-defaults.js; do
+  run cp "$kit_root/scripts/$component" "$router_script_dir/home-edge-$component"
+  run chmod 755 "$router_script_dir/home-edge-$component"
+done
 run chmod 600 "$policy_dst"
 run chmod 755 "$self_heal_dst" "$update_sub_dst" "$runtime_evidence_dst" "$verify_bundle_dst" "$reconcile_dst" "$secure_temp_dst" "$dns_config_dst" "$data_prefetch_dst" "$shellcrash_boot_dst" "$service_rules_dst"
 
@@ -579,6 +583,10 @@ if [ "$apply" = "1" ]; then
     HOME_EDGE_WRITE_LOCK_DIR="$write_lock_dir" HOME_EDGE_WRITE_LOCK_STALE_SEC="$write_lock_stale_sec" \
     HOME_EDGE_WRITE_LOCK_HELD=1 \
     sh "$reconcile_dst" --install || die "self-heal lifecycle registration failed"
+  HOME_EDGE_STATE_ROOT="$state_dir" SUBSCRIPTION_POLICY_FILE="$policy_dst" \
+    sh "$router_script_dir/home-edge-subscription-auto.sh" --reconcile || die "subscription registration failed"
+  HOME_EDGE_DASHBOARD_DIR="$shellcrash_dir/ui" \
+    sh "$router_script_dir/home-edge-configure-dashboard-defaults.sh" || die "dashboard defaults failed"
 else
   log "PLAN: install persistent services-start hook and reconcile self-heal cron"
 fi

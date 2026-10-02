@@ -219,6 +219,10 @@ fi
 
 reapply_restored_kit
 
+if [ "$apply" = 1 ] && [ ! -f "$current_dir/scripts/subscription-auto.sh" ] && which cru >/dev/null 2>&1; then
+  if cru l 2>/dev/null | grep -Fq '#home_edge_subscription#'; then cru d home_edge_subscription; fi
+fi
+
 log "rollback_state=ready"
 log "restored_dir=$install_dir"
 log "rollback_backup=$rollback_dir"

@@ -181,6 +181,11 @@ cleanup_first_install_active_state() {
     home-edge-verify-bundle.sh \
     home-edge-reconcile-self-heal.sh \
     home-edge-self-heal-cron.sh \
+    home-edge-subscription-auto.sh \
+    home-edge-subscription-tools.sh \
+    home-edge-subscription-merge.jq \
+    home-edge-configure-dashboard-defaults.sh \
+    home-edge-dashboard-defaults.js \
     home-edge-secure-temp.sh \
     home-edge-configure-dns.sh \
     home-edge-prefetch-shellcrash-data.sh \
@@ -206,6 +211,9 @@ rollback_deploy() {
     fi
   fi
   [ "$restored" = "1" ] && rm -rf "$failed_dir"
+  if [ ! -f "$remote_dir/scripts/subscription-auto.sh" ] && which cru >/dev/null 2>&1; then
+    if cru l 2>/dev/null | grep -Fq '#home_edge_subscription#'; then cru d home_edge_subscription; fi
+  fi
 }
 
 acquire_deploy_lock
@@ -260,7 +268,7 @@ echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 $Remote = $RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
   Replace("__MODE__", $Mode).
   Replace("__RUNTIME_FOLLOWS__", [int]$RuntimeRequested)
-$ArchiveItems = @("README.md", "README.zh-CN.md", "bootstrap.sh", "adapters", "config", "docs", "scripts")
+$ArchiveItems = @("README.md", "README.zh-CN.md", "bootstrap.sh", "adapters", "config", "docs", "scripts", "tools")
 if ($IncludeBundleResolved) {
   $ArchiveItems += "bundle"
 }
@@ -444,6 +452,11 @@ cleanup_first_install_active_state() {
     home-edge-verify-bundle.sh \
     home-edge-reconcile-self-heal.sh \
     home-edge-self-heal-cron.sh \
+    home-edge-subscription-auto.sh \
+    home-edge-subscription-tools.sh \
+    home-edge-subscription-merge.jq \
+    home-edge-configure-dashboard-defaults.sh \
+    home-edge-dashboard-defaults.js \
     home-edge-secure-temp.sh \
     home-edge-configure-dns.sh \
     home-edge-prefetch-shellcrash-data.sh \

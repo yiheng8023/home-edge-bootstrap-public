@@ -22,6 +22,7 @@
 | `firmware_state` | `official_merlin`, `merlin_compatible_modified`, `stock_asuswrt`, `unsupported`, `unknown` | 审计能判断出的固件族 |
 | `admin_state` | `web_only`, `ssh_reachable`, `jffs_scripts_ready` | 路由器侧自动化是否可以安全运行 |
 | `baseline_state` | `risky`, `needs_review`, `reviewed`, `reviewed_with_monitoring` | 路由器安全与兼容性设置是否需要处理 |
+| `core_baseline_state` | `match`, `drift`, `unrecorded`, `invalid`, `unavailable` | 观察到的内核及证据是否与站点已采纳记录一致；独立于安全风险状态 |
 | `proxy_state` | `absent`, `policy_deployed`, `api_reachable`, `self_heal_installed`, `verified` | 代理链路推进到了哪一步 |
 | `subscription_state` | `missing`, `credential_stored`, `cache_ready`, `runtime_imported` | 更换服务商是否能由本项目驱动；`runtime_imported` 表示当前运行时可能健康，但订阅凭据和缓存不在项目管理下 |
 | `automation_state` | `audit_only`, `dry_run_ready`, `apply_ready`, `live_managed` | 项目下一步允许做到什么程度 |
@@ -115,7 +116,74 @@ sh scripts/audit-router-baseline.sh <user>@<router-lan-ip>
 - 相关监听端口；
 - 活动 UPnP 映射；
 - 代理部署、Mihomo API、cron 和最近自愈状态；
+- 活动二进制版本及其与站点已采纳内核、证据记录的一致性；
 - 下一步安全操作。
+
+## 站点已采纳内核记录
+
+经授权的本机换核需要独立采纳记录。审计不会拿 ShellCrash `core_v` 与仓库发行 manifest
+比较；站点采纳新版不会改写 v0.1.4 的历史发行基线 `v1.19.28`。`core_baseline_state`
+不会改变 `baseline_state`、风险计数，也不会自动替换或降级内核。
+
+两种 host wrapper 都将本地可信的 `scripts/audit-core-baseline.sh` 前置到既有 SSH payload，
+无需新增部署 router helper。`mihomo_version` 来自活动 `/proc/PID/exe -v`，不再把
+`authenticated` 当成版本；控制器认证状态单独保留。审计计算活动二进制、原生
+`/jffs/ShellCrash/CrashCore.gz`、受保护的
+`/jffs/home-edge-bootstrap-state/runtime/mihomo-linux-arm64.gz` 及原始 receipt 的 SHA-256，
+并比较真实版本、ShellCrash `core_v` 与站点预期版本。观察前后核对 PID 启动时间；
+证据不完整时保留未知。
+
+站点负责人应核验原始换核 receipt 和验收证据后，再创建私有记录：
+
+```text
+/jffs/home-edge-bootstrap-state/runtime-core-baseline.env
+```
+
+schema version 1 只允许下面六个不带引号的字段；摘要占位符必须换成真实值：
+
+```text
+schema_version=1
+core_version=v1.19.32
+core_raw_sha256=<64位小写十六进制>
+core_gzip_sha256=<64位小写十六进制>
+receipt_path=/jffs/.home-core-update-YYYYMMDD/result.env
+receipt_sha256=<64位小写十六进制>
+```
+
+`core_raw_sha256` 绑定未压缩二进制；`core_gzip_sha256` 绑定原生和受保护路径应具有的同一份
+gzip 原始字节；`receipt_sha256` 绑定原始 receipt 字节，不统一换行或改写原件。receipt
+必须各有唯一一项：`version=<采纳版本>`、`selectors_unchanged=yes`、`route_verified=yes`。
+同目录独立 `status` 文件必须只有一行 `verified`。没有独立文件时，也兼容历史 receipt
+内唯一的 `status=verified` 字段；两种状态源冲突则拒绝。站点记录仍保持六字段 schema。
+其他字段仍是由整文件摘要绑定的数据。这记录历史验收，不重新证明
+当前链路、上游来源真实性或断电耐久性。
+
+解析器不 source 两类文件。记录重复或未知字段、不安全路径、不支持的 schema、记录和
+receipt、status 路径中的符号链接都会被拒绝；记录允许空行和注释，摘要格式严格校验。本地目录
+存在下载的 gzip 不等于本地已有 `result.env`；本审计只读取记录指向的路由器原始 receipt。
+
+| 状态 | 含义 |
+|---|---|
+| `match` | 活动版本/raw 摘要、规范化的 `core_v`、两份 gzip 摘要及 verified receipt 均与记录一致 |
+| `drift` | 已观察到的版本、元数据、文件摘要或 receipt 摘要与采纳记录不符 |
+| `unrecorded` | 未建立站点记录；不推断发行 manifest 漂移或降级需求 |
+| `invalid` | 记录、路径、schema、验收状态或 receipt 验收字段无效 |
+| `unavailable` | 缺少活动进程、元数据、摘要能力、gzip 或 receipt 等必要观察 |
+
+输出包含 `core_baseline_reason`、`core_baseline_expected_version`、`core_baseline_status_source`、`shellcrash_core_version`
+和已观察到的 raw/native/protected/receipt SHA-256；不输出 receipt 原文、节点或密钥。
+版本比较会规范化可选 `v` 前缀，也接受原生 `core_v` 的外层引号。不一致意味着需要核对
+证据，不是覆盖内核或修改原始 receipt 的授权。
+摘要工具用 `which` 发现，兼容没有 `command` builtin 的 BusyBox shell。
+
+离线 fixture 用 `HOME_EDGE_CORE_AUDIT_ROOT` 映射路由器路径，
+`HOME_EDGE_CORE_PROC_ROOT` 指向模拟进程树；其他可信测试路径参数为
+`HOME_EDGE_CORE_BASELINE_FILE`、`HOME_EDGE_CORE_NATIVE_GZIP`、
+`HOME_EDGE_CORE_PROTECTED_GZIP`、`HOME_EDGE_CORE_SHELLCRASH_CONFIG`。生产默认路径如上。
+
+```sh
+sh scripts/test-core-baseline-fixtures.sh
+```
 
 ## 自动化边界
 

@@ -283,7 +283,7 @@ if [ -x /jffs/scripts/home-edge-self-heal.sh ]; then
   if [ "$controller_observation_state" = "ready" ]; then
     api_reachable=1
     api_url=$(cat /tmp/self-heal.api 2>/dev/null || true)
-    api_version="authenticated"
+    api_version=""
   fi
 fi
 self_heal_registration_state="missing"
@@ -342,7 +342,7 @@ print_kv "lifecycle_reconciler_state" "$lifecycle_reconciler_state"
 print_kv "self_heal_policy_mode" "$self_heal_policy_mode"
 print_kv "self_heal_cron_dry_run" "$cron_dry_run"
 [ -n "${api_url:-}" ] && print_kv "mihomo_api" "$api_url"
-[ -n "${api_version:-}" ] && print_kv "mihomo_version" "$api_version"
+audit_core_baseline "${runtime_pid:-}"
 printf "%s\n" "$cron_list" | grep "home_edge_selfheal" || true
 tail -n 8 /tmp/self-heal.log 2>/dev/null || true
 echo
@@ -497,6 +497,9 @@ fi
 
 $exitCode = 1
 try {
+  # Embed the same trusted host library as the shell wrapper; deploy no new helper.
+  $CoreBaselineLibrary = Get-Content -LiteralPath (Join-Path $PSScriptRoot "audit-core-baseline.sh") -Raw
+  $RemoteCommand = ($CoreBaselineLibrary + "`n" + $RemoteCommand).Replace("`r`n", "`n")
   $Payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($RemoteCommand))
   $sshCommand = @'
 set -eu

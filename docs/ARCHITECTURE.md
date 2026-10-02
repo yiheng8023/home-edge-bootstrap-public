@@ -102,7 +102,7 @@ path.
 
 The current Merlin adapter installs a marker-bounded block in `services-start`. That block invokes
 the project-owned reconciler, which restores exactly one `home_edge_selfheal` cron registration and
-preserves `HEAL_CRON_DRY_RUN`. It does not restart the runtime, import a subscription, install a
+preserves `HEAL_CRON_DRY_RUN`. Registration itself does not restart the runtime, import a subscription, install a
 dashboard, or mutate firewall/DNS. Future soft-router work is a separate adapter admission effort,
 not an extension of this Merlin transaction.
 
@@ -165,3 +165,16 @@ main selector -> optional regional or policy group -> reachable concrete route
 The concrete labels are not part of the project contract. The scripts auto-discover the Mihomo
 controller, infer the main selectable proxy group by role/name heuristics, and allow explicit
 overrides through `HEAL_GROUP`, `HEAL_GROUP_MATCH_REGEX`, and `CLASH_API` when a profile is unusual.
+
+
+### Implemented node-update transaction
+
+The reference implementation now has one `subscription-auto.sh` entrypoint for
+periodic, demand and manual triggers, sharing the global writer lock. Node data is
+merged while local policy/rules remain owned by the site. Isolation, synchronous
+reload acknowledgement, selection restoration and real route verification precede
+acceptance. The managed boot block first restores unaccepted persistent profiles,
+then reconciles the subscription cron and existing starter. This explicitly enabled
+transaction extends the earlier cache/manual-import flow; it grants no automatic
+provider replacement, public credential conversion, firmware or firewall changes.
+Legacy raw-cache consumption evidence keeps its original predicate and limits.

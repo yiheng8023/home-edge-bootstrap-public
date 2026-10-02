@@ -57,6 +57,13 @@ fi
 
 {
   echo "set -e"
+  legacy_overrides="${SUBSCRIPTION_CONVERTER_BASE_URL:-}${SUBSCRIPTION_FETCH_PROXY:-}${SUBSCRIPTION_CONVERTER_TARGET:-}${SUBSCRIPTION_CONVERTER_CONFIG_URL:-}${SUBSCRIPTION_APPLY_PATH:-}${SUBSCRIPTION_RELOAD_CMD:-}"
+  if [ "$apply" = 1 ] && [ -z "$legacy_overrides" ] && [ "${SUBSCRIPTION_ALLOW_REMOTE_CONVERTER:-0}" != 1 ]; then
+    echo '[ ! -r /jffs/scripts/home-edge-policy.env ] || . /jffs/scripts/home-edge-policy.env'
+    echo 'if [ "${SUBSCRIPTION_AUTO_ENABLED:-0}" = 1 ] && [ -x /jffs/scripts/home-edge-subscription-auto.sh ]; then'
+    echo '  exec sh /jffs/scripts/home-edge-subscription-auto.sh --refresh'
+    echo 'fi'
+  fi
   printf '%s sh /jffs/scripts/home-edge-update-sub.sh\n' "$mode"
   echo "tail -n 8 /tmp/update-sub.log 2>/dev/null || true"
 } | ssh $ssh_opts -- "$router" 'tr -d "\r" | sh -s'

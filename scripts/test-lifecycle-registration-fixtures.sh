@@ -108,6 +108,15 @@ grep -q '^echo preserved-user-start$' "$root/jffs/scripts/services-start" || fai
   fail "legacy ShellCrash hook end marker remained after migration"
 [ "$(grep -c '#home_edge_selfheal#' "$state")" -eq 1 ] || fail "initial reconciliation did not create exactly one cron job"
 
+# Failed recovery gates only our starter; unrelated user startup continues.
+printf '#!/bin/sh\nexit 1\n' >"$root/jffs/scripts/home-edge-subscription-auto.sh"
+printf '#!/bin/sh\ntouch "%s"\n' "$tmp/starter-ran" >"$root/jffs/scripts/home-edge-start-shellcrash.sh"
+chmod 755 "$root/jffs/scripts/home-edge-subscription-auto.sh" "$root/jffs/scripts/home-edge-start-shellcrash.sh"
+printf 'touch "%s"\n' "$tmp/user-after-ran" >>"$root/jffs/scripts/services-start"
+CRU_STATE="$state" PATH="$fakebin:$PATH" sh "$root/jffs/scripts/services-start" >/dev/null
+[ ! -e "$tmp/starter-ran" ] && [ -e "$tmp/user-after-ran" ] || fail "failed recovery did not gate only owned starter"
+rm -f "$root/jffs/scripts/home-edge-subscription-auto.sh"
+
 lock_dir="$tmp/global-write.lock"
 mkdir "$lock_dir"
 printf '%s\n' "$$" >"$lock_dir/pid"

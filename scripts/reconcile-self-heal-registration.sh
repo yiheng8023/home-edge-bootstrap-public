@@ -158,6 +158,11 @@ boot_hook_state() {
 
 write_canonical_block() {
   printf '%s\n' "$begin_marker"
+  printf 'home_edge_recovery_ready=1\n'
+  # Recover a pending node transaction before the ShellCrash starter runs.
+  printf 'if [ -x "%s/jffs/scripts/home-edge-subscription-auto.sh" ]; then\n' "$root"
+  printf '  "%s/jffs/scripts/home-edge-subscription-auto.sh" --boot || home_edge_recovery_ready=0\n' "$root"
+  printf 'fi\n'
   printf 'if [ -x "%s" ]; then\n' "$reconciler"
   if [ -n "$root" ]; then
     printf '  HOME_EDGE_RECONCILE_ROOT="%s" "%s" --boot\n' "$root" "$reconciler"
@@ -165,13 +170,14 @@ write_canonical_block() {
     printf '  "%s" --boot\n' "$reconciler_rel"
   fi
   printf 'fi\n'
-  printf 'if [ -x "%s" ]; then\n' "$shellcrash_starter"
+  printf 'if [ "$home_edge_recovery_ready" = 1 ] && [ -x "%s" ]; then\n' "$shellcrash_starter"
   if [ -n "$root" ]; then
     printf '  HOME_EDGE_SHELLCRASH_DIR="%s/jffs/ShellCrash" HOME_EDGE_STATE_ROOT="%s/jffs/home-edge-bootstrap-state" HOME_EDGE_SHELLCRASH_BOOT_DELAY=0 "%s" &\n' "$root" "$root" "$shellcrash_starter"
   else
     printf '  "%s" &\n' "$shellcrash_starter_rel"
   fi
   printf 'fi\n'
+  printf 'unset home_edge_recovery_ready\n'
   printf '%s\n' "$end_marker"
 }
 

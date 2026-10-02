@@ -22,6 +22,7 @@ read-only audit
 | `firmware_state` | `official_merlin`, `merlin_compatible_modified`, `stock_asuswrt`, `unsupported`, `unknown` | What firmware family the audit can infer |
 | `admin_state` | `web_only`, `ssh_reachable`, `jffs_scripts_ready` | Whether router-side automation can safely run |
 | `baseline_state` | `risky`, `needs_review`, `reviewed`, `reviewed_with_monitoring` | Whether router security and compatibility settings need attention |
+| `core_baseline_state` | `match`, `drift`, `unrecorded`, `invalid`, `unavailable` | Whether the observed core and evidence agree with the site-accepted core record; independent of security posture |
 | `proxy_state` | `absent`, `policy_deployed`, `api_reachable`, `self_heal_installed`, `verified` | How far the proxy path has progressed |
 | `subscription_state` | `missing`, `credential_stored`, `cache_ready`, `runtime_imported` | Whether provider switching can be driven by this project; `runtime_imported` means the current runtime may be healthy but the subscription credential/cache is outside project management |
 | `automation_state` | `audit_only`, `dry_run_ready`, `apply_ready`, `live_managed` | What the project is allowed to do next |
@@ -126,7 +127,80 @@ subscription URLs, or VPN private keys. It reports:
 - relevant listening ports;
 - active UPnP mappings;
 - proxy deployment, Mihomo API, cron, and recent self-heal state;
+- the active executable version and agreement with the site-accepted core/evidence record;
 - the next safe action.
+
+## Site-Accepted Core Record
+
+A locally authorized core replacement needs its own acceptance record. The audit does not compare
+ShellCrash `core_v` with the repository release manifest; an accepted site version does not rewrite
+the historical v0.1.4 release baseline (`v1.19.28`). `core_baseline_state` changes neither
+`baseline_state` nor the risk counters, and never triggers a replacement or downgrade.
+
+Both host wrappers embed `scripts/audit-core-baseline.sh` into the existing SSH payload. No new
+router helper deployment is required. `mihomo_version` is read from the active `/proc/PID/exe -v`,
+not from the word `authenticated`; controller authentication remains a separate observation.
+The audit hashes that executable, native `/jffs/ShellCrash/CrashCore.gz`, protected
+`/jffs/home-edge-bootstrap-state/runtime/mihomo-linux-arm64.gz`, and the original router receipt.
+It also compares the executable version with ShellCrash `core_v` and the accepted version.
+PID start time is checked around executable observation; an incomplete observation stays unknown.
+
+The authorized site owner creates this private record only after checking the original update
+receipt and acceptance evidence:
+
+```text
+/jffs/home-edge-bootstrap-state/runtime-core-baseline.env
+```
+
+Schema version 1 has exactly these six unquoted fields (replace the digest placeholders):
+
+```text
+schema_version=1
+core_version=v1.19.32
+core_raw_sha256=<64 lowercase hexadecimal characters>
+core_gzip_sha256=<64 lowercase hexadecimal characters>
+receipt_path=/jffs/.home-core-update-YYYYMMDD/result.env
+receipt_sha256=<64 lowercase hexadecimal characters>
+```
+
+`core_raw_sha256` binds the uncompressed binary. `core_gzip_sha256` binds the exact archive bytes
+expected at both native and protected paths. `receipt_sha256` binds the original receipt bytes,
+without newline normalization or rewriting. The receipt must have exactly one each of
+`version=<accepted version>`, `selectors_unchanged=yes`, and `route_verified=yes`. The same directory's
+`status` file must contain exactly one line, `verified`. Historical receipts with a unique
+`status=verified` field are also supported when the separate file is absent; conflicting status
+sources are rejected. The six-field site schema does not change. Other receipt fields remain data
+covered by its full-file digest. This records prior acceptance;
+it does not re-prove the current route, upstream provenance, or power-loss durability.
+
+The parser never sources either file. Duplicate/unknown record fields, unsafe paths, unsupported
+schema values, and symbolic links in the record/receipt/status path are rejected. Blank lines and comments
+are allowed in the record; hash values remain strict. A local downloaded gzip archive does not prove
+that a host-side `result.env` exists; this audit reads the named original router receipt only.
+
+| State | Meaning |
+|---|---|
+| `match` | Runtime version/raw digest, normalized `core_v`, both archive digests, and the verified receipt agree with the accepted record |
+| `drift` | An observed version, metadata value, artifact digest, or receipt digest differs from that record |
+| `unrecorded` | No site record exists; no release-manifest comparison or downgrade is inferred |
+| `invalid` | The record/path/schema, acceptance status, or receipt acceptance fields are invalid |
+| `unavailable` | A required runtime, metadata, hashing capability, archive, or receipt observation cannot be obtained |
+
+The output includes `core_baseline_reason`, `core_baseline_expected_version`, `core_baseline_status_source`,
+`shellcrash_core_version`, and observed raw/native/protected/receipt SHA-256 fields. It does not print
+receipt contents, subscription nodes, or keys. Version comparison normalizes an optional leading
+`v`; quoted native `core_v` values are accepted. A mismatch is a request to reconcile evidence,
+not permission to overwrite the current core or edit an original receipt.
+Hash-tool discovery uses `which`, including on BusyBox shells without a `command` builtin.
+
+Offline fixtures use `HOME_EDGE_CORE_AUDIT_ROOT` to remap router paths and
+`HOME_EDGE_CORE_PROC_ROOT` for a synthetic process tree. Additional trusted test overrides are
+`HOME_EDGE_CORE_BASELINE_FILE`, `HOME_EDGE_CORE_NATIVE_GZIP`, `HOME_EDGE_CORE_PROTECTED_GZIP`, and
+`HOME_EDGE_CORE_SHELLCRASH_CONFIG`; production defaults above remain unchanged. Run:
+
+```sh
+sh scripts/test-core-baseline-fixtures.sh
+```
 
 ## Automation Boundary
 

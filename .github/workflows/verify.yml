@@ -10,6 +10,20 @@ permissions:
   contents: read
 
 jobs:
+  subscription-behavior:
+    name: Guarded subscription and dashboard behavior
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.8'
+          cache-dependency-path: tools/yamlbridge/go.sum
+      - name: Parser and transaction regression checks
+        run: |
+          sh scripts/build-subscription-parser.sh "$RUNNER_TEMP/subscription-parser"
+          python3 scripts/test-subscription-auto.py --parser "$RUNNER_TEMP/subscription-parser/yamlbridge-linux-amd64"
+          node scripts/test-dashboard-defaults.cjs
   linux:
     name: Linux local verification
     runs-on: ubuntu-latest

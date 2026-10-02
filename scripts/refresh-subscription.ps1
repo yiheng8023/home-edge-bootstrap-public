@@ -40,6 +40,15 @@ if ($ReloadCommand) { $Mode += "SUBSCRIPTION_RELOAD_CMD=$(Quote-Sh $ReloadComman
 if ($AllowRemoteConverter) { $Mode += "SUBSCRIPTION_ALLOW_REMOTE_CONVERTER=1" }
 
 $RemoteScript = "set -e`n$($Mode -join ' ') sh /jffs/scripts/home-edge-update-sub.sh`ntail -n 8 /tmp/update-sub.log 2>/dev/null || true`n"
+if ($Apply -and -not ($FetchProxy -or $ConverterBaseUrl -or $ConverterTarget -or $ConverterConfigUrl -or $ApplyPath -or $ReloadCommand -or $AllowRemoteConverter)) {
+  $AutoDispatch = @'
+[ ! -r /jffs/scripts/home-edge-policy.env ] || . /jffs/scripts/home-edge-policy.env
+if [ "${SUBSCRIPTION_AUTO_ENABLED:-0}" = 1 ] && [ -x /jffs/scripts/home-edge-subscription-auto.sh ]; then
+  exec sh /jffs/scripts/home-edge-subscription-auto.sh --refresh
+fi
+'@
+  $RemoteScript = "set -e`n$AutoDispatch`n$RemoteScript"
+}
 $Payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($RemoteScript))
 $Remote = @'
 set -eu

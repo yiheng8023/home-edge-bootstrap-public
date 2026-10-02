@@ -30,7 +30,7 @@ ssh_timeout="${SSH_CONNECT_TIMEOUT_SEC:-8}"
 ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 bundle_dir="${DEPLOY_BUNDLE_DIR:-$repo/bundle}"
-archive_items="README.md README.zh-CN.md bootstrap.sh adapters config docs scripts"
+archive_items="README.md README.zh-CN.md bootstrap.sh adapters config docs scripts tools"
 [ "$include_bundle" = "1" ] && archive_items="$archive_items bundle"
 deploy_stage=""
 cleanup_host_stage() {
@@ -228,6 +228,11 @@ cleanup_first_install_active_state() {
     home-edge-verify-bundle.sh \
     home-edge-reconcile-self-heal.sh \
     home-edge-self-heal-cron.sh \
+    home-edge-subscription-auto.sh \
+    home-edge-subscription-tools.sh \
+    home-edge-subscription-merge.jq \
+    home-edge-configure-dashboard-defaults.sh \
+    home-edge-dashboard-defaults.js \
     home-edge-secure-temp.sh \
     home-edge-configure-dns.sh \
     home-edge-prefetch-shellcrash-data.sh \
@@ -251,6 +256,9 @@ rollback_deploy() {
     if ! HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1; then
       echo "deploy-merlin: WARN previous kit was restored but its bootstrap replay failed" >&2
     fi
+  fi
+  if [ ! -f "$remote_dir/scripts/subscription-auto.sh" ] && which cru >/dev/null 2>&1; then
+    if cru l 2>/dev/null | grep -Fq '#home_edge_subscription#'; then cru d home_edge_subscription; fi
   fi
   [ "$restored" = "1" ] && rm -rf "$failed_dir"
 }
@@ -355,6 +363,11 @@ cleanup_first_install_active_state() {
     home-edge-verify-bundle.sh \
     home-edge-reconcile-self-heal.sh \
     home-edge-self-heal-cron.sh \
+    home-edge-subscription-auto.sh \
+    home-edge-subscription-tools.sh \
+    home-edge-subscription-merge.jq \
+    home-edge-configure-dashboard-defaults.sh \
+    home-edge-dashboard-defaults.js \
     home-edge-secure-temp.sh \
     home-edge-configure-dns.sh \
     home-edge-prefetch-shellcrash-data.sh \

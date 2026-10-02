@@ -83,6 +83,9 @@ cp "$repo/scripts/configure-shellcrash-dns.sh" "$fixture_kit/scripts/configure-s
 cp "$repo/scripts/prefetch-shellcrash-data.sh" "$fixture_kit/scripts/prefetch-shellcrash-data.sh"
 cp "$repo/scripts/start-shellcrash-at-boot.sh" "$fixture_kit/scripts/start-shellcrash-at-boot.sh"
 cp "$repo/scripts/configure-shellcrash-service-rules.sh" "$fixture_kit/scripts/configure-shellcrash-service-rules.sh"
+for component in subscription-auto.sh subscription-tools.sh subscription-merge.jq configure-dashboard-defaults.sh dashboard-defaults.js; do
+  cp "$repo/scripts/$component" "$fixture_kit/scripts/$component"
+done
 
 cat >"$fixture_kit/bin/uname" <<'EOF'
 #!/bin/sh

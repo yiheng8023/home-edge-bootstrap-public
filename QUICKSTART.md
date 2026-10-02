@@ -215,3 +215,20 @@ macOS/Linux. The bundle is redacted, but you must review every file before attac
 
 Return to the [full README](README.md) for detailed diagnosis, architecture, adapter maturity,
 no-wall recovery, and contribution guidance.
+
+
+## Optional node-only automatic subscription refresh
+
+After runtime/source setup, compile the parser and prepare an explicit site filter mapping:
+
+```sh
+sh scripts/build-subscription-parser.sh .tmp/subscription-parser
+APPLY=1 sh scripts/enable-subscription-auto.sh "$router" SITE_FILTERS.json
+```
+
+The first command needs Go on the operator host. The second uses the already configured
+private subscription and controller secret; it does not request or print them. Verify
+`/jffs/scripts/home-edge-subscription-auto.sh --status` and the single
+`home_edge_subscription` registration. Normal scheduling is daily with demand checks
+and guarded rollback. Preserve the operator's chosen node; a removed pin refuses the
+candidate. This section describes the source checkout, not historical v0.1.4 archives.
