@@ -33,10 +33,15 @@
       } catch (_) { return false; }
     };
     const local = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => isLocal(entry));
-    const hasKey = ({ entry }) => typeof entry.secret === 'string' && entry.secret.length > 0;
+    const isText = value => typeof value === 'string';
+    const hasKey = ({ entry }) => isText(entry.secret) && entry.secret.length > 0;
     const current = local.find(item => item.index === config.selectedClashAPIConfigIndex && hasKey(item)) ||
       local.filter(hasKey).sort((a, b) => (b.entry.addedAt || 0) - (a.entry.addedAt || 0))[0] || local[0];
-    const index = current ? current.index : entries.push({ baseURL: origin, secret: '', addedAt: Date.now() }) - 1;
+    const index = current ? current.index : entries.push({
+      baseURL: origin,
+      secret: '',
+      addedAt: Date.now(),
+    }) - 1;
     // Persist before Yacd's deferred module reads its initial application state.
     config.clashAPIConfigs = entries;
     config.selectedClashAPIConfigIndex = index;
@@ -92,7 +97,7 @@
       } catch (_) { return 'offline'; }
       finally { clearTimeout(timer); }
     };
-    let attemptedKey = typeof entries[index].secret === 'string' ? entries[index].secret : '';
+    let attemptedKey = isText(entries[index].secret) ? entries[index].secret : '';
     let attemptedSubmission = false;
     const connect = async (secret, submitted) => {
       attemptedKey = secret;

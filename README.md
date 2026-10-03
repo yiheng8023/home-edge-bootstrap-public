@@ -296,6 +296,9 @@ as a conflict instead of silently replaced.
 
 Supported Yacd-meta initial preferences are latency ascending, unavailable nodes
 hidden, and automatic closing of old connections off. Saved browser choices win.
+The local panel automatically uses its own router: enter the panel access key once,
+then reopen directly in the same browser, without Add or IP selection. Controller
+authentication remains enabled; retain site storage and use the same local URL.
 
 The parser is compiled on the operator host, so the router needs no Go installation.
 See [Subscription automation](docs/SUBSCRIPTION_AUTOMATION.md) for prerequisites,

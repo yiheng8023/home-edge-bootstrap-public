@@ -57,7 +57,7 @@ async function browser(saved, { status = 200, href = 'http://192.168.50.1:9999/u
   const saved = { ...explicit, selectedClashAPIConfigIndex: 0, clashAPIConfigs: [
     { baseURL: 'http://192.168.50.1:9999', secret: '' },
     { baseURL: 'http://192.168.50.1:9999/', secret: 'fixture-key', addedAt: 1 },
-    { baseURL: 'http://192.168.9.1:9999', secret: 'other-router-key' },
+    { baseURL: 'http://192.168.9.1:9999', secret: "<REDACTED>" },
   ] };
   const remembered = await browser(saved);
   assert.equal(remembered.read().selectedClashAPIConfigIndex, 1);
