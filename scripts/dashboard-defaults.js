@@ -24,7 +24,12 @@
     // Explicit upstream connection links keep their existing meaning.
     if (['hostname', 'port', 'secret'].some(name => here.searchParams.has(name))) return;
     const origin = here.origin;
-    const entries = Array.isArray(config.clashAPIConfigs) ? config.clashAPIConfigs.slice() : [];
+    const previousEntries = Array.isArray(config.clashAPIConfigs) ? config.clashAPIConfigs : [];
+    const selectedEntry = previousEntries[config.selectedClashAPIConfigIndex];
+    // Retire only Yacd's identifiable, never-configured built-in placeholder.
+    const entries = previousEntries.filter(entry => !(entry &&
+      entry.baseURL === 'http://127.0.0.1:9090' && entry.secret === '' && entry.addedAt === 0));
+    const selectedIndex = entries.indexOf(selectedEntry);
     const isLocal = entry => {
       try {
         const url = new URL(entry.baseURL);
@@ -35,7 +40,7 @@
     const local = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => isLocal(entry));
     const isText = value => typeof value === 'string';
     const hasKey = ({ entry }) => isText(entry.secret) && entry.secret.length > 0;
-    const current = local.find(item => item.index === config.selectedClashAPIConfigIndex && hasKey(item)) ||
+    const current = local.find(item => item.index === selectedIndex && hasKey(item)) ||
       local.filter(hasKey).sort((a, b) => (b.entry.addedAt || 0) - (a.entry.addedAt || 0))[0] || local[0];
     const index = current ? current.index : entries.push({
       baseURL: origin,

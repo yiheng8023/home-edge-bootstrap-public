@@ -214,7 +214,9 @@ that browser's existing Yacd storage. Incorrect keys can be re-entered, while a
 temporary network failure offers retry without discarding the saved key. Explicit
 upstream `hostname`/`port`/`secret` links keep their original behavior. Display
 preferences and other stored backend records are retained. Use the same URL in a
-browser that preserves site storage; private sessions, cleared data, and different
+browser that preserves site storage. The built-in unconfigured `127.0.0.1:9090`
+record is removed only when it has an empty key and `addedAt: 0`; configured loopback
+records and other backends stay intact. Private sessions, cleared data, and different
 IP/domain/protocol origins cannot share a remembered connection.
 Controller and mixed proxy ports are read from the active local profile. Subscription
 transport failures can retry through that local mixed proxy; certificate verification stays

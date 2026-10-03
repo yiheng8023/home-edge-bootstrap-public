@@ -73,6 +73,19 @@ async function browser(saved, { status = 200, href = 'http://192.168.50.1:9999/u
   assert.equal(reopened.doc.body.children.length, 0);
   assert.equal(reopened.read().selectedClashAPIConfigIndex, 1);
 
+  const nativePlaceholder = {
+    baseURL: 'http://127.0.0.1:9090',
+    secret: '',
+    addedAt: 0,
+  };
+  const withPlaceholder = await browser({ ...saved, selectedClashAPIConfigIndex: 2,
+    clashAPIConfigs: [nativePlaceholder, ...saved.clashAPIConfigs] });
+  assert.deepEqual(withPlaceholder.read().clashAPIConfigs, saved.clashAPIConfigs);
+  assert.equal(withPlaceholder.read().selectedClashAPIConfigIndex, 1);
+  const configuredLoopback = { baseURL: 'http://127.0.0.1:9090', secret: '', addedAt: 123 };
+  const keepConfigured = await browser({ ...saved, clashAPIConfigs: [...saved.clashAPIConfigs, configuredLoopback] });
+  assert.deepEqual(keepConfigured.read().clashAPIConfigs.at(-1), configuredLoopback);
+
   fresh.nodes().find(x => x.tag === 'input').value = 'new-fixture-key';
   fresh.setStatus(200);
   fresh.nodes().find(x => x.tag === 'form').events.submit({ preventDefault() {} });
