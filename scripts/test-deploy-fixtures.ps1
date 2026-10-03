@@ -28,6 +28,26 @@ try {
   Remove-Item -LiteralPath $FixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 $Source = Get-Content -LiteralPath $Deploy -Raw
+$ParseTokens = $null; $ParseErrors = $null
+$DeployAst = [Management.Automation.Language.Parser]::ParseFile($Deploy, [ref]$ParseTokens, [ref]$ParseErrors)
+if ($ParseErrors.Count) { throw 'Deploy source has syntax errors' }
+$Normalizer = $DeployAst.Find({ param($Node)
+  $Node -is [Management.Automation.Language.FunctionDefinitionAst] -and $Node.Name -eq 'ConvertTo-PosixRemoteCommand'
+}, $true)
+if (-not $Normalizer) { throw 'Missing actual remote-command normalizer' }
+& {
+  param($Definition)
+  . ([scriptblock]::Create($Definition))
+  $Normalized = ConvertTo-PosixRemoteCommand "set -eu`r`nprintf 'ok\n'`r`n"
+  if ($Normalized.Contains("`r") -or $Normalized -ne "set -eu`nprintf 'ok\n'`n") {
+    throw 'Remote shell commands retain CRLF'
+  }
+} $Normalizer.Extent.Text
+foreach ($CommandName in @('Remote', 'RuntimeSpaceRemote', 'RuntimeRemote', 'RuntimeRollbackRemote')) {
+  if ($Source -notmatch ('\$' + $CommandName + '\s*=\s*ConvertTo-PosixRemoteCommand\s')) {
+    throw "Remote command bypasses LF conversion: $CommandName"
+  }
+}
 if ($Source -notmatch 'DEPLOY_BUNDLE_DIR') { throw "PowerShell deploy lacks a temporary bundle override for fixture and offline use" }
 if ($Source -notmatch 'new-deployment-provenance\.ps1') { throw "PowerShell deploy does not generate provenance from staged bytes" }
 if ($Source -notmatch 'DEPLOYMENT-CONTENT-SHA256SUMS') { throw "PowerShell deploy lacks provenance archive contract" }

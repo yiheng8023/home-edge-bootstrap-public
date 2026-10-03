@@ -206,6 +206,16 @@ an available uplink, and the cooldown/backoff gates. Failures back off up to a d
 An unchanged normalized node/membership graph updates the observation/cache only;
 it does not reload the core. Browser UI defaults are latency ascending, unavailable
 nodes hidden, and auto-close old connections off. Existing stored choices win.
+The local `/ui/` entry also selects the controller at the page's own origin. First
+use asks only for the panel access key; a validated saved connection opens directly
+on subsequent visits, without Add or an IP picker. Authentication stays enabled;
+the server does not embed its key in a public asset or URL. Credentials remain in
+that browser's existing Yacd storage. Incorrect keys can be re-entered, while a
+temporary network failure offers retry without discarding the saved key. Explicit
+upstream `hostname`/`port`/`secret` links keep their original behavior. Display
+preferences and other stored backend records are retained. Use the same URL in a
+browser that preserves site storage; private sessions, cleared data, and different
+IP/domain/protocol origins cannot share a remembered connection.
 Controller and mixed proxy ports are read from the active local profile. Subscription
 transport failures can retry through that local mixed proxy; certificate verification stays
 enabled. HTTP rejection, invalid data and certificate verification failure do not trigger this

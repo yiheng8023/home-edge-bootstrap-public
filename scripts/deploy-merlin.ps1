@@ -11,6 +11,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+function ConvertTo-PosixRemoteCommand {
+  param([string]$Command)
+  # Windows here-strings retain CRLF; ssh's remote POSIX shell needs LF.
+  return $Command.Replace("`r`n", "`n").Replace("`r", "")
+}
 if (-not $Router) {
   throw "Router is required. Pass -Router <ssh-user>@<router-ip> or set ROUTER."
 }
@@ -265,9 +270,9 @@ echo "deploy_state=applied"
 echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 '@
 
-$Remote = $RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
+$Remote = ConvertTo-PosixRemoteCommand ($RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
   Replace("__MODE__", $Mode).
-  Replace("__RUNTIME_FOLLOWS__", [int]$RuntimeRequested)
+  Replace("__RUNTIME_FOLLOWS__", [int]$RuntimeRequested))
 $ArchiveItems = @("README.md", "README.zh-CN.md", "bootstrap.sh", "adapters", "config", "docs", "scripts", "tools")
 if ($IncludeBundleResolved) {
   $ArchiveItems += "bundle"
@@ -324,9 +329,9 @@ if [ "$available_kib" -lt "$required_kib" ]; then
 fi
 echo "runtime_space_preflight_state=ready"
 '@
-    $RuntimeSpaceRemote = $RuntimeSpaceTemplate.
+    $RuntimeSpaceRemote = ConvertTo-PosixRemoteCommand ($RuntimeSpaceTemplate.
       Replace("__REQUIRED_KIB__", $RuntimeSpaceRequiredKiB.ToString([Globalization.CultureInfo]::InvariantCulture)).
-      Replace("__PAYLOAD_BYTES__", $RuntimePayloadBytes.ToString([Globalization.CultureInfo]::InvariantCulture))
+      Replace("__PAYLOAD_BYTES__", $RuntimePayloadBytes.ToString([Globalization.CultureInfo]::InvariantCulture)))
     & ssh @SshArgs $RuntimeSpaceRemote
     if ($LASTEXITCODE -ne 0) {
       exit $LASTEXITCODE
@@ -402,9 +407,9 @@ decode_payload | tar -xzf - -C "$runtime_stage"
   sh bootstrap.sh)
 echo "runtime_deploy_state=applied"
 '@
-    $RuntimeRemote = $RuntimeTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
+    $RuntimeRemote = ConvertTo-PosixRemoteCommand ($RuntimeTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
       Replace("__REPLACE_RUNTIME__", [int]$ReplaceRequested).
-      Replace("__REPLACE_CORE__", [int]$ReplaceCoreRequested)
+      Replace("__REPLACE_CORE__", [int]$ReplaceCoreRequested))
     $RuntimeRollbackTemplate = @'
 set -eu
 remote_dir="__REMOTE_DIR__"
@@ -500,7 +505,7 @@ else
   echo "control_plane_rollback_state=removed"
 fi
 '@
-    $RuntimeRollbackRemote = $RuntimeRollbackTemplate.Replace("__REMOTE_DIR__", $RemoteDir)
+    $RuntimeRollbackRemote = ConvertTo-PosixRemoteCommand ($RuntimeRollbackTemplate.Replace("__REMOTE_DIR__", $RemoteDir))
     $RuntimePayload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($BundleArchive))
     $RuntimePayload | ssh @SshArgs $RuntimeRemote
     if ($LASTEXITCODE -ne 0) {

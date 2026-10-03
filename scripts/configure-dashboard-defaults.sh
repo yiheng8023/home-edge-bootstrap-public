@@ -12,7 +12,7 @@ if [ "${1:-}" = --remove ]; then
   trap 'rm -f "$tmp"' EXIT HUP INT TERM
   if grep -Fq '<!-- home-edge-dashboard-defaults -->' "$ui/index.html"; then
     [ ! -L "$ui/home-edge-defaults.js" ] && cmp -s "$ui/home-edge-defaults.js" "$source" || exit 1
-    sed 's#<!-- home-edge-dashboard-defaults --><script src="./home-edge-defaults.js?v=1"></script>##' "$ui/index.html" >"$tmp"
+    sed 's#<!-- home-edge-dashboard-defaults --><script src="./home-edge-defaults.js?v=[12]"></script>##' "$ui/index.html" >"$tmp"
     chmod 644 "$tmp"; mv "$tmp" "$ui/index.html"
     rm -f "$ui/home-edge-defaults.js"
   fi
@@ -23,12 +23,18 @@ fi
 grep -l 'yacd.metacubex.one' "$ui"/assets/index-*.js >/dev/null 2>&1 || { echo dashboard_defaults=unsupported; exit 0; }
 [ -f "$source" ] || exit 1
 tmp="$ui/.home-edge-defaults.$$"
-trap 'rm -f "$tmp"' EXIT HUP INT TERM
-cp "$source" "$ui/home-edge-defaults.js"
-chmod 644 "$ui/home-edge-defaults.js"
-if ! grep -Fq '<!-- home-edge-dashboard-defaults -->' "$ui/index.html"; then
+script_tmp="$ui/.home-edge-defaults-script.$$"
+trap 'rm -f "$tmp" "$script_tmp"' EXIT HUP INT TERM
+[ ! -L "$ui/home-edge-defaults.js" ] || exit 1
+cp "$source" "$script_tmp"
+chmod 644 "$script_tmp"
+mv "$script_tmp" "$ui/home-edge-defaults.js"
+if grep -Fq '<!-- home-edge-dashboard-defaults --><script src="./home-edge-defaults.js?v=1"></script>' "$ui/index.html"; then
+  sed 's#home-edge-defaults.js?v=1#home-edge-defaults.js?v=2#' "$ui/index.html" >"$tmp"
+  chmod 644 "$tmp"; mv "$tmp" "$ui/index.html"
+elif ! grep -Fq '<!-- home-edge-dashboard-defaults -->' "$ui/index.html"; then
   grep -q '</head>' "$ui/index.html" || exit 1
-  sed 's#</head>#<!-- home-edge-dashboard-defaults --><script src="./home-edge-defaults.js?v=1"></script></head>#' "$ui/index.html" >"$tmp"
+  sed 's#</head>#<!-- home-edge-dashboard-defaults --><script src="./home-edge-defaults.js?v=2"></script></head>#' "$ui/index.html" >"$tmp"
   chmod 644 "$tmp"
   mv "$tmp" "$ui/index.html"
 fi
