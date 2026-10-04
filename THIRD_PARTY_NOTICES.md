@@ -2,6 +2,11 @@
 
 Project-original work is licensed under Apache-2.0. The distribution also includes the following separately licensed components:
 
+The `Complete corresponding source` filenames below identify verified source-preparation inputs.
+The `Distributed source archive` filenames identify the separate release assets and the archives
+embedded under `third-party/sources/` in offline packages. The filename mapping preserves identical
+archive bytes and SHA-256 values.
+
 ## Mihomo v1.19.32
 
 - Source: https://github.com/MetaCubeX/mihomo
@@ -10,6 +15,7 @@ Project-original work is licensed under Apache-2.0. The distribution also includ
 - Upstream license SHA-256: `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`
 - Runtime payload SHA-256: `c80df2ca5159567804da883401e0118908fc1155e05df2baf3dbd4d3ecfc3754`
 - Complete corresponding source: `mihomo-v1.19.32-complete-source.tar.gz`
+- Distributed source archive: `mihomo-v1.19.32-source-complete.tar.gz` (same archive bytes and SHA-256)
 - Complete corresponding source SHA-256: `0a993f5a3ba732879a1bc51f38aec05f54918ddf08649e706cf0ab40f1cce17f`
 - Dependency source workflow: `go mod download -json all`, `go mod verify`, then `go mod vendor`
 - Pinned Go source-preparation archive (darwin/amd64): `go1.26.8.darwin-amd64.tar.gz`, SHA-256 `186be014105aa6542b767d2c6ed5cca10a0214bdff809ef1724022a8c7894150`
@@ -29,8 +35,9 @@ Project-original work is licensed under Apache-2.0. The distribution also includ
 - Upstream license SHA-256: `3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`
 - Runtime payload SHA-256: `4f946031a0483ed528e266143d459075489cce6c3f8f2f4681f39ca6d7448681`
 - Complete corresponding source: `shellcrash-1.9.4-complete-source.tar.gz`
+- Distributed source archive: `shellcrash-1.9.4-source-complete.tar.gz` (same archive bytes and SHA-256)
 - Complete corresponding source SHA-256: `888cbb368fbc8e80805e9ff128499be48b9a6025b9f3f96ca72fb9acee7e005a`
 - Runtime/source evidence: the tagged source tree's `ShellCrash.tar.gz` is byte-identical to the runtime payload above
 - Source scope: the full tagged source tree, including upstream build and install scripts
 
-Mihomo and ShellCrash remain subject to their respective GPL-3.0-only licenses. The Apache-2.0 license for project-original work does not relicense either component. The release includes the matching upstream license, verified runtime payload, and complete corresponding source archive identified above. See the release SBOM for machine-readable package details.
+Mihomo and ShellCrash remain subject to their respective GPL-3.0-only licenses. The Apache-2.0 license for project-original work does not relicense either component. The release includes the matching upstream license, verified runtime payload, and identical complete corresponding source bytes under the distributed archive names above. See the release SBOM for machine-readable package details.
