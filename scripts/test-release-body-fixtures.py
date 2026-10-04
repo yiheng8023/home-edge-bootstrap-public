@@ -93,7 +93,7 @@ def required_assets(surface: str, version: str) -> tuple[str, ...]:
         f"home-edge-bootstrap-{version}-offline.tar.gz",
         f"home-edge-bootstrap-{version}-source.zip",
         f"home-edge-bootstrap-{version}-source.tar.gz",
-        "mihomo-v1.19.28-source-complete.tar.gz",
+        "mihomo-v1.19.32-source-complete.tar.gz",
         "shellcrash-1.9.4-source-complete.tar.gz",
         "RELEASE-MANIFEST.json",
         "SBOM.spdx.json",
@@ -117,7 +117,7 @@ def expected_labels(surface: str, version: str) -> dict[str, str]:
         "SHA256SUMS": "Checksums - download with one selected package",
         "RELEASE-MANIFEST.json": "Release manifest - provenance and audit",
         "SBOM.spdx.json": "SPDX SBOM - audit",
-        "mihomo-v1.19.28-source-complete.tar.gz": "Mihomo complete source - not required for installation",
+        "mihomo-v1.19.32-source-complete.tar.gz": "Mihomo complete source - not required for installation",
         "shellcrash-1.9.4-source-complete.tar.gz": "ShellCrash complete source - not required for installation",
     }
 

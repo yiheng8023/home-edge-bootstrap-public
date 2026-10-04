@@ -3,9 +3,9 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "home-edge-bootstrap-public-source",
-  "documentNamespace": "https://github.com/yiheng8023/home-edge-bootstrap-public/sbom/source-structure-v0.1.0",
+  "documentNamespace": "https://github.com/yiheng8023/home-edge-bootstrap-public/sbom/source-structure-v0.1.5",
   "creationInfo": {
-    "created": "2026-07-12T00:00:00Z",
+    "created": "2026-10-05T00:00:00Z",
     "creators": [
       "Tool: home-edge-bootstrap-public-structural-sbom"
     ]
@@ -18,7 +18,7 @@
     {
       "name": "home-edge-bootstrap-public-source",
       "SPDXID": "SPDXRef-Package-Source",
-      "versionInfo": "0.1.0-source",
+      "versionInfo": "0.1.5-source",
       "downloadLocation": "https://github.com/yiheng8023/home-edge-bootstrap-public",
       "filesAnalyzed": false,
       "licenseConcluded": "Apache-2.0",
@@ -28,7 +28,7 @@
     {
       "name": "Mihomo runtime component",
       "SPDXID": "SPDXRef-Package-Mihomo",
-      "versionInfo": "v1.19.28",
+      "versionInfo": "v1.19.32",
       "downloadLocation": "https://github.com/MetaCubeX/mihomo",
       "filesAnalyzed": false,
       "licenseConcluded": "GPL-3.0-only",
@@ -37,49 +37,49 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "6c08572c7115549ea51cb0f94b0d9ff08073a901bf2347d908c7209c4621e96a"
+          "checksumValue": "c80df2ca5159567804da883401e0118908fc1155e05df2baf3dbd4d3ecfc3754"
         }
       ],
       "externalRefs": [
         {
           "referenceCategory": "OTHER",
           "referenceType": "vcs-url",
-          "referenceLocator": "git+https://github.com/MetaCubeX/mihomo@cbd11db1e13a75d8e680e0fe7742c95be4cba2be"
+          "referenceLocator": "git+https://github.com/MetaCubeX/mihomo@88dcbf7f1614a67c3b36b848ee3592dfa92ada36"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "complete-source-sha256",
-          "referenceLocator": "db87b6d230cc7f850aca82bd63b0ed16bd6512253e6b9edd7eaa80c96a85fd6b"
+          "referenceLocator": "0a993f5a3ba732879a1bc51f38aec05f54918ddf08649e706cf0ab40f1cce17f"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "build-toolchain",
-          "referenceLocator": "go1.26.5|windows|amd64|go1.26.5.windows-amd64.zip|97e6b2a833b6d89f9ff17d25419ac0a7e3b482a044e9ab18cdef834bd834fd38"
+          "referenceLocator": "go1.26.8|darwin|amd64|go1.26.8.darwin-amd64.tar.gz|186be014105aa6542b767d2c6ed5cca10a0214bdff809ef1724022a8c7894150"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "build-toolchain",
-          "referenceLocator": "go1.26.5|windows|arm64|go1.26.5.windows-arm64.zip|f96ee46396d69f1e231c8d981ec6a70216238a646a1f2cd74aea0d0016bbc017"
+          "referenceLocator": "go1.26.8|darwin|arm64|go1.26.8.darwin-arm64.tar.gz|a012b25b571bd0138a03dcd25375ceba866fe5ca822f426d2c66a4de56fd3f4b"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "build-toolchain",
-          "referenceLocator": "go1.26.5|linux|amd64|go1.26.5.linux-amd64.tar.gz|5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053"
+          "referenceLocator": "go1.26.8|linux|amd64|go1.26.8.linux-amd64.tar.gz|d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "build-toolchain",
-          "referenceLocator": "go1.26.5|linux|arm64|go1.26.5.linux-arm64.tar.gz|fe4789e92b1f33358680864bbe8704289e7bb5fc207d80623c308935bd696d49"
+          "referenceLocator": "go1.26.8|linux|arm64|go1.26.8.linux-arm64.tar.gz|211ffced9dcb9633a55eac6364816ec0ddd951389a740e88fa8b3337971bdda0"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "build-toolchain",
-          "referenceLocator": "go1.26.5|darwin|amd64|go1.26.5.darwin-amd64.tar.gz|6231d8d3b8f5552ec6cbf6d685bdd5482e1e703214b120e89b3bf0d7bf1ef725"
+          "referenceLocator": "go1.26.8|windows|amd64|go1.26.8.windows-amd64.zip|b92c3b2adae85a11ba71fe7216daf0d84e82af4c8ab6c5625807f28622043a59"
         },
         {
           "referenceCategory": "OTHER",
           "referenceType": "build-toolchain",
-          "referenceLocator": "go1.26.5|darwin|arm64|go1.26.5.darwin-arm64.tar.gz|efb87ff28af9a188d0536ef5d42e63dd52ba8263cd7344a993cc48dd11dedb6a"
+          "referenceLocator": "go1.26.8|windows|arm64|go1.26.8.windows-arm64.zip|4bc560ed3ccb64eec0be6180b8c29185c07f5215276820adb4303d7bf3365435"
         }
       ]
     },

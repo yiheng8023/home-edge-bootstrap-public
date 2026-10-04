@@ -2,6 +2,67 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.5（2026-10-05）
+
+本次有限发行将当前项目功能装入新的版本化归档，并把固定 Mihomo 载荷更新至 v1.19.32。
+全部历史标签及下载资产保持不变。
+
+- 新增显式启用的受保护节点订阅更新，统一周期、需求与手动触发；保留本地配置所有权、
+  手动选择，进行候选检查并提供有边界的回滚和启动恢复。
+- 将稳定凭据、缓存和恢复状态与可替换脚本分离；只在字节一致和所有权检查通过后退役
+  已被接管的旧缓存。
+- 本地面板使用页面自身的 controller origin，记住已验证的浏览器连接并保留显示选择；
+  修正宿主 SSH 命令规范化及测试临时路径。
+- Mihomo 固定为 v1.19.32，提交 `88dcbf7f1614a67c3b36b848ee3592dfa92ada36`；ShellCrash 保持 1.9.4。
+  下载的 Linux ARM64 二进制独立记录 Go1.26.8 和 `with_gvisor`，不是从源码准备工具链推断。
+  同步刷新完整对应源码、库存和证据。
+- 对精确 v32 完整源码重新运行 CVE-2025-56499 的十用例、移除保护负对照及显式绕过对照；
+  v28 的 proof 和日志作为历史证据保留。
+
+**运行时变化与安全边界：** 原 v1.19.28 二进制记录 Go1.26.5，位于
+[GO-2026-6090 / CVE-2026-56862](https://pkg.go.dev/vuln/GO-2026-6090) 的 Go1.26 受影响范围
+（`go1.26.0-0` 至 `<go1.26.6`）。v32 二进制的 Go1.26.8 位于该已报告范围之外；这只是
+版本范围处置，不是广泛漏洞清白证明。上游 v1.19.30 说明列出 TLS 修复。v1.19.32 将默认
+TUN/IP 栈改为 `mips`/mipstack，并包含 TCP、UDP、ICMP 行为变化，采用前需审阅本地 TUN 设置。
+本次不增加随包 ARM64 二进制执行、真实路由器升级、目标回滚演练或广泛固件/服务商兼容证据。
+GitHub asset digest 已匹配，但没有维护者签名或独立可复现构建证明。广泛发布就绪声明继续
+保持 blocked；本次发行只验证已声明的源码、宿主行为和归档范围。
+
+**订阅前提：** 包内包含 yamlbridge 源码及构建 helper，不包含预编译 yamlbridge 可执行文件。
+可选更新器需要宿主 Go 编译器、POSIX shell、gzip/OpenSSL，以及通过可信网络或预备模块缓存
+可取得的固定 YAML 模块。先构建并核验 Linux ARM64 gzip 和未压缩二进制 SHA256，再在已部署
+helpers、HTTPS 订阅、私有 controller key、内联节点配置及本地组过滤齐备后显式启用。
+路由器不需要安装 Go。该可选准备独立于两载荷离线运行时包；源码/宿主夹具不证明站点验收。
+发布不会自动更新或重启既有安装。
+
+请选择一个包并同时下载 `SHA256SUMS`。manifest、SBOM、完整源码用于审计和源码可获得性；
+GitHub 自动 Source code 归档不能替代契约软件包。
+
+| 下载 | 用途 / GitHub 标签 |
+|---|---|
+| [`home-edge-bootstrap-v0.1.5-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.5-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.5-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.5-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| 文件名 | GitHub 标签 |
+|---|---|
+| `home-edge-bootstrap-v0.1.5-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.5-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.5-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.5-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+
 ## v0.1.4（2026-09-06）
 
 本补丁版本在订阅传输安全和宿主验证方面取代 v0.1.3。旧归档保持不变，不包含这些修复。

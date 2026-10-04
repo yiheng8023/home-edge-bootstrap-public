@@ -378,9 +378,9 @@ try {
   $GitHome = Join-Path $Stage ".git-home"; New-Item -ItemType Directory -Force -Path $GitHome | Out-Null
   $EmptyGitConfig = Join-Path $GitHome "gitconfig"; New-Item -ItemType File -Force -Path $EmptyGitConfig | Out-Null
   $PriorGitEnv = @{}
-  foreach ($Name in @("GIT_TERMINAL_PROMPT", "GCM_INTERACTIVE", "HOME", "XDG_CONFIG_HOME", "GIT_CONFIG_GLOBAL")) { $PriorGitEnv[$Name] = [Environment]::GetEnvironmentVariable($Name, "Process") }
+  foreach ($Name in @("GIT_TERMINAL_PROMPT", "GCM_INTERACTIVE", "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_GLOBAL")) { $PriorGitEnv[$Name] = [Environment]::GetEnvironmentVariable($Name, "Process") }
   try {
-    $env:GIT_TERMINAL_PROMPT = "0"; $env:GCM_INTERACTIVE = "Never"; $env:HOME = $GitHome; $env:XDG_CONFIG_HOME = $GitHome; $env:GIT_CONFIG_GLOBAL = $EmptyGitConfig
+    $env:GIT_TERMINAL_PROMPT = "0"; $env:GCM_INTERACTIVE = "Never"; $env:GIT_CONFIG_NOSYSTEM = "1"; $env:GIT_CONFIG_GLOBAL = $EmptyGitConfig
     foreach ($Pair in @(
       @{ Component = $Mihomo; Url = $MihomoUrl; Repo = (Join-Path $Repos "mihomo"); Tag = [string]$Mihomo.version },
       @{ Component = $ShellCrash; Url = $ShellCrashUrl; Repo = (Join-Path $Repos "shellcrash"); Tag = [string]$ShellCrash.version }
@@ -468,11 +468,11 @@ try {
   $ShellEpoch = [long](& git -C (Join-Path $Repos "shellcrash") show -s --format=%ct HEAD)
   Write-SourceMetadata $Python (Join-Path $MihomoTree "SOURCE-BUILD.json") ([string]$Mihomo.id) ([string]$Mihomo.version) ([string]$Mihomo.source_repository) ([string]$Mihomo.source_commit) $MihomoEpoch "go mod download -json all; go mod verify; go mod vendor" $GoVersion $GoProxy $ModuleCount
   Write-SourceMetadata $Python (Join-Path $ShellTree "SOURCE-BUILD.json") ([string]$ShellCrash.id) ([string]$ShellCrash.version) ([string]$ShellCrash.source_repository) ([string]$ShellCrash.source_commit) $ShellEpoch "full tagged Git source tree including build and install scripts"
-  $MihomoArchive = Join-Path $SourceDir "mihomo-v1.19.28-complete-source.tar.gz"
+  $MihomoArchive = Join-Path $SourceDir "mihomo-v1.19.32-complete-source.tar.gz"
   $ShellArchive = Join-Path $SourceDir "shellcrash-1.9.4-complete-source.tar.gz"
   $CanonicalArchiver = Join-Path $PSScriptRoot "canonical-source-archive.go"
   if (-not (Test-Path -LiteralPath $CanonicalArchiver -PathType Leaf)) { throw "canonical source archiver is missing" }
-  New-CanonicalArchive $Go $CanonicalArchiver $MihomoTree $MihomoArchive "mihomo-v1.19.28-source" $MihomoEpoch $GoRoot
+  New-CanonicalArchive $Go $CanonicalArchiver $MihomoTree $MihomoArchive "mihomo-v1.19.32-source" $MihomoEpoch $GoRoot
   New-CanonicalArchive $Go $CanonicalArchiver $ShellTree $ShellArchive "shellcrash-1.9.4-source" $ShellEpoch $GoRoot
   $MihomoArchiveSha = Get-Sha256 $MihomoArchive
   Write-PreparationMetadata $Python (Join-Path $ThirdParty "mihomo\SOURCE-PREPARATION.json") ([string]$Mihomo.id) ([string]$Mihomo.version) ([string]$Mihomo.source_repository) ([string]$Mihomo.source_commit) $GoVersion ([string]$SelectedToolchain.os) ([string]$SelectedToolchain.arch) ([string]$SelectedToolchain.filename) ([string]$SelectedToolchain.sha256) ([System.IO.Path]::GetFileName($MihomoArchive)) $MihomoArchiveSha
@@ -484,7 +484,7 @@ try {
   [System.IO.Directory]::Move($Stage, $OutputPath)
   Write-Host "third_party_source_state=ready"
   Write-Host "mihomo_source_commit=$($Mihomo.source_commit)"
-  Write-Host "mihomo_source_sha256=$(Get-Sha256 (Join-Path $OutputPath 'third-party\sources\mihomo-v1.19.28-complete-source.tar.gz'))"
+  Write-Host "mihomo_source_sha256=$(Get-Sha256 (Join-Path $OutputPath 'third-party\sources\mihomo-v1.19.32-complete-source.tar.gz'))"
   Write-Host "shellcrash_source_commit=$($ShellCrash.source_commit)"
   Write-Host "shellcrash_source_sha256=$(Get-Sha256 (Join-Path $OutputPath 'third-party\sources\shellcrash-1.9.4-complete-source.tar.gz'))"
 }

@@ -5,7 +5,7 @@
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
 发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/latest) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.5) ·
 [发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
 
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
@@ -268,3 +268,7 @@ Yacd-meta 初始默认：延迟从小到大、隐藏不可用节点、关闭自�
 无需 Add 或选择 IP。控制器认证保持开启；固定使用同一地址并保留网站存储。
 详见[订阅自动化](docs/SUBSCRIPTION_AUTOMATION.md)。已发布 v0.1.4 下载包不会追溯包含
 这个源码功能；本站点验证与离线夹具证据分开，不扩大为全部固件或供应方的支持声明。
+
+最新 v0.1.5 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
+节点订阅自动更新仍需宿主编译 yamlbridge（可信网络或预备模块缓存），包内没有预编译 parser；
+HTTPS 订阅、controller key、本地组过滤和站点显式启用是独立前提。详见[发布说明](docs/zh-CN/RELEASE_NOTES.md)。

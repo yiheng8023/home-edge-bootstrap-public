@@ -19,9 +19,9 @@ import zipfile
 
 
 VERSION = "v0.1.0"
-MIHOMO_SOURCE = "mihomo-v1.19.28-source-complete.tar.gz"
+MIHOMO_SOURCE = "mihomo-v1.19.32-source-complete.tar.gz"
 SHELLCRASH_SOURCE = "shellcrash-1.9.4-source-complete.tar.gz"
-MIHOMO_PREPARED_SOURCE = "mihomo-v1.19.28-complete-source.tar.gz"
+MIHOMO_PREPARED_SOURCE = "mihomo-v1.19.32-complete-source.tar.gz"
 SHELLCRASH_PREPARED_SOURCE = "shellcrash-1.9.4-complete-source.tar.gz"
 
 
@@ -134,7 +134,7 @@ def create_fixture(root: pathlib.Path, source: pathlib.Path, name: str) -> tuple
     write(prepared / "third-party/shellcrash/LICENSE.txt", license_bytes)
     deterministic_tar(
         prepared / f"third-party/sources/{MIHOMO_PREPARED_SOURCE}",
-        "mihomo-v1.19.28-source",
+        "mihomo-v1.19.32-source",
         {"LICENSE": license_bytes, "main.go": b"package main\n"},
     )
     deterministic_tar(
@@ -147,7 +147,7 @@ def create_fixture(root: pathlib.Path, source: pathlib.Path, name: str) -> tuple
         "components": [
             {
                 "id": "mihomo-linux-arm64",
-                "version": "v1.19.28",
+                "version": "v1.19.32",
                 "source_repository": "https://example.invalid/mihomo",
                 "source_commit": "1" * 40,
                 "license": "GPL-3.0-only",

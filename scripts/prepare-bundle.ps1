@@ -1,5 +1,5 @@
 param(
-  [string]$MihomoVersion = "v1.19.28",
+  [string]$MihomoVersion = "v1.19.32",
   [string]$ShellCrashVersion = "1.9.4",
   [string]$BundleDir = "",
   [switch]$Force,

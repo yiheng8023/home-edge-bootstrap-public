@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/latest) ·
+[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.5) ·
 [release contract](docs/PUBLIC_RELEASE.md).
 
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
@@ -305,3 +305,8 @@ See [Subscription automation](docs/SUBSCRIPTION_AUTOMATION.md) for prerequisites
 activation and limits. This source feature is not retroactively present in the
 already published v0.1.4 download archives. Site results and offline fixture results
 are distinct; they do not establish broad firmware/provider support.
+
+The v0.1.5 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
+Node-only subscription automation still needs host compilation of yamlbridge through a trusted network
+or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
+group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).

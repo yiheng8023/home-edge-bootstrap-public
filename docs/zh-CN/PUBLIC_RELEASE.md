@@ -14,13 +14,13 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.4` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.5` 对应：
 
-- `home-edge-bootstrap-v0.1.4-source.zip`
-- `home-edge-bootstrap-v0.1.4-source.tar.gz`
-- `home-edge-bootstrap-v0.1.4-offline.zip`
-- `home-edge-bootstrap-v0.1.4-offline.tar.gz`
-- `mihomo-v1.19.28-source-complete.tar.gz`
+- `home-edge-bootstrap-v0.1.5-source.zip`
+- `home-edge-bootstrap-v0.1.5-source.tar.gz`
+- `home-edge-bootstrap-v0.1.5-offline.zip`
+- `home-edge-bootstrap-v0.1.5-offline.tar.gz`
+- `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
 - `RELEASE-MANIFEST.json`
@@ -97,6 +97,24 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## v0.1.5 有限验收合同
+
+v0.1.5 在个人/可信分发的有限范围内交付当前项目源码及已审阅的 v1.19.32 离线载荷，
+不新增真实路由器或广泛支持验收。发布必须满足：
+
+- 保留全部旧标签与资产，新建九项已验证且标签正确的 v0.1.5 资产。
+- 发包前通过精确提交的 Linux、macOS、Windows 校验及 subscription-behavior job。
+- 核验新二进制元数据与摘要、v32 完整 tag 源码及 vendor 模块、GPL 许可证、组件锁、
+  SPDX 库存、归档字节、校验和及中英文渲染链接。
+- 将新的 CVE-2025-56499 三控制源码回归绑定到 v32，原 v28 记录保持不变。
+- 披露 Go TLS 影响版本处置、TUN 默认变化、无维护者签名、新 ARM64 运行时/现场回滚未验收
+  以及继续有效的广泛声明上限。
+- 明确 yamlbridge 在此只交付源码；宿主编译器、模块可用性和显式站点启用仍是前提，
+  可选 parser 不是第三个随包运行时组件。
+- 发布后匿名核验 README、Release 页、校验和、manifest 和一个源码包下载。
+
+本次不访问、部署或重启路由器。既有私有现场观察保留为历史，不能替代 v32 目标验收。
 
 ## v0.1.4 验收合同
 

@@ -2,7 +2,7 @@
 # Prepare the offline runtime bundle on macOS/Linux/Git Bash.
 set -eu
 
-mihomo_version="${MIHOMO_VERSION:-v1.19.28}"
+mihomo_version="${MIHOMO_VERSION:-v1.19.32}"
 shellcrash_version="${SHELLCRASH_VERSION:-1.9.4}"
 force="${FORCE:-0}"
 keep_compressed_source="${KEEP_COMPRESSED_SOURCE:-0}"

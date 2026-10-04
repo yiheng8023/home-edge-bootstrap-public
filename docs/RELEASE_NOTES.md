@@ -2,6 +2,71 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.5 (2026-10-05)
+
+This limited release brings the current project functions into new versioned archives and replaces
+the pinned Mihomo payload with v1.19.32. All earlier tags and downloadable assets remain unchanged.
+
+- Add opt-in guarded node-only subscription updates with periodic, demand and manual triggers,
+  local-profile ownership, selection preservation, candidate checks and bounded rollback/reboot recovery.
+- Separate stable credentials, cache and recovery state from replaceable project scripts; retire a
+  consumed legacy cache only after byte-equality and ownership checks.
+- Make the local dashboard use its own controller origin, remember a validated browser connection,
+  and preserve stored display choices. Correct host SSH command normalization and fixture temp paths.
+- Pin Mihomo v1.19.32 at `88dcbf7f1614a67c3b36b848ee3592dfa92ada36`; keep ShellCrash 1.9.4.
+  The downloaded Linux ARM64 binary records Go1.26.8 and `with_gvisor` independently of the
+  Go1.26.8 source-preparation toolchain. Complete corresponding source and inventory are refreshed.
+- Re-run the ten-case CVE-2025-56499 source regression and removed-guard/explicit-bypass controls
+  against the exact v32 complete source. Preserve the v28 proof and logs as historical evidence.
+
+**Runtime change and security scope:** The previous v1.19.28 binary records Go1.26.5, within
+the Go1.26 affected range for [GO-2026-6090 / CVE-2026-56862](https://pkg.go.dev/vuln/GO-2026-6090)
+(`go1.26.0-0` through versions before `go1.26.6`). The v32 binary's Go1.26.8 identity is outside
+that reported range; this version-bound disposition is not a broad vulnerability clearance.
+Upstream v1.19.30 notes identify the TLS fix. v1.19.32 changes the default TUN/IP stack to
+`mips`/mipstack and includes TCP, UDP and ICMP changes; review local TUN settings before adoption.
+This release adds no execution test of the shipped ARM64 binary, live-router upgrade, target
+rollback rehearsal or broad firmware/provider compatibility evidence. GitHub asset digests match,
+but no maintainer signature or independent reproducible-build attestation is recorded. The broad
+release-readiness claim remains blocked; publication verifies the declared source/host/archive scope.
+
+**Subscription prerequisites:** These archives include yamlbridge source and build helpers, without
+a prebuilt yamlbridge executable. The opt-in updater requires a host Go compiler, POSIX shell,
+gzip/OpenSSL and the pinned YAML module available through a trusted network or prepared module cache.
+Build and verify a Linux ARM64 gzip plus the uncompressed binary SHA256, then explicitly activate
+the site with deployed helpers, an HTTPS subscription, private controller key, inline-node profile
+and local group filters. The router needs no Go installation. This optional preparation is separate
+from the two-payload offline runtime package; source/host fixtures do not establish site acceptance.
+Publishing does not update or restart an existing installation.
+
+Choose one package plus `SHA256SUMS`. Manifest, SBOM and complete-source assets serve audit and
+source availability; GitHub's automatic Source code archives are not the contracted packages.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.5-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.5-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.5-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.5-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/home-edge-bootstrap-v0.1.5-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.5/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.5-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.5-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.5-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.5-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+
 ## v0.1.4 (2026-09-06)
 
 This patch release supersedes v0.1.3 for subscription transport security and host verification.

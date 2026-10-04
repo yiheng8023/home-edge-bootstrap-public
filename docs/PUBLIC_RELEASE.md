@@ -18,13 +18,13 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.4`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.5`, they are:
 
-- `home-edge-bootstrap-v0.1.4-source.zip`
-- `home-edge-bootstrap-v0.1.4-source.tar.gz`
-- `home-edge-bootstrap-v0.1.4-offline.zip`
-- `home-edge-bootstrap-v0.1.4-offline.tar.gz`
-- `mihomo-v1.19.28-source-complete.tar.gz`
+- `home-edge-bootstrap-v0.1.5-source.zip`
+- `home-edge-bootstrap-v0.1.5-source.tar.gz`
+- `home-edge-bootstrap-v0.1.5-offline.zip`
+- `home-edge-bootstrap-v0.1.5-offline.tar.gz`
+- `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
 - `RELEASE-MANIFEST.json`
@@ -109,6 +109,25 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 `--version` selects the release tag against which repository links are validated. They are normally
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
+
+## v0.1.5 Limited Acceptance Contract
+
+v0.1.5 publishes current project source and the reviewed v1.19.32 offline payload within a limited
+personal/trusted-distribution scope. It adds no new router or broad support acceptance. Publication requires:
+
+- Preserve every older tag and asset; create nine newly verified and labeled v0.1.5 assets.
+- Pass exact-commit Linux, macOS and Windows checks plus the subscription-behavior job before packaging.
+- Verify the new binary metadata/digest, complete v32 tagged source with vendor modules, GPL licenses,
+  component locks, SPDX inventory, archive bytes, checksums and rendered bilingual release links.
+- Bind fresh CVE-2025-56499 three-control source regression to v32; retain the v28 records unchanged.
+- Disclose the Go TLS affected-version disposition, TUN default change, missing maintainer signature,
+  untested new ARM64 runtime/field rollback and the continuing broad-claim ceiling.
+- State that yamlbridge is source-only here: host compiler/module availability and explicit site activation
+  remain prerequisites; the optional parser is not a third bundled runtime component.
+- Verify anonymous README, Release page, checksum, manifest and one source-package download after publication.
+
+No router access, deployment or restart is part of this release. Existing private field observations
+remain historical and cannot substitute for v32 target acceptance.
 
 ## v0.1.4 Acceptance Contract
 

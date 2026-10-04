@@ -48,7 +48,7 @@ def make_fixture(name,missing_license=False,wrong_tag=False,wrong_hash=False,lic
     shell_files={'.gitattributes':'* text=auto eol=lf\n','install.sh':'#!/bin/sh\nexit 0\n','scripts/run.sh':'#!/bin/sh\nexit 0\n','LICENSE.txt':'fixture GPL-3.0-only license\n','version':'1.9.4\n'}
     if missing_license: mihomo_files.pop('LICENSE')
     mrepo=f/'mihomo-upstream'; srepo=f/'shellcrash-upstream'
-    mc=init_repo(mrepo,mihomo_files,'v1.19.28',wrong_tag=wrong_tag)
+    mc=init_repo(mrepo,mihomo_files,'v1.19.32',wrong_tag=wrong_tag)
     safe_payload(f/'shell-payload.tmp'); shell_files['ShellCrash.tar.gz']=(f/'shell-payload.tmp').read_bytes(); (f/'shell-payload.tmp').unlink()
     sc=init_repo(srepo,shell_files,'1.9.4')
     write(payload/'mihomo-linux-arm64',b'mihomo fixture binary\n',True)
@@ -70,11 +70,11 @@ def make_fixture(name,missing_license=False,wrong_tag=False,wrong_hash=False,lic
       toolchains.append({'os':tool_os,'arch':tool_arch,'filename':filename,'sha256':sha(archive)})
     archive=f/'go1.20.99.windows-amd64.zip'
     lock={'schema_version':1,'source_acquisition':{'go_toolchain_version':'go1.20.99','go_toolchains':toolchains,'go_proxy':'https://proxy.golang.org','go_sumdb':'sum.golang.org','go_direct_fallback':False,'go_max_procs':4,'go_module_count_limit':2000},'components':[
-      {'id':'mihomo-linux-arm64','version':'v1.19.28','source_repository':'https://example.invalid/mihomo','source_commit':mc,'license':'GPL-3.0-only','payload_sha256':sha(payload/'mihomo-linux-arm64'),'license_sha256':('0'*64 if license_mismatch else license_hash),'complete_source_sha256':'0'*64},
+      {'id':'mihomo-linux-arm64','version':'v1.19.32','source_repository':'https://example.invalid/mihomo','source_commit':mc,'license':'GPL-3.0-only','payload_sha256':sha(payload/'mihomo-linux-arm64'),'license_sha256':('0'*64 if license_mismatch else license_hash),'complete_source_sha256':'0'*64},
       {'id':'shellcrash','version':'1.9.4','source_repository':'https://example.invalid/shellcrash','source_commit':sc,'license':'GPL-3.0-only','payload_sha256':sha(payload/'ShellCrash.tar.gz'),'license_sha256':license_hash,'complete_source_sha256':'0'*64}]}
     if wrong_hash: lock['components'][0]['payload_sha256']='0'*64
     write(f/'lock.json',json.dumps(lock,indent=2)+'\n')
-    manifest={'schema':1,'payloads':[{'id':'mihomo-linux-arm64','path':'mihomo-linux-arm64','version':'v1.19.28','sourceRepository':'mihomo','sha256':sha(payload/'mihomo-linux-arm64')},{'id':'shellcrash','path':'ShellCrash.tar.gz','version':'1.9.4','sourceRepository':'shellcrash','sha256':sha(payload/'ShellCrash.tar.gz')}]}
+    manifest={'schema':1,'payloads':[{'id':'mihomo-linux-arm64','path':'mihomo-linux-arm64','version':'v1.19.32','sourceRepository':'mihomo','sha256':sha(payload/'mihomo-linux-arm64')},{'id':'shellcrash','path':'ShellCrash.tar.gz','version':'1.9.4','sourceRepository':'shellcrash','sha256':sha(payload/'ShellCrash.tar.gz')}]}
     write(payload/'MANIFEST.json',json.dumps(manifest,indent=2)+'\n')
     return f,mrepo,srepo,payload,archive
 def prepare_cmd(f,m,s,payload,archive,out,tool_os='windows',tool_arch='amd64'):
@@ -99,7 +99,7 @@ def normalize(source,archive,prefix,epoch):
             rel=p.relative_to(source).as_posix(); data=p.read_bytes(); i=tarfile.TarInfo(prefix+'/'+rel); i.size,i.mode,i.uid,i.gid,i.uname,i.gname,i.mtime=len(data),(0o755 if p.suffix=='.sh' else 0o644),0,0,'','',epoch; tf.addfile(i,io.BytesIO(data))
 def contracts(f,out):
     lock=json.loads((f/'lock.json').read_text(encoding='utf-8')); by={x['id']:x for x in lock['components']}
-    by['mihomo-linux-arm64']['complete_source_sha256']=sha(out/'third-party/sources/mihomo-v1.19.28-complete-source.tar.gz')
+    by['mihomo-linux-arm64']['complete_source_sha256']=sha(out/'third-party/sources/mihomo-v1.19.32-complete-source.tar.gz')
     by['shellcrash']['complete_source_sha256']=sha(out/'third-party/sources/shellcrash-1.9.4-complete-source.tar.gz')
     write(f/'lock.json',json.dumps(lock,indent=2)+'\n')
     packages=[{'name':'fixture source','SPDXID':'SPDXRef-Package-Source','versionInfo':'test','downloadLocation':'NOASSERTION','filesAnalyzed':False,'licenseConcluded':'Apache-2.0','licenseDeclared':'Apache-2.0','copyrightText':'NOASSERTION'}]
@@ -111,7 +111,7 @@ def contracts(f,out):
     write(f/'sbom.json',json.dumps(sbom,indent=2)+'\n')
     m,s=by['mihomo-linux-arm64'],by['shellcrash']
     tool_lines=[f"- Pinned Go source-preparation archive ({x['os']}/{x['arch']}): `{x['filename']}`, SHA-256 `{x['sha256']}`" for x in lock['source_acquisition']['go_toolchains']]
-    facts=['# Fixture notices','',f"## Mihomo {m['version']}",f"- Source: {m['source_repository']}",f"- Source commit: `{m['source_commit']}`",f"- License: {m['license']}",f"- Upstream license SHA-256: `{m['license_sha256']}`",f"- Runtime payload SHA-256: `{m['payload_sha256']}`",'- Complete corresponding source: `mihomo-v1.19.28-complete-source.tar.gz`',f"- Complete corresponding source SHA-256: `{m['complete_source_sha256']}`"]+tool_lines+['- Source-preparation selection: automatic host OS/architecture detection in production; explicit platform selection is fixture-only','- Module services: `https://proxy.golang.org` and `sum.golang.org`, without automatic direct fallback','',f"## ShellCrash {s['version']}",f"- Source: {s['source_repository']}",f"- Source commit: `{s['source_commit']}`",f"- License: {s['license']}",f"- Upstream license SHA-256: `{s['license_sha256']}`",f"- Runtime payload SHA-256: `{s['payload_sha256']}`",'- Complete corresponding source: `shellcrash-1.9.4-complete-source.tar.gz`',f"- Complete corresponding source SHA-256: `{s['complete_source_sha256']}`",'']
+    facts=['# Fixture notices','',f"## Mihomo {m['version']}",f"- Source: {m['source_repository']}",f"- Source commit: `{m['source_commit']}`",f"- License: {m['license']}",f"- Upstream license SHA-256: `{m['license_sha256']}`",f"- Runtime payload SHA-256: `{m['payload_sha256']}`",'- Complete corresponding source: `mihomo-v1.19.32-complete-source.tar.gz`',f"- Complete corresponding source SHA-256: `{m['complete_source_sha256']}`"]+tool_lines+['- Source-preparation selection: automatic host OS/architecture detection in production; explicit platform selection is fixture-only','- Module services: `https://proxy.golang.org` and `sum.golang.org`, without automatic direct fallback','',f"## ShellCrash {s['version']}",f"- Source: {s['source_repository']}",f"- Source commit: `{s['source_commit']}`",f"- License: {s['license']}",f"- Upstream license SHA-256: `{s['license_sha256']}`",f"- Runtime payload SHA-256: `{s['payload_sha256']}`",'- Complete corresponding source: `shellcrash-1.9.4-complete-source.tar.gz`',f"- Complete corresponding source SHA-256: `{s['complete_source_sha256']}`",'']
     write(f/'notice.md','\n'.join(facts)+'\n')
 def verify_cmd(f,out): return [powershell,'-NoProfile','-ExecutionPolicy','Bypass','-File',verify,'-Tree',out,'-Lock',f/'lock.json','-Sbom',f/'sbom.json','-Notice',f/'notice.md']
 
@@ -139,7 +139,7 @@ for platform_os,platform_arch in [('windows','amd64'),('linux','amd64'),('darwin
     extension='zip' if platform_os=='windows' else 'tar.gz'; archive=f/f'go1.20.99.{platform_os}-{platform_arch}.{extension}'; candidate=f/f'out-{platform_os}-{platform_arch}'; result=run(prepare_cmd(f,m,s,p,archive,candidate,platform_os,platform_arch))
     if 'third_party_source_state=ready' not in result: raise SystemExit(f'source ready marker missing: {platform_os}/{platform_arch}')
     outputs.append(candidate)
-source_hashes={sha(candidate/'third-party/sources/mihomo-v1.19.28-complete-source.tar.gz') for candidate in outputs}
+source_hashes={sha(candidate/'third-party/sources/mihomo-v1.19.32-complete-source.tar.gz') for candidate in outputs}
 if len(source_hashes)!=1: raise SystemExit(f'platform-dependent complete source hash: {sorted(source_hashes)}')
 out=outputs[0]; contracts(f,out)
 for candidate in outputs:
@@ -149,14 +149,14 @@ case=f/'notice-missing-toolchain'; shutil.copytree(out,case); notice=(f/'notice.
 case=f/'sbom-missing-toolchain'; shutil.copytree(out,case); sbom=json.loads((f/'sbom.json').read_text()); package=next(x for x in sbom['packages'] if x['SPDXID']=='SPDXRef-Package-Mihomo'); package['externalRefs'].remove(next(x for x in package['externalRefs'] if x['referenceType']=='build-toolchain')); write(f/'sbom-missing-toolchain.json',json.dumps(sbom,indent=2)+'\n'); cmd=verify_cmd(f,case); cmd[cmd.index('-Sbom')+1]=f/'sbom-missing-toolchain.json'; run(cmd,ok=False)
 
 second=f/'out-2'; run(prepare_cmd(f,m,s,p,g,second));
-for rel in ('third-party/sources/mihomo-v1.19.28-complete-source.tar.gz','third-party/sources/shellcrash-1.9.4-complete-source.tar.gz'):
+for rel in ('third-party/sources/mihomo-v1.19.32-complete-source.tar.gz','third-party/sources/shellcrash-1.9.4-complete-source.tar.gz'):
     if sha(out/rel)!=sha(second/rel): raise SystemExit(f'nondeterministic complete source: {rel}')
 if shutil.which('sh'):
     posix=f/'out-posix'; run(['sh',public/'scripts/prepare-public-sources.sh','--output',posix,'--payload-dir',p,'--lock',f/'lock.json','--mihomo-url',m,'--shellcrash-url',s,'--go-archive',g,'--go-work-root',f/'go-work-posix','--fixture-mode','--fixture-os','windows','--fixture-arch','amd64'])
-    for rel in ('third-party/sources/mihomo-v1.19.28-complete-source.tar.gz','third-party/sources/shellcrash-1.9.4-complete-source.tar.gz'):
+    for rel in ('third-party/sources/mihomo-v1.19.32-complete-source.tar.gz','third-party/sources/shellcrash-1.9.4-complete-source.tar.gz'):
         if sha(out/rel)!=sha(posix/rel): raise SystemExit(f'PowerShell/POSIX complete source parity mismatch: {rel}')
 
-case=f/'absent-complete'; shutil.copytree(out,case); (case/'third-party/sources/mihomo-v1.19.28-complete-source.tar.gz').unlink(); run(verify_cmd(f,case),ok=False)
+case=f/'absent-complete'; shutil.copytree(out,case); (case/'third-party/sources/mihomo-v1.19.32-complete-source.tar.gz').unlink(); run(verify_cmd(f,case),ok=False)
 case=f/'wrong-payload'; shutil.copytree(out,case); write(case/'third-party/mihomo/mihomo-linux-arm64',b'changed\n',True); run(verify_cmd(f,case),ok=False)
 case=f/'wrong-license'; shutil.copytree(out,case); write(case/'third-party/mihomo/LICENSE','changed\n'); run(verify_cmd(f,case),ok=False)
 case=f/'shellcrash-mismatch'; shutil.copytree(out,case); write(case/'third-party/shellcrash/source/extra.txt','not archived\n'); run(verify_cmd(f,case),ok=False)
@@ -166,9 +166,9 @@ case=f/'notice-missing-component-field'; shutil.copytree(out,case); notice=(f/'n
 case=f/'notice-cross-assigned-field'; shutil.copytree(out,case); lock_now=json.loads((f/'lock.json').read_text()); mc,sc=lock_now['components'][0]['source_commit'],lock_now['components'][1]['source_commit']; notice=(f/'notice.md').read_text(encoding='utf-8').replace(mc,'__MIHOMO_COMMIT__').replace(sc,mc).replace('__MIHOMO_COMMIT__',sc); write(f/'notice-cross.md',notice); cmd=verify_cmd(f,case); cmd[cmd.index('-Notice')+1]=f/'notice-cross.md'; run(cmd,ok=False)
 
 case=f/'partial-vendor-loss'; shutil.copytree(out,case); dep=case/'third-party/mihomo/source/vendor/example.invalid/dep-a/dep.go'; dep.unlink()
-meta=json.loads((case/'third-party/mihomo/source/SOURCE-BUILD.json').read_text(encoding='utf-8')); archive=case/'third-party/sources/mihomo-v1.19.28-complete-source.tar.gz'; normalize(case/'third-party/mihomo/source',archive,'mihomo-v1.19.28-source',meta['source_commit_epoch']); contracts(f,case); run(verify_cmd(f,case),ok=False)
+meta=json.loads((case/'third-party/mihomo/source/SOURCE-BUILD.json').read_text(encoding='utf-8')); archive=case/'third-party/sources/mihomo-v1.19.32-complete-source.tar.gz'; normalize(case/'third-party/mihomo/source',archive,'mihomo-v1.19.32-source',meta['source_commit_epoch']); contracts(f,case); run(verify_cmd(f,case),ok=False)
 
-case=f/'unsafe-source'; shutil.copytree(out,case); archive=case/'third-party/sources/mihomo-v1.19.28-complete-source.tar.gz'
+case=f/'unsafe-source'; shutil.copytree(out,case); archive=case/'third-party/sources/mihomo-v1.19.32-complete-source.tar.gz'
 with archive.open('wb') as raw:
   with gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=1) as gz:
    with tarfile.open(fileobj=gz,mode='w') as tf:

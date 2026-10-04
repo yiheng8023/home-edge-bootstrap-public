@@ -29,9 +29,9 @@ SUPPORT_BOUNDARY = (
     "it does not guarantee provider availability, sensitive-operation acceptance, "
     "account, payment, registration, financial, or regional-verification outcomes."
 )
-MIHOMO_SOURCE = "mihomo-v1.19.28-source-complete.tar.gz"
+MIHOMO_SOURCE = "mihomo-v1.19.32-source-complete.tar.gz"
 SHELLCRASH_SOURCE = "shellcrash-1.9.4-source-complete.tar.gz"
-MIHOMO_PREPARED_SOURCE = "mihomo-v1.19.28-complete-source.tar.gz"
+MIHOMO_PREPARED_SOURCE = "mihomo-v1.19.32-complete-source.tar.gz"
 SHELLCRASH_PREPARED_SOURCE = "shellcrash-1.9.4-complete-source.tar.gz"
 SENSITIVE_SEGMENTS = {
     ".env", "backup", "backups", "cache", "caches", "log", "logs", "session",

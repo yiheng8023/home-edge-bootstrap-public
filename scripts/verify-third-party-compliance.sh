@@ -33,7 +33,7 @@ components={c.get("id"):c for c in lock["components"]}
 if set(components) != {"mihomo-linux-arm64","shellcrash"}: raise SystemExit("required component lock missing or duplicated")
 hex64=re.compile(r"^[0-9a-f]{64}$"); git_oid=re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
 paths={
- "mihomo-linux-arm64":{"payload":"third-party/mihomo/mihomo-linux-arm64","license":"third-party/mihomo/LICENSE","source":"third-party/mihomo/source","archive":"third-party/sources/mihomo-v1.19.28-complete-source.tar.gz","prefix":"mihomo-v1.19.28-source","license_name":"LICENSE"},
+ "mihomo-linux-arm64":{"payload":"third-party/mihomo/mihomo-linux-arm64","license":"third-party/mihomo/LICENSE","source":"third-party/mihomo/source","archive":"third-party/sources/mihomo-v1.19.32-complete-source.tar.gz","prefix":"mihomo-v1.19.32-source","license_name":"LICENSE"},
  "shellcrash":{"payload":"third-party/shellcrash/ShellCrash.tar.gz","license":"third-party/shellcrash/LICENSE.txt","source":"third-party/shellcrash/source","archive":"third-party/sources/shellcrash-1.9.4-complete-source.tar.gz","prefix":"shellcrash-1.9.4-source","license_name":"LICENSE.txt"},
 }
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -128,7 +128,7 @@ if acq:
     preparation_path=tree/'third-party/mihomo/SOURCE-PREPARATION.json'
     if not preparation_path.is_file(): raise SystemExit('Mihomo external source preparation provenance missing')
     preparation=json.loads(preparation_path.read_text(encoding='utf-8'))
-    if (preparation.get('schema_version'),preparation.get('component_id'),preparation.get('component_version'),preparation.get('source_repository'),preparation.get('source_commit'),preparation.get('go_version'),preparation.get('complete_source_archive'),preparation.get('complete_source_sha256'))!=(1,'mihomo-linux-arm64',components['mihomo-linux-arm64']['version'],components['mihomo-linux-arm64']['source_repository'],components['mihomo-linux-arm64']['source_commit'],version,'mihomo-v1.19.28-complete-source.tar.gz',components['mihomo-linux-arm64']['complete_source_sha256']): raise SystemExit('Mihomo external source preparation identity mismatch')
+    if (preparation.get('schema_version'),preparation.get('component_id'),preparation.get('component_version'),preparation.get('source_repository'),preparation.get('source_commit'),preparation.get('go_version'),preparation.get('complete_source_archive'),preparation.get('complete_source_sha256'))!=(1,'mihomo-linux-arm64',components['mihomo-linux-arm64']['version'],components['mihomo-linux-arm64']['source_repository'],components['mihomo-linux-arm64']['source_commit'],version,'mihomo-v1.19.32-complete-source.tar.gz',components['mihomo-linux-arm64']['complete_source_sha256']): raise SystemExit('Mihomo external source preparation identity mismatch')
     selected=[x for x in toolchains if (x['os'],x['arch'])==(preparation.get('host_os'),preparation.get('host_arch'))]
     if len(selected)!=1: raise SystemExit('Mihomo selected Go toolchain platform is unsupported')
     selected=selected[0]

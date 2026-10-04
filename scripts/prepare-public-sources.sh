@@ -212,12 +212,12 @@ fi
 
 mkdir -p "$stage/.git-home"
 : >"$stage/.git-home/gitconfig"
-HOME="$stage/.git-home" XDG_CONFIG_HOME="$stage/.git-home" GIT_CONFIG_GLOBAL="$stage/.git-home/gitconfig" GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= -c credential.interactive=never -c core.askPass= -c http.extraHeader= clone --no-checkout --depth 1 --single-branch --branch "$MIHOMO_VERSION" "$mihomo_url" "$stage/.acquire/mihomo"
+GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$stage/.git-home/gitconfig" GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= -c credential.interactive=never -c core.askPass= -c http.extraHeader= clone --no-checkout --depth 1 --single-branch --branch "$MIHOMO_VERSION" "$mihomo_url" "$stage/.acquire/mihomo"
 git -C "$stage/.acquire/mihomo" checkout --detach "$MIHOMO_SOURCE_COMMIT"
 [ "$(git -C "$stage/.acquire/mihomo" rev-parse HEAD)" = "$MIHOMO_SOURCE_COMMIT" ] || { echo 'source commit mismatch: mihomo-linux-arm64' >&2; exit 1; }
 [ "$(git -C "$stage/.acquire/mihomo" rev-list -n 1 "$MIHOMO_VERSION")" = "$MIHOMO_SOURCE_COMMIT" ] || { echo 'tag commit mismatch: mihomo-linux-arm64' >&2; exit 1; }
 
-HOME="$stage/.git-home" XDG_CONFIG_HOME="$stage/.git-home" GIT_CONFIG_GLOBAL="$stage/.git-home/gitconfig" GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= -c credential.interactive=never -c core.askPass= -c http.extraHeader= clone --no-checkout --depth 1 --single-branch --branch "$SHELLCRASH_VERSION" "$shellcrash_url" "$stage/.acquire/shellcrash"
+GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL="$stage/.git-home/gitconfig" GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never git -c credential.helper= -c credential.interactive=never -c core.askPass= -c http.extraHeader= clone --no-checkout --depth 1 --single-branch --branch "$SHELLCRASH_VERSION" "$shellcrash_url" "$stage/.acquire/shellcrash"
 git -C "$stage/.acquire/shellcrash" checkout --detach "$SHELLCRASH_SOURCE_COMMIT"
 [ "$(git -C "$stage/.acquire/shellcrash" rev-parse HEAD)" = "$SHELLCRASH_SOURCE_COMMIT" ] || { echo 'source commit mismatch: shellcrash' >&2; exit 1; }
 [ "$(git -C "$stage/.acquire/shellcrash" rev-list -n 1 "$SHELLCRASH_VERSION")" = "$SHELLCRASH_SOURCE_COMMIT" ] || { echo 'tag commit mismatch: shellcrash' >&2; exit 1; }
@@ -325,9 +325,9 @@ canonical_archive() {
   GOPRIVATE= GONOPROXY= GONOSUMDB= \
     "$go_command" run "$canonical_archiver" "$1" "$2" "$3" "$4"
 }
-mihomo_archive="$stage/third-party/sources/mihomo-v1.19.28-complete-source.tar.gz"
+mihomo_archive="$stage/third-party/sources/mihomo-v1.19.32-complete-source.tar.gz"
 shellcrash_archive="$stage/third-party/sources/shellcrash-1.9.4-complete-source.tar.gz"
-canonical_archive "$mihomo_tree" "$mihomo_archive" mihomo-v1.19.28-source "$mihomo_epoch"
+canonical_archive "$mihomo_tree" "$mihomo_archive" mihomo-v1.19.32-source "$mihomo_epoch"
 canonical_archive "$shellcrash_tree" "$shellcrash_archive" shellcrash-1.9.4-source "$shellcrash_epoch"
 mihomo_archive_sha=$(sha256_file "$mihomo_archive")
 "$python_cmd" - "$stage/third-party/mihomo/SOURCE-PREPARATION.json" "$MIHOMO_VERSION" "$MIHOMO_SOURCE_REPOSITORY" "$MIHOMO_SOURCE_COMMIT" "$go_version" "$GO_LOCK_OS" "$GO_LOCK_ARCH" "$GO_LOCK_ARCHIVE" "$GO_LOCK_ARCHIVE_SHA256" "$(basename "$mihomo_archive")" "$mihomo_archive_sha" <<'PY'
@@ -343,6 +343,6 @@ mv "$stage" "$output"
 trap - EXIT HUP INT TERM
 echo 'third_party_source_state=ready'
 echo "mihomo_source_commit=$MIHOMO_SOURCE_COMMIT"
-echo "mihomo_source_sha256=$(sha256_file "$output/third-party/sources/mihomo-v1.19.28-complete-source.tar.gz")"
+echo "mihomo_source_sha256=$(sha256_file "$output/third-party/sources/mihomo-v1.19.32-complete-source.tar.gz")"
 echo "shellcrash_source_commit=$SHELLCRASH_SOURCE_COMMIT"
 echo "shellcrash_source_sha256=$(sha256_file "$output/third-party/sources/shellcrash-1.9.4-complete-source.tar.gz")"
