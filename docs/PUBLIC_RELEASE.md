@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.5`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.6`, they are:
 
-- `home-edge-bootstrap-v0.1.5-source.zip`
-- `home-edge-bootstrap-v0.1.5-source.tar.gz`
-- `home-edge-bootstrap-v0.1.5-offline.zip`
-- `home-edge-bootstrap-v0.1.5-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.6-source.zip`
+- `home-edge-bootstrap-v0.1.6-source.tar.gz`
+- `home-edge-bootstrap-v0.1.6-offline.zip`
+- `home-edge-bootstrap-v0.1.6-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -110,12 +110,12 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
 
-## v0.1.5 Limited Acceptance Contract
+## v0.1.6 Limited Acceptance Contract
 
-v0.1.5 publishes current project source and the reviewed v1.19.32 offline payload within a limited
+v0.1.6 publishes current project source and the reviewed v1.19.32 offline payload within a limited
 personal/trusted-distribution scope. It adds no new router or broad support acceptance. Publication requires:
 
-- Preserve every older tag and asset; create nine newly verified and labeled v0.1.5 assets.
+- Preserve every older tag and asset; create nine newly verified and labeled v0.1.6 assets.
 - Pass exact-commit Linux, macOS and Windows checks plus the subscription-behavior job before packaging.
 - Verify the new binary metadata/digest, complete v32 tagged source with vendor modules, GPL licenses,
   component locks, SPDX inventory, archive bytes, checksums and rendered bilingual release links.

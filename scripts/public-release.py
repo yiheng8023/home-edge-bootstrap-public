@@ -296,7 +296,7 @@ def expected_source_files(repo: pathlib.Path, commit: str, version: str) -> dict
 
 
 def mode_for(path: str) -> int:
-    return 0o755 if path.endswith(".sh") or path == "bootstrap.sh" else 0o644
+    return 0o755 if path.endswith((".sh", ".command")) or path == "bootstrap.sh" else 0o644
 
 
 def zip_time(epoch: int) -> tuple[int, int, int, int, int, int]:

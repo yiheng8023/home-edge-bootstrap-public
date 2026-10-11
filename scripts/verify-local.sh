@@ -110,6 +110,8 @@ for fixture in \
   test-router-status-fixtures.sh \
   test-run-bootstrap-fixtures.sh \
   test-tui-fixtures.sh \
+  test-launcher-fixtures.sh \
+  test-adapter-dispatch-fixtures.sh \
   test-guide-router-fixtures.sh \
   test-deployment-provenance-fixtures.sh \
   test-core-baseline-fixtures.sh \

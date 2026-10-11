@@ -9,8 +9,8 @@ works must be possible without using that proxy path.
 
 Before `proxy_state=verified`, required operations may use only:
 
-- the local checkout of this repository;
-- local OS tools such as Git, SSH, tar, PowerShell, and, on POSIX systems, gzip;
+- a complete local project tree, obtained by clone or verified release extraction;
+- local OS tools required by the selected operation, such as SSH, tar, PowerShell or POSIX shell/gzip; Git is needed for development/clone operations, not release startup;
 - the router Web GUI on the LAN;
 - SSH to the router on the LAN;
 - files already present on the router;

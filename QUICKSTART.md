@@ -11,25 +11,44 @@ preparation, deployment, and recovery vary by device, network, and offline-trans
 no fixed completion-time promise. The full local verification suite is optional for a first read-only
 probe and may take several minutes or substantially longer.
 
-## 1. Clone and inspect locally
+## 1. Obtain the project and open the guide
 
-```powershell
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1 -Help
-```
+**You do not need Git, a pre-opened terminal, or a remembered project directory.** If you already have a clone or complete extracted folder, start at step 2.
 
-```sh
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-sh scripts/tui.sh --help
-```
+### 1. Obtain the complete project
 
-Expected help starts with a `usage:` line. Help is local-only and does not contact a router.
+| Operator computer | Download | Open after extraction |
+|---|---|---|
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+
+Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
+
+When downloads are unavailable, obtain and verify the complete package on a device with access to the release page, then transfer it offline. A clone is also valid, but is not an operator prerequisite. These systems describe the operator computer; offline runtime payloads still target the current reference device adapter, not every device architecture.
+
+### 2. Open and validate the project location
+
+In the extracted folder or clone, find the level containing `PROJECT`, `README` and `scripts`, and open the entry above. It resolves its own directory, validates project identity and required launcher files, and shows the actual `project_dir`. It does not depend on terminal cwd or the presence of `.git`. This is a structural check, not a code signature or whole-repository security attestation.
+
+If macOS requests source confirmation, verify the download source and use the system's Open flow. If execution permission was not retained, use Terminal. Linux desktop script associations vary: when Run in Terminal is unavailable, open a terminal, type `sh ` (including the space), drag `start.sh` into it and press Enter. The same fallback works on macOS; neither requires `cd` first.
+
+The menu defaults to Chinese. For English or advanced arguments use a full path, such as `& "actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
+
+### 3. Keep an entry for later
+
+All three systems offer menu **8: Create or refresh a local desktop launcher**. Alternatively open `create-desktop-shortcut.cmd`, `create-desktop-shortcut.command`, or invoke `create-desktop-shortcut.sh` through `sh`.
+
+The independent entry stores your chosen location and directory-instance identity and rechecks them at startup. A move, deletion, damaged record or replacement directory prompts for a new explicit selection followed by validation. A native folder picker is used when available, otherwise a path prompt; cancellation or EOF executes no project. Multiple clones can coexist: a directory-local entry uses its own copy, and the independent entry uses the explicitly registered copy. There is no disk-wide scan or arbitrary selection. If a Linux desktop requires Allow Launching, check the entry and follow its prompt; headless environments retain the terminal entry.
+
+For absent Git, offline access, missing desktops/tools/permissions or uninstalled optional operations, use [conditions and recovery](docs/LAUNCHER.md). The core entry does not require ASUS or Merlin adapter files; device operations require their implementation and target capabilities. Opening the menu performs no automatic deployment, runtime update or router change; write actions retain explicit confirmation and recovery.
 
 On macOS and Linux, local verification requires Python 3. The `python3` command is accepted; `python` is accepted only when it points to Python 3. Python 2 is unsupported.
 
-Run the short operator preflight:
+Use menu **2: Run diagnosis** for the short operator preflight. The direct commands below are
+advanced interfaces: run them from a terminal opened in the verified project folder, or replace
+each relative script path with that script's full path. Exiting the guide does not change the
+calling terminal's directory; confirm the displayed `project_dir` before choosing a copy.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\doctor.ps1

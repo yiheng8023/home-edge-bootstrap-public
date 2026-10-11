@@ -9,15 +9,21 @@ param(
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 [Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
-$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$Repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 $script:SelectedSessionDir = ""
 $script:SelectedStateFile = ""
 $script:LastActionStatus = 0
 $script:Interrupted = $false
+$script:PowerShellExecutable = if (Test-Path -LiteralPath (Join-Path $PSHOME "powershell.exe")) { Join-Path $PSHOME "powershell.exe" } elseif (Test-Path -LiteralPath (Join-Path $PSHOME "pwsh.exe")) { Join-Path $PSHOME "pwsh.exe" } else { "powershell" }
 
 function Decode-Text([string]$Value) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Value)) }
+function Quote-CommandArgument([string]$Value) { return "'" + $Value.Replace("'", "''") + "'" }
+function Get-ChildCommand([string]$Script, [string[]]$Arguments = @()) {
+  $Tokens = @($script:PowerShellExecutable, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $Script) + $Arguments
+  return "& " + (($Tokens | ForEach-Object { Quote-CommandArgument $_ }) -join " ")
+}
 function Show-Usage {
-  Write-Host "usage: powershell -File scripts\tui.ps1 [-Language zh-CN|en] [-Router <ssh-user>@<router-ip>] [-NoColor] [-Help] [-Version]"
+  Write-Host "usage: $(Get-ChildCommand (Join-Path $PSScriptRoot 'tui.ps1')) [-Language zh-CN|en] [-Router <ssh-user>@<router-ip>] [-NoColor] [-Help] [-Version]"
   Write-Host ""
   Write-Host "Numbered guide over the existing Home Edge bootstrap scripts. Help and version"
   Write-Host "do not contact a router or the Internet."
@@ -43,17 +49,19 @@ if ($Help) { Show-Usage; exit 0 }
 if ($Version) { Show-Version; exit 0 }
 
 function Test-Startup {
-  if (-not (Get-Command powershell -ErrorAction SilentlyContinue)) {
+  try {
+    . (Join-Path $PSScriptRoot "lib\project-location.ps1")
+    [void](Resolve-HomeEdgeProject $Repo)
+  } catch {
+    Write-Host "startup_state=failed"
+    Write-Host "project_location_state=invalid"
+    Write-Host $_.Exception.Message
+    return $false
+  }
+  if (-not (Get-Command $script:PowerShellExecutable -ErrorAction SilentlyContinue)) {
     Write-Host "startup_state=failed"
     Write-Host "missing_prerequisite=powershell"
     return $false
-  }
-  foreach ($Name in @("doctor.ps1", "run-bootstrap.ps1", "check-no-wall-readiness.ps1", "export-support-bundle.ps1", "decommission-merlin.ps1")) {
-    if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $Name) -PathType Leaf)) {
-      Write-Host "startup_state=failed"
-      Write-Host "missing_prerequisite=scripts/$Name"
-      return $false
-    }
   }
   return $true
 }
@@ -79,6 +87,7 @@ $Zh = @{
   Safety = Decode-Text "5biu5Yqp5LiO5a6J5YWo6L6555WM77ya5Y+q6K+75pON5L2c5Y+v55u05o6l6L+Q6KGM77yb6YOo572y5ZKM55yf5a6e6Ieq5oSI5b+F6aG76L6T5YWl56Gu6K6k5Luk54mM44CC"
 }
 
+$Zh.Desktop = Decode-Text "OC4g5Yib5bu65oiW5pu05paw5pys5py65qGM6Z2i5ZCv5Yqo5YWl5Y+j"
 function Show-Menu {
   if ($Language -eq "en") {
     Write-Host "# Home Edge Guide"
@@ -89,10 +98,11 @@ function Show-Menu {
     Write-Host "5. Export a redacted support bundle"
     Write-Host "6. Show help and safety boundaries"
     Write-Host "7. Review project decommission"
+    Write-Host "8. Create or refresh a local desktop launcher"
     Write-Host "0. Exit without changes"
     return "Select: "
   }
-  foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Decommission", "Exit")) { Write-Host $Zh[$Key] }
+  foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Decommission", "Desktop", "Exit")) { Write-Host $Zh[$Key] }
   return $Zh.Prompt
 }
 
@@ -172,11 +182,23 @@ function Ensure-Router {
   return $true
 }
 
+function Test-OperationAvailable([string]$Script) {
+  if (-not (Test-Path -LiteralPath $Script -PathType Leaf)) {
+    $script:LastActionStatus = 2
+    Write-Host "capability_state=unavailable"
+    Write-Host "missing_component=$([IO.Path]::GetFileName($Script))"
+    Write-Host "This operation is not installed in this project tree. The menu and local launcher remain available; consult the compatibility guide before adding a device adapter."
+    return $false
+  }
+  return $true
+}
 function Invoke-ChildScript {
-  param([string]$Action, [string]$SafeResumeCommand, [bool]$WriteStarted, [string]$Script, [string[]]$Arguments = @())
+  param([string]$Action, [bool]$WriteStarted, [string]$Script, [string[]]$Arguments = @())
+  if (-not (Test-OperationAvailable $Script)) { return [pscustomobject]@{Status=2;Output="capability_state=unavailable"} }
+  $SafeResumeCommand = Get-ChildCommand $Script $Arguments
   $Lines = [Collections.Generic.List[string]]::new()
   $PowerShellArguments = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $Script) + $Arguments
-  & powershell @PowerShellArguments 2>&1 | ForEach-Object { $Text = [string]$_; $Lines.Add($Text); Write-Host $Text }
+  & $script:PowerShellExecutable @PowerShellArguments 2>&1 | ForEach-Object { $Text = [string]$_; $Lines.Add($Text); Write-Host $Text }
   $Status = $LASTEXITCODE
   if ($null -eq $Status) { $Status = 1 }
   $script:LastActionStatus = [int]$Status
@@ -190,22 +212,21 @@ function Invoke-ChildScript {
 }
 function Invoke-Doctor {
   $Arguments = @("-Json")
-  $Resume = "powershell -File scripts\doctor.ps1 -Json"
-  if ($script:Router) { $Arguments += @("-Router", $script:Router); $Resume += " -Router $($script:Router)" }
-  return Invoke-ChildScript -Action "doctor" -SafeResumeCommand $Resume -WriteStarted $false -Script (Join-Path $PSScriptRoot "doctor.ps1") -Arguments $Arguments
+  if ($script:Router) { $Arguments += @("-Router", $script:Router) }
+  return Invoke-ChildScript -Action "doctor" -WriteStarted $false -Script (Join-Path $PSScriptRoot "doctor.ps1") -Arguments $Arguments
 }
-function Get-BootstrapCommand([string]$Flag = "") {
-  $Command = "powershell -File scripts\run-bootstrap.ps1 -NoPause"
-  if ($Flag) { $Command += " $Flag" }
-  if ($script:SelectedSessionDir) { $Command += " -SessionDir 'logs/bootstrap/$(Split-Path -Leaf $script:SelectedSessionDir)'" }
-  return "$Command -Router $($script:Router)"
-}
-function Invoke-Bootstrap([string]$Action, [string]$Flag = "", [bool]$WriteStarted = $false) {
+function Get-BootstrapArguments([string]$Flag = "") {
   $Arguments = @("-NoPause")
   if ($Flag) { $Arguments += $Flag }
   if ($script:SelectedSessionDir) { $Arguments += @("-SessionDir", $script:SelectedSessionDir) }
   $Arguments += @("-Router", $script:Router)
-  return Invoke-ChildScript -Action $Action -SafeResumeCommand (Get-BootstrapCommand $Flag) -WriteStarted $WriteStarted -Script (Join-Path $PSScriptRoot "run-bootstrap.ps1") -Arguments $Arguments
+  return $Arguments
+}
+function Get-BootstrapCommand([string]$Flag = "") {
+  return Get-ChildCommand (Join-Path $PSScriptRoot "run-bootstrap.ps1") (Get-BootstrapArguments $Flag)
+}
+function Invoke-Bootstrap([string]$Action, [string]$Flag = "", [bool]$WriteStarted = $false) {
+  return Invoke-ChildScript -Action $Action -WriteStarted $WriteStarted -Script (Join-Path $PSScriptRoot "run-bootstrap.ps1") -Arguments (Get-BootstrapArguments $Flag)
 }
 function Get-OutputValue([string]$Text, [string]$Key) {
   $Match = [regex]::Match($Text, "(?m)^$([regex]::Escape($Key))=(.*)$")
@@ -219,13 +240,15 @@ function Show-WriteDisclosure([string]$Effect, [string]$ExactCommand, [string]$O
   if (-not $LogDestination) { $LogDestination = "unknown" }
   Write-Host "exact_command=$ExactCommand"
   Write-Host "expected_effect=$Effect"
-  Write-Host "rollback_path=powershell -File scripts\rollback-merlin.ps1 -Router $($script:Router)"
+  Write-Host "rollback_path=$(Get-ChildCommand (Join-Path $PSScriptRoot 'rollback-merlin.ps1') @('-Router', $script:Router))"
   Write-Host "session_destination=$SessionDestination"
   Write-Host "log_destination=$LogDestination"
 }
 
 function Start-OrResume {
   $script:LastActionStatus = 0
+  if (-not (Test-OperationAvailable (Join-Path $PSScriptRoot 'run-bootstrap.ps1'))) { return }
+  if (-not (Test-OperationAvailable (Join-Path $PSScriptRoot 'doctor.ps1'))) { return }
   if (-not (Ensure-Router)) { return }
   $DoctorResult = Invoke-Doctor
   if ($DoctorResult.Status -ne 0) { return }
@@ -277,11 +300,11 @@ function Show-SessionState {
   }
   if (-not (Test-KnownNextCode $State.next_action_code)) { Write-Host "attention_state=unknown_session_state" }
 }
-function Verify-OfflineBundle { [void](Invoke-ChildScript -Action "verify_offline_bundle" -SafeResumeCommand "powershell -File scripts\check-no-wall-readiness.ps1" -WriteStarted $false -Script (Join-Path $PSScriptRoot "check-no-wall-readiness.ps1")) }
+function Verify-OfflineBundle { [void](Invoke-ChildScript -Action "verify_offline_bundle" -WriteStarted $false -Script (Join-Path $PSScriptRoot "check-no-wall-readiness.ps1")) }
 function Export-SupportBundle {
-  $Arguments = @(); $Resume = "powershell -File scripts\export-support-bundle.ps1"
-  if ($script:Router) { $Arguments += @("-Router", $script:Router); $Resume += " -Router $($script:Router)" }
-  [void](Invoke-ChildScript -Action "export_support_bundle" -SafeResumeCommand $Resume -WriteStarted $false -Script (Join-Path $PSScriptRoot "export-support-bundle.ps1") -Arguments $Arguments)
+  $Arguments = @()
+  if ($script:Router) { $Arguments += @("-Router", $script:Router) }
+  [void](Invoke-ChildScript -Action "export_support_bundle" -WriteStarted $false -Script (Join-Path $PSScriptRoot "export-support-bundle.ps1") -Arguments $Arguments)
 }
 function Show-SafetyHelp {
   $script:LastActionStatus = 0; Show-Usage
@@ -290,12 +313,15 @@ function Show-SafetyHelp {
 }
 function Review-Decommission {
   $script:LastActionStatus = 0
-  if (-not (Ensure-Router)) { return }
   $Wrapper = Join-Path $PSScriptRoot "decommission-merlin.ps1"
+  if (-not (Test-OperationAvailable $Wrapper)) { return }
+  if (-not (Ensure-Router)) { return }
   $PlanArguments = @("-NoPause", "-Router", $script:Router)
-  $PlanResume = "powershell -File scripts\decommission-merlin.ps1 -NoPause -Router $($script:Router)"
-  $PlanResult = Invoke-ChildScript -Action "decommission_plan" -SafeResumeCommand $PlanResume -WriteStarted $false -Script $Wrapper -Arguments $PlanArguments
+  $PlanResult = Invoke-ChildScript -Action "decommission_plan" -WriteStarted $false -Script $Wrapper -Arguments $PlanArguments
   if ($PlanResult.Status -ne 0) { return }
+  $ApplyArguments = @("-NoPause", "-Apply", "-Confirmation", "DECOMMISSION", "-Router", $script:Router)
+  Write-Host "exact_command=$(Get-ChildCommand $Wrapper $ApplyArguments)"
+  Write-Host "expected_effect=apply_reviewed_decommission_plan"
   if ($Language -eq "en") {
     [Console]::Write("The project decommission plan is shown above. Type DECOMMISSION to confirm; anything else cancels: ")
   }
@@ -307,9 +333,7 @@ function Review-Decommission {
     if ($Language -eq "en") { Write-Host "Action cancelled." } else { Write-Host $Zh.Cancelled }
     return
   }
-  $ApplyArguments = @("-NoPause", "-Apply", "-Confirmation", "DECOMMISSION", "-Router", $script:Router)
-  $ApplyResume = "powershell -File scripts\decommission-merlin.ps1 -NoPause -Apply -Confirmation DECOMMISSION -Router $($script:Router)"
-  [void](Invoke-ChildScript -Action "decommission_apply" -SafeResumeCommand $ApplyResume -WriteStarted $true -Script $Wrapper -Arguments $ApplyArguments)
+  [void](Invoke-ChildScript -Action "decommission_apply" -WriteStarted $true -Script $Wrapper -Arguments $ApplyArguments)
 }
 
 try {
@@ -331,6 +355,7 @@ while ($true) {
     "5" { Export-SupportBundle }
     "6" { Show-SafetyHelp }
     "7" { Review-Decommission }
+    "8" { [void](Invoke-ChildScript -Action "create_local_launcher" -WriteStarted $true -Script (Join-Path $PSScriptRoot "create-desktop-shortcut.ps1")) }
     default { if ($Language -eq "en") { Write-Host "Invalid selection." } else { Write-Host $Zh.Invalid } }
   }
   if ($script:Interrupted) { exit 130 }

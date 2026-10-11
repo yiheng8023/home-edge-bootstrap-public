@@ -19,9 +19,20 @@ fail() {
 tui="$repo/scripts/tui.sh"
 [ -f "$tui" ] || fail "missing POSIX TUI entrypoint"
 
-fake_repo="$tmp/repo"
+fake_repo="$tmp/portable copy & test"
 mkdir -p "$fake_repo/scripts"
 cp "$tui" "$fake_repo/scripts/tui.sh"
+cp "$repo/start.sh" "$repo/start.command" "$fake_repo/"
+mkdir -p "$fake_repo/scripts/lib" "$fake_repo/config" "$fake_repo/adapters/merlin"
+cp "$repo/PROJECT" "$fake_repo/PROJECT"
+echo fixture >"$fake_repo/README.md"
+cp "$repo/scripts/lib/project-location.sh" "$fake_repo/scripts/lib/"
+cp "$repo/scripts/launch-tui.sh" "$fake_repo/scripts/"
+touch "$fake_repo/bootstrap.sh" "$fake_repo/config/policy.env" "$fake_repo/adapters/merlin/bootstrap.sh"
+cat >"$fake_repo/scripts/create-desktop-shortcut.sh" <<'EOF'
+#!/bin/sh
+echo desktop-shortcut >>"$TUI_FIXTURE_CALL_LOG"
+EOF
 cat >"$fake_repo/scripts/doctor.sh" <<'EOF'
 #!/bin/sh
 printf 'doctor %s\n' "$*" >>"$TUI_FIXTURE_CALL_LOG"
@@ -69,20 +80,32 @@ set +e
 printf '0\n' | sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/startup-missing.out" 2>&1
 startup_missing_status=$?
 set -e
-[ "$startup_missing_status" -eq 2 ] || fail "missing startup prerequisite should exit 2"
-grep -Fq 'startup_state=failed' "$tmp/startup-missing.out" || fail "missing startup prerequisite was not reported"
+[ "$startup_missing_status" -eq 0 ] || fail "missing optional operation prevented menu startup"
+set +e
+printf '5\n0\n' | sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/unavailable.out" 2>&1
+unavailable_status=$?
+set -e
+[ "$unavailable_status" -eq 2 ] || fail "missing selected capability did not return failure"
+grep -Fq 'capability_state=unavailable' "$tmp/unavailable.out" || fail "missing selected capability was not explained"
 mv "$fake_repo/scripts/export-support-bundle.sh.missing" "$fake_repo/scripts/export-support-bundle.sh"
 
 printf '0\n' | sh "$fake_repo/scripts/tui.sh" --no-color >"$tmp/default.out"
 printf '0\n' | sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/en.out"
 sh "$fake_repo/scripts/tui.sh" --help >"$tmp/help.out"
+(
+  cd "$tmp"
+  sh "$fake_repo/start.sh" --help >"$tmp/launcher-help.out"
+  sh "$fake_repo/start.command" --version >"$tmp/launcher-version.out"
+)
+grep -Fq 'usage:' "$tmp/launcher-help.out" || fail "launcher requires caller to cd to package"
+grep -Fxq 'home-edge-bootstrap development' "$tmp/launcher-version.out" || fail "macOS launcher did not resolve its own package"
 sh "$fake_repo/scripts/tui.sh" --version >"$tmp/version.out"
 
 grep -Fq '1. 开始或接续引导式配置' "$tmp/default.out" || fail "default menu is not Chinese"
 grep -Fq '1. Start or resume guided bootstrap' "$tmp/en.out" || fail "English menu missing"
 grep -Fq '7. 审查项目退出' "$tmp/default.out" || fail "Chinese decommission menu missing"
 grep -Fq '7. Review project decommission' "$tmp/en.out" || fail "English decommission menu missing"
-for number in 1 2 3 4 5 6 7 0; do
+for number in 1 2 3 4 5 6 7 8 0; do
   grep -Eq "^$number\\. " "$tmp/default.out" || fail "default menu missing action $number"
   grep -Eq "^$number\\. " "$tmp/en.out" || fail "English menu missing action $number"
 done
@@ -111,6 +134,8 @@ call_log="$tmp/calls.log"
 : >"$call_log"
 printf '2\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/doctor.out"
 grep -Fxq 'doctor --json' "$call_log" || fail "diagnosis did not dispatch doctor --json"
+printf '8\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/desktop-choice.out"
+grep -Fxq desktop-shortcut "$call_log" || fail "desktop setup was not delegated from the menu"
 
 : >"$call_log"
 printf '4\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/bundle.out"
@@ -163,7 +188,7 @@ printf '1\nAPPLY\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACT
 grep -Eq '^run-bootstrap --no-pause user@192\.168\.50\.1$' "$call_log" || fail "bootstrap read-only pass missing before deploy"
 grep -Eq '^run-bootstrap --no-pause --apply-deploy user@192\.168\.50\.1$' "$call_log" || fail "APPLY token did not enable deploy"
 grep -Fq 'expected_effect=apply_reviewed_deployment_plan' "$tmp/apply.out" || fail "deploy effect was not disclosed"
-grep -Fq 'rollback_path=sh scripts/rollback-merlin.sh' "$tmp/apply.out" || fail "deploy rollback path was not disclosed"
+grep -Fq "rollback_path='sh' '$fake_repo/scripts/rollback-merlin.sh' 'user@192.168.50.1'" "$tmp/apply.out" || fail "deploy rollback path did not bind its project and target"
 grep -Fq 'session_destination=/fixture/session' "$tmp/apply.out" || fail "session destination was not disclosed"
 grep -Fq 'log_destination=/fixture/bootstrap.log' "$tmp/apply.out" || fail "log destination was not disclosed"
 
@@ -179,7 +204,7 @@ set -e
 grep -Fq 'child_exit_code=17' "$tmp/child-error.out" || fail "child exit code was not preserved"
 [ "$child_error_status" -eq 17 ] || fail "TUI process did not exit with the last child failure"
 grep -Fq 'failed_action=bootstrap_read_only' "$tmp/child-error.out" || fail "failed action was not reported"
-grep -Fq 'safe_resume_command=sh scripts/run-bootstrap.sh' "$tmp/child-error.out" || fail "safe resume command was not reported"
+grep -Fq "safe_resume_command='sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' 'user@192.168.50.1'" "$tmp/child-error.out" || fail "safe resume command did not bind its project and target"
 
 : >"$call_log"
 set +e
@@ -257,7 +282,7 @@ runtime_tmp="$tmp/runtime-tmp"
 mkdir -p "$runtime_tmp"
 printf '1\n2\nWRONG\n0\n' | env TMPDIR="$runtime_tmp" TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/session-resume.out"
 grep -Eq 'run-bootstrap --no-pause --session-dir .*/02-json json-user@192\.168\.50\.3' "$call_log" || fail "selected session did not infer router and preserve session directory"
-grep -Fq "exact_command=sh scripts/run-bootstrap.sh --no-pause --apply-deploy --session-dir 'logs/bootstrap/02-json' json-user@192.168.50.3" "$tmp/session-resume.out" || fail "copyable selected-session command was not safely repository-relative"
+grep -Fq "exact_command='sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' '--apply-deploy' '--session-dir' '$session_json' 'json-user@192.168.50.3'" "$tmp/session-resume.out" || fail "selected-session command did not bind its project, session and router"
 if "$find_cmd" "$runtime_tmp" -type f -name 'home-edge-tui-*' | grep -q .; then fail "TUI temporary capture files were not cleaned"; fi
 
 : >"$call_log"

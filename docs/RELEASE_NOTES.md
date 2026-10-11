@@ -2,6 +2,38 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.6 (2026-10-12)
+
+Add equal Windows/macOS/Linux directory-local and registered independent entries, with optional desktop integration. macOS uses `start.command`; Linux uses the self-locating `start.sh`. The entries resolve their own package and preserve the existing guide, failure exit codes and confirmation gates. README and Quickstart no longer assume a clone, known folder or prior `cd`.
+
+Mihomo v1.19.32, ShellCrash 1.9.4, source locks and existing security evidence are unchanged. This adds no field acceptance or runtime upgrade; earlier tags/assets remain unchanged and broad release claims remain blocked. Startup performs no network access, automatic update, router change or elevation; Windows execution-policy bypass is confined to the child process. Registration and desktop integration are explicit local actions with path-type and directory-instance checks. Relocation or replacement requires selection; unrelated files are preserved. Missing optional device operations no longer prevent opening the core menu. Device candidate probes live in adapters; neutral dispatch requests selection for unknown or ambiguous candidates. yamlbridge remains source-only with the v0.1.5 activation prerequisites.
+
+On Windows, download the ZIP below, Extract All, and double-click `start.cmd`. Optionally double-click `create-desktop-shortcut.cmd` to keep a desktop entry. Keep the extracted folder; downloading one script or opening it inside a ZIP is not a complete installation. On macOS/Linux choose tar.gz; if macOS execution permission was not preserved, invoke `sh` with the full path to `start.sh`. Complete-source audit assets are not needed for installation.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.6-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.6-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.6-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.6-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.6-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.6-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.6-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.6-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.5 (2026-10-05)
 
 This limited release brings the current project functions into new versioned archives and replaces

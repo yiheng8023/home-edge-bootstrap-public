@@ -10,25 +10,43 @@ Asuswrt-Merlin、ShellCrash/ShellClash 与 Mihomo 兼容运行时的华硕网关
 设备、网络和离线转移需求变化，不承诺固定完成时间。完整本地验证对首次只读探测是可选的，
 可能需要数分钟，也可能明显更久。
 
-## 1. 克隆并在本地检查
+## 1. 取得文件并打开向导
 
-```powershell
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1 -Help
-```
+**不需要先安装 Git，也不用先打开终端或记住项目目录。** 已有 clone 或完整解压目录时直接看第 2 步。
 
-```sh
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-sh scripts/tui.sh --help
-```
+### 1. 取得完整项目
 
-预期帮助以 `usage:` 行开头。帮助路径只在本地运行，不会连接路由器。
+| 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
+|---|---|---|
+| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | 双击 `start.cmd` |
+| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | 双击 `start.command` |
+| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
+
+下载完在浏览器的下载记录中选择“在文件夹中显示”（Windows 常用 **Ctrl+J**），再**解压整个包**。可将解压文件夹保存在“文档”或自己的常用目录；不限定盘符、用户名或路径。不要在压缩包窗口内运行，也不要只取一个脚本。安装只需对应系统的一种包；校验文件和复制即用的校验步骤见 [发布说明](docs/zh-CN/RELEASE_NOTES.md)。
+
+下载条件不足时，可以在可访问发布页的设备上下载并校验完整包，再离线转移。clone 也是有效取得方式，但不是普通用户的前提。上述系统是操作电脑；离线运行载荷仍面向当前参考设备适配器，不代表已支持所有设备架构。
+
+### 2. 打开并核实目录
+
+在解压或 clone 的文件夹里，找到同时包含 `PROJECT`、`README` 和 `scripts` 的那一层，打开上表的入口。入口自动定位自身所在目录，核实项目标记与启动所需文件，并显示实际使用的 `project_dir`；不依赖当前终端目录，不要求 `.git` 存在。它检查的是启动结构，不是代码签名或整仓安全认证。
+
+macOS 若系统要求确认来源，核对下载来源后按系统提供的“打开”流程处理；如果执行权限没有保留，可通过终端运行。Linux 不同桌面的脚本关联不同：没有“在终端运行”时，打开终端，输入 `sh `（末尾保留空格），把 `start.sh` 拖进去，再按回车。macOS 也支持这个替代入口，均无需先 `cd`。
+
+菜单默认中文。需要英文或非交互参数时，可使用完整路径，例如 Windows 的 `& "实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
+
+### 3. 以后从固定入口进入
+
+三种系统均可在向导里选择 **8：创建或更新本机桌面启动入口**。也可从文件夹直接打开对应的 `create-desktop-shortcut.cmd`、`create-desktop-shortcut.command` 或通过 `sh` 运行 `create-desktop-shortcut.sh`。
+
+独立入口保存你选择的项目位置和目录实例身份，启动时重新检查；项目移动、删除、注册记录失效或旧路径被另一副本占用时，会引导重新选择，并再次核验。可用时使用系统文件夹选择器，否则提示输入路径；取消或输入结束不会执行项目。多个 clone 可以并存：目录内入口使用自身副本，独立入口使用你明确登记的副本，不进行全盘扫描或随便选择。Linux 若桌面要求“允许启动”，核对入口后按桌面提示完成；无桌面环境仍可使用终端入口。
+
+没有 Git、不能联网、没有桌面、缺少工具/权限、可选功能未安装等情况，按 [条件与恢复说明](docs/zh-CN/LAUNCHER.md) 选择可行路径。核心入口不要求华硕或梅林适配器存在；设备操作需要相应实现和目标能力，条件不足时说明缺项。打开菜单不会自动部署、更新运行时或改路由器；可写操作沿用明确确认和原有恢复流程。
 
 在 macOS 与 Linux 上，本地验证需要 Python 3。可使用 `python3`；仅当 `python` 指向 Python 3 时才可使用 `python`。不支持 Python 2。
 
-先运行短路径操作员预检：
+短路径操作员预检使用菜单 **2：运行诊断**。下文直接命令属于高级接口：应在已核实项目目录内打开的终端
+运行，或将每个相对脚本路径替换为该脚本的完整路径。退出向导不会改变原终端当前目录；选择副本前核对
+入口显示的 `project_dir`。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\doctor.ps1

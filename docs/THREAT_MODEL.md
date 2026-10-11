@@ -7,6 +7,12 @@ credential minimization, local verification, and explicit manual trust decisions
 
 ## Protected Assets
 
+The local launcher also protects the explicitly selected project-directory instance and unrelated
+desktop/registration files. It does not authenticate source merely because PROJECT matches.
+Registration-path type/link checks, explicit relocation/replacement selection and adapter-neutral
+startup reduce accidental cross-copy execution and write-out. Native filesystem identity is not a
+signature; desktop trust and source authenticity remain separate. See [Launcher contract](LAUNCHER.md).
+
 - Router administrator access.
 - SSH keys and authorized keys.
 - Wi-Fi credentials, WAN/ISP details, VPN peer keys, and regulatory settings.

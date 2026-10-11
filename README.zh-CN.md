@@ -5,7 +5,7 @@
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
 发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.5) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.6) ·
 [发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
 
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
@@ -20,6 +20,38 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 框架复用成熟代理运行时及其既有管理界面，不重复实现代理核心或仪表盘。未来可通过独立
 适配器接入其他设备、固件和运行时系列，但必须先明确并验证相应能力、安全、恢复、证据和
 维护契约。
+
+## 首次进入：取得文件、打开向导、保存入口
+
+**不需要先安装 Git，也不用先打开终端或记住项目目录。** 已有 clone 或完整解压目录时直接看第 2 步。
+
+### 1. 取得完整项目
+
+| 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
+|---|---|---|
+| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | 双击 `start.cmd` |
+| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | 双击 `start.command` |
+| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
+
+下载完在浏览器的下载记录中选择“在文件夹中显示”（Windows 常用 **Ctrl+J**），再**解压整个包**。可将解压文件夹保存在“文档”或自己的常用目录；不限定盘符、用户名或路径。不要在压缩包窗口内运行，也不要只取一个脚本。安装只需对应系统的一种包；校验文件和复制即用的校验步骤见 [发布说明](docs/zh-CN/RELEASE_NOTES.md)。
+
+下载条件不足时，可以在可访问发布页的设备上下载并校验完整包，再离线转移。clone 也是有效取得方式，但不是普通用户的前提。上述系统是操作电脑；离线运行载荷仍面向当前参考设备适配器，不代表已支持所有设备架构。
+
+### 2. 打开并核实目录
+
+在解压或 clone 的文件夹里，找到同时包含 `PROJECT`、`README` 和 `scripts` 的那一层，打开上表的入口。入口自动定位自身所在目录，核实项目标记与启动所需文件，并显示实际使用的 `project_dir`；不依赖当前终端目录，不要求 `.git` 存在。它检查的是启动结构，不是代码签名或整仓安全认证。
+
+macOS 若系统要求确认来源，核对下载来源后按系统提供的“打开”流程处理；如果执行权限没有保留，可通过终端运行。Linux 不同桌面的脚本关联不同：没有“在终端运行”时，打开终端，输入 `sh `（末尾保留空格），把 `start.sh` 拖进去，再按回车。macOS 也支持这个替代入口，均无需先 `cd`。
+
+菜单默认中文。需要英文或非交互参数时，可使用完整路径，例如 Windows 的 `& "实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
+
+### 3. 以后从固定入口进入
+
+三种系统均可在向导里选择 **8：创建或更新本机桌面启动入口**。也可从文件夹直接打开对应的 `create-desktop-shortcut.cmd`、`create-desktop-shortcut.command` 或通过 `sh` 运行 `create-desktop-shortcut.sh`。
+
+独立入口保存你选择的项目位置和目录实例身份，启动时重新检查；项目移动、删除、注册记录失效或旧路径被另一副本占用时，会引导重新选择，并再次核验。可用时使用系统文件夹选择器，否则提示输入路径；取消或输入结束不会执行项目。多个 clone 可以并存：目录内入口使用自身副本，独立入口使用你明确登记的副本，不进行全盘扫描或随便选择。Linux 若桌面要求“允许启动”，核对入口后按桌面提示完成；无桌面环境仍可使用终端入口。
+
+没有 Git、不能联网、没有桌面、缺少工具/权限、可选功能未安装等情况，按 [条件与恢复说明](docs/zh-CN/LAUNCHER.md) 选择可行路径。核心入口不要求华硕或梅林适配器存在；设备操作需要相应实现和目标能力，条件不足时说明缺项。打开菜单不会自动部署、更新运行时或改路由器；可写操作沿用明确确认和原有恢复流程。
 
 ## 从这里开始
 
@@ -36,29 +68,27 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 列出的其他官方下载入口。第三方社区或支持网站可能只面向某个国家或地区，也可能分发改版固件；
 不假定其他国家或地区存在对应站点，也不要把它当作官方来源。
 
-克隆仓库并打开编号式引导界面：
+三种系统的下文相对脚本示例均适用于已核实 `project_dir` 的项目内终端；否则使用各脚本完整路径。
+启动或退出向导不会改变原终端当前目录。普通使用继续通过菜单完成。
+
+高级命令入口（可选）：在文件资源管理器中打开解压后的项目文件夹，点击地址栏输入 `powershell` 并回车，终端会直接位于正确目录。然后运行：
 
 ```powershell
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1
+.\start.cmd -Language en
+.\start.cmd -Help
+```
+
+如果已经打开了别处的终端，使用完整路径，不要假定当前目录：
+
+```powershell
+& "C:\你的解压文件夹\start.cmd"
 ```
 
 ```sh
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-sh scripts/tui.sh
+sh "/你的解压目录/start.sh"
 ```
 
-可使用 `router-user@router.lan` 这样的通用目标。帮助路径只在本地运行：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1 -Help
-```
-
-```sh
-sh scripts/tui.sh --help
-```
+将示例路径换成实际解压目录，或直接将启动文件拖入终端自动填入路径。开发者仍可 clone 仓库；普通使用者不需要先安装 Git。
 
 在 macOS 与 Linux 上，本地验证需要 Python 3。可使用 `python3`；仅当 `python` 指向 Python 3 时才可使用 `python`。不支持 Python 2。
 
@@ -269,6 +299,6 @@ Yacd-meta 初始默认：延迟从小到大、隐藏不可用节点、关闭自�
 详见[订阅自动化](docs/SUBSCRIPTION_AUTOMATION.md)。已发布 v0.1.4 下载包不会追溯包含
 这个源码功能；本站点验证与离线夹具证据分开，不扩大为全部固件或供应方的支持声明。
 
-最新 v0.1.5 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
+最新 v0.1.6 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
 节点订阅自动更新仍需宿主编译 yamlbridge（可信网络或预备模块缓存），包内没有预编译 parser；
 HTTPS 订阅、controller key、本地组过滤和站点显式启用是独立前提。详见[发布说明](docs/zh-CN/RELEASE_NOTES.md)。

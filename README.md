@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.5) ·
+[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.6) ·
 [release contract](docs/PUBLIC_RELEASE.md).
 
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
@@ -23,6 +23,38 @@ Future device, firmware, and runtime families may join through
 separate adapters only after their capability, safety, recovery, evidence, maintenance, migration,
 and decommission contracts are defined and verified. No unimplemented adapter is listed as supported.
 
+## First use: obtain the project, open the guide, keep an entry
+
+**You do not need Git, a pre-opened terminal, or a remembered project directory.** If you already have a clone or complete extracted folder, start at step 2.
+
+### 1. Obtain the complete project
+
+| Operator computer | Download | Open after extraction |
+|---|---|---|
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+
+Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
+
+When downloads are unavailable, obtain and verify the complete package on a device with access to the release page, then transfer it offline. A clone is also valid, but is not an operator prerequisite. These systems describe the operator computer; offline runtime payloads still target the current reference device adapter, not every device architecture.
+
+### 2. Open and validate the project location
+
+In the extracted folder or clone, find the level containing `PROJECT`, `README` and `scripts`, and open the entry above. It resolves its own directory, validates project identity and required launcher files, and shows the actual `project_dir`. It does not depend on terminal cwd or the presence of `.git`. This is a structural check, not a code signature or whole-repository security attestation.
+
+If macOS requests source confirmation, verify the download source and use the system's Open flow. If execution permission was not retained, use Terminal. Linux desktop script associations vary: when Run in Terminal is unavailable, open a terminal, type `sh ` (including the space), drag `start.sh` into it and press Enter. The same fallback works on macOS; neither requires `cd` first.
+
+The menu defaults to Chinese. For English or advanced arguments use a full path, such as `& "actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
+
+### 3. Keep an entry for later
+
+All three systems offer menu **8: Create or refresh a local desktop launcher**. Alternatively open `create-desktop-shortcut.cmd`, `create-desktop-shortcut.command`, or invoke `create-desktop-shortcut.sh` through `sh`.
+
+The independent entry stores your chosen location and directory-instance identity and rechecks them at startup. A move, deletion, damaged record or replacement directory prompts for a new explicit selection followed by validation. A native folder picker is used when available, otherwise a path prompt; cancellation or EOF executes no project. Multiple clones can coexist: a directory-local entry uses its own copy, and the independent entry uses the explicitly registered copy. There is no disk-wide scan or arbitrary selection. If a Linux desktop requires Allow Launching, check the entry and follow its prompt; headless environments retain the terminal entry.
+
+For absent Git, offline access, missing desktops/tools/permissions or uninstalled optional operations, use [conditions and recovery](docs/LAUNCHER.md). The core entry does not require ASUS or Merlin adapter files; device operations require their implementation and target capabilities. Opening the menu performs no automatic deployment, runtime update or router change; write actions retain explicit confirmation and recovery.
+
 ## Start here
 
 Before choosing or flashing a router, verify the exact model and hardware revision against the
@@ -39,29 +71,28 @@ official download endpoint currently listed by the official download page. A thi
 or support site may exist for a particular country or region and may distribute a modified firmware
 family; do not assume that a corresponding site exists elsewhere or that it is an official source.
 
-Clone the repository and open the numbered guided interface:
+For all operating systems, relative script examples below assume a terminal opened in the verified
+`project_dir`; otherwise use each script's full path. Starting or exiting the guide does not change
+the calling terminal's directory. Ordinary use continues through the menu.
+
+Advanced command entry (optional): in File Explorer, open the extracted project folder, click the address bar, type `powershell`, and press Enter. That opens PowerShell in the correct folder. Then:
 
 ```powershell
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1
+.\start.cmd -Language en
+.\start.cmd -Help
+```
+
+In an existing terminal, use the full path instead of assuming its working directory:
+
+```powershell
+& "C:\path-to-your-extracted-folder\start.cmd" -Language en
 ```
 
 ```sh
-git clone https://github.com/yiheng8023/home-edge-bootstrap-public.git
-cd home-edge-bootstrap-public
-sh scripts/tui.sh
+sh "/path/to/extracted-folder/start.sh" --lang en
 ```
 
-Use a generic target such as `router-user@router.lan`. The help path is local-only:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tui.ps1 -Help
-```
-
-```sh
-sh scripts/tui.sh --help
-```
+Replace the example path with the actual extracted folder, or drag the launcher into the terminal to insert its path. Developers may still clone the repository; cloning is not the operator startup requirement.
 
 On macOS and Linux, local verification requires Python 3. The `python3` command is accepted; `python` is accepted only when it points to Python 3. Python 2 is unsupported.
 
@@ -306,7 +337,7 @@ activation and limits. This source feature is not retroactively present in the
 already published v0.1.4 download archives. Site results and offline fixture results
 are distinct; they do not establish broad firmware/provider support.
 
-The v0.1.5 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
+The v0.1.6 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
 Node-only subscription automation still needs host compilation of yamlbridge through a trusted network
 or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
 group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).

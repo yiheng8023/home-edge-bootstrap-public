@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.5` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.6` 对应：
 
-- `home-edge-bootstrap-v0.1.5-source.zip`
-- `home-edge-bootstrap-v0.1.5-source.tar.gz`
-- `home-edge-bootstrap-v0.1.5-offline.zip`
-- `home-edge-bootstrap-v0.1.5-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.6-source.zip`
+- `home-edge-bootstrap-v0.1.6-source.tar.gz`
+- `home-edge-bootstrap-v0.1.6-offline.zip`
+- `home-edge-bootstrap-v0.1.6-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -98,12 +98,12 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
 
-## v0.1.5 有限验收合同
+## v0.1.6 有限验收合同
 
-v0.1.5 在个人/可信分发的有限范围内交付当前项目源码及已审阅的 v1.19.32 离线载荷，
+v0.1.6 在个人/可信分发的有限范围内交付当前项目源码及已审阅的 v1.19.32 离线载荷，
 不新增真实路由器或广泛支持验收。发布必须满足：
 
-- 保留全部旧标签与资产，新建九项已验证且标签正确的 v0.1.5 资产。
+- 保留全部旧标签与资产，新建九项已验证且标签正确的 v0.1.6 资产。
 - 发包前通过精确提交的 Linux、macOS、Windows 校验及 subscription-behavior job。
 - 核验新二进制元数据与摘要、v32 完整 tag 源码及 vendor 模块、GPL 许可证、组件锁、
   SPDX 库存、归档字节、校验和及中英文渲染链接。

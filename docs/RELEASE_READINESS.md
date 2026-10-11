@@ -23,6 +23,12 @@ readiness alone.
 
 ## Claim boundary
 
+For v0.1.6, limited source/host/archive distribution additionally requires three-host guide entries,
+validated local location recovery and the concrete ZIP/tar entry metadata. The v0.1.5 exact-commit
+subscription-behavior gate and source-only yamlbridge preparation/activation prerequisites remain.
+Mihomo v1.19.32 and ShellCrash 1.9.4 are unchanged. Broad claims stay `blocked`; no new device,
+runtime or native macOS GUI acceptance is assigned by this release.
+
 Source-tree readiness does not certify router models, firmware, providers, live-network behavior, security outcomes, uninterrupted availability, or deployment success. No support service level is offered. A release decision requires review of the concrete source commit and any concrete offline artifact.
 
 For v0.1.5, the exact-commit subscription-behavior job is an additional gate. yamlbridge is shipped as source only; host compiler/module preparation and explicit site activation remain separate. New Mihomo v1.19.32 bytes require matching complete source, inventory and binary build metadata; no new field acceptance is claimed.

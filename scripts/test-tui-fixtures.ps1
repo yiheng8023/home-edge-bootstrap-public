@@ -53,6 +53,13 @@ try {
   New-Item -ItemType Directory -Path $FakeScripts -Force | Out-Null
   $FakeTui = Join-Path $FakeScripts "tui.ps1"
   Copy-Item -LiteralPath $Tui -Destination $FakeTui
+  New-Item -ItemType Directory -Path (Join-Path $FakeScripts "lib"),(Join-Path $FakeRepo "config"),(Join-Path $FakeRepo "adapters\merlin") | Out-Null
+  Copy-Item -LiteralPath (Join-Path $Repo "PROJECT") -Destination $FakeRepo
+  Set-Content -LiteralPath (Join-Path $FakeRepo "README.md") -Value "fixture" -Encoding ASCII
+  Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\project-location.ps1") -Destination (Join-Path $FakeScripts "lib")
+  Copy-Item -LiteralPath (Join-Path $Repo "scripts\launch-tui.ps1") -Destination $FakeScripts
+  foreach ($Relative in @("bootstrap.sh","config\policy.env","adapters\merlin\bootstrap.sh")) { Set-Content -LiteralPath (Join-Path $FakeRepo $Relative) -Value "fixture" -Encoding ASCII }
+  Set-Content -LiteralPath (Join-Path $FakeScripts "create-desktop-shortcut.ps1") -Value 'Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value "desktop-shortcut"' -Encoding ASCII
   @'
 param([switch]$Json, [string]$Router = "")
 $Parts = @()
@@ -115,10 +122,15 @@ Write-Host 'decommission_state=plan_ready'
   if ((Invoke-TuiProcess -Script $FakeTui -Arguments @("-Help")).Status -ne 0) { Fail "help should bypass startup prerequisites" }
   if ((Invoke-TuiProcess -Script $FakeTui -Arguments @("-Version")).Status -ne 0) { Fail "version should bypass startup prerequisites" }
   $StartupMissing = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "0`n"
-  if ($StartupMissing.Status -ne 2 -or $StartupMissing.Output -notmatch "startup_state=failed") { Fail "missing startup prerequisite was not rejected" }
+  if ($StartupMissing.Status -ne 0) { Fail "missing optional operation prevented menu startup" }
+  $Unavailable = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "5`n0`n"
+  if ($Unavailable.Status -ne 2 -or $Unavailable.Output -notmatch "capability_state=unavailable") { Fail "missing selected capability was not explained" }
   Move-Item -LiteralPath $SupportMissing -Destination $SupportStub
 
   $Default = Invoke-TuiProcess -Script $FakeTui -Arguments @("-NoColor") -InputText "0`n"
+  $DesktopChoiceLog = Join-Path $Base "desktop-choice.log"
+  $DesktopChoice = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "8`n0`n" -Environment @{TUI_FIXTURE_CALL_LOG=$DesktopChoiceLog}
+  if ($DesktopChoice.Status -ne 0 -or (Get-Content -Raw -LiteralPath $DesktopChoiceLog).Trim() -ne "desktop-shortcut") { Fail "desktop setup was not delegated from the menu" }
   $English = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "0`n"
   $Help = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Help")
   $Version = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Version")
@@ -130,7 +142,7 @@ Write-Host 'decommission_state=plan_ready'
   if ($English.Status -ne 0 -or $English.Output -notmatch [regex]::Escape("1. Start or resume guided bootstrap")) { Fail "English menu missing" }
   if ($Default.Output -notmatch [regex]::Escape($ExpectedChineseDecommission)) { Fail "Chinese decommission menu missing" }
   if ($English.Output -notmatch [regex]::Escape("7. Review project decommission")) { Fail "English decommission menu missing" }
-  foreach ($Number in @(1, 2, 3, 4, 5, 6, 7, 0)) {
+  foreach ($Number in @(1, 2, 3, 4, 5, 6, 7, 8, 0)) {
     if ($Default.Output -notmatch "(?m)^$Number\. ") { Fail "default menu missing action $Number" }
     if ($English.Output -notmatch "(?m)^$Number\. ") { Fail "English menu missing action $Number" }
   }
@@ -194,7 +206,7 @@ Write-Host 'decommission_state=plan_ready'
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $Apply = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "1`nAPPLY`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
   if ((Get-Content -LiteralPath $CallLog) -notcontains "run-bootstrap -NoPause -ApplyDeploy user@192.168.50.1") { Fail "APPLY token did not enable deploy" }
-  foreach ($Expected in @("expected_effect=apply_reviewed_deployment_plan", "rollback_path=powershell -File scripts\rollback-merlin.ps1", "session_destination=C:\fixture\session", "log_destination=C:\fixture\bootstrap.log")) {
+  foreach ($Expected in @("expected_effect=apply_reviewed_deployment_plan", "rollback_path=& ", ("'" + (Join-Path (Split-Path $FakeTui -Parent) 'rollback-merlin.ps1') + "' '-Router' 'user@192.168.50.1'"), "session_destination=C:\fixture\session", "log_destination=C:\fixture\bootstrap.log")) {
     if ($Apply.Output -notmatch [regex]::Escape($Expected)) { Fail "deploy disclosure missing: $Expected" }
   }
 
@@ -207,7 +219,8 @@ Write-Host 'decommission_state=plan_ready'
   if ($ChildError.Output -notmatch "child_exit_code=17") { Fail "child exit code was not preserved" }
   if ($ChildError.Status -ne 17) { Fail "TUI process did not exit with the last child failure" }
   if ($ChildError.Output -notmatch "failed_action=bootstrap_read_only") { Fail "failed action was not reported" }
-  if ($ChildError.Output -notmatch "safe_resume_command=powershell -File scripts\\run-bootstrap.ps1") { Fail "safe resume command was not reported" }
+  $ExpectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' '-NoPause' '-Router' 'user@192.168.50.1'"
+  if ($ChildError.Output -notmatch "safe_resume_command=& " -or $ChildError.Output -notmatch [regex]::Escape($ExpectedResume)) { Fail "safe resume command did not bind its project and target" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $WriteError = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "1`nAPPLY`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan"; BOOTSTRAP_STUB_WRITE_EXIT = "19" })
@@ -250,7 +263,8 @@ Write-Host 'decommission_state=plan_ready'
   $SelectedResume = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "1`n2`nWRONG`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
   $SelectedCalls = Read-CallLog $CallLog
   if ($SelectedCalls -notmatch "run-bootstrap -NoPause -SessionDir .*02-json json-user@192.168.50.3") { Fail "selected session did not infer router and preserve session directory" }
-  if ($SelectedResume.Output -notmatch [regex]::Escape("exact_command=powershell -File scripts\run-bootstrap.ps1 -NoPause -ApplyDeploy -SessionDir 'logs/bootstrap/02-json' -Router json-user@192.168.50.3")) { Fail "copyable selected-session command was not safely repository-relative" }
+  $ExpectedSelectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' '-NoPause' '-ApplyDeploy' '-SessionDir' '" + $SessionJson + "' '-Router' 'json-user@192.168.50.3'"
+  if ($SelectedResume.Output -notmatch "exact_command=& " -or $SelectedResume.Output -notmatch [regex]::Escape($ExpectedSelectedResume)) { Fail "selected-session command did not bind its project, session and router" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $UnknownSession = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n3`n0`n" -Environment $CommonEnvironment

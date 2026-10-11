@@ -12,6 +12,22 @@ convention.
 
 ## Layers
 
+### Operator entry and host/device isolation
+
+The launcher adds three distinct responsibilities: common project-location/structural validation,
+host-specific console/filesystem/desktop integration, and device-specific operations. Common startup
+does not require `adapters/merlin`, `/jffs`, NVRAM or a running proxy. It can open help and local
+launcher setup when a device operation is absent. Selecting an unavailable operation reports the
+missing capability rather than pretending that another implementation is compatible.
+
+`bootstrap.sh` now delegates candidate detection to trusted installed adapter `detect.sh` entries.
+It accepts bounded identifiers and dispatches only regular adapter entries; no candidate or multiple
+candidates requires selection. The Merlin detector offers a read-only candidate signal, not official
+firmware, model or runtime acceptance. Existing device workflows still use the current reference
+implementation; this is progressive isolation, not a claim that all adapters already exist.
+See [Launcher and recovery contract](LAUNCHER.md) for conditions, instance binding and host evidence.
+
+
 | Layer | Artifact | Portability | Notes |
 |---|---|---|---|
 | Policy | `config/policy.env`, `config/mihomo-overlay.yaml` | High | Region-neutral by default; provider-name tolerant with optional site-local candidate and region constraints |

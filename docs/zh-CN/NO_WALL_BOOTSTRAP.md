@@ -8,8 +8,8 @@
 
 在 `proxy_state=verified` 之前，必需操作只能依赖：
 
-- 本地已经存在的仓库；
-- 本地系统工具，例如 Git、SSH、tar、PowerShell，以及 POSIX 系统上的 gzip；
+- 已通过 clone 或发行包完整解压取得的本地项目文件；
+- 所选操作实际需要的本地工具，例如 SSH、tar、PowerShell 或 POSIX shell/gzip；Git 用于开发或 clone，不是发行包启动前提；
 - 局域网内的路由器 Web GUI；
 - 局域网内的路由器 SSH；
 - 路由器上已经存在的文件；

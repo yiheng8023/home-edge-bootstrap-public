@@ -3,6 +3,7 @@
 set -u
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
+. "$repo/scripts/lib/project-location.sh"
 language=zh-CN
 router=""
 selected_session_dir=""
@@ -35,12 +36,22 @@ trap 'signal_exit 130' INT
 trap 'signal_exit 143' TERM
 
 usage() {
+  printf 'usage: %s [--lang zh-CN|en] [--router <ssh-user>@<router-ip>] [--no-color] [--help] [--version]\n' "$(command_line sh "$repo/scripts/tui.sh")"
   cat <<'EOF'
-usage: sh scripts/tui.sh [--lang zh-CN|en] [--router <ssh-user>@<router-ip>] [--no-color] [--help] [--version]
 
 Numbered guide over the existing Home Edge bootstrap scripts. Help and version
 do not contact a router or the Internet.
 EOF
+}
+
+quote_argument() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+command_line() {
+  separator=''
+  for argument do
+    printf '%s' "$separator"
+    quote_argument "$argument"
+    separator=' '
+  done
 }
 
 version() {
@@ -91,13 +102,6 @@ startup_check() {
       return 2
     }
   done
-  for script in doctor.sh run-bootstrap.sh check-no-wall-readiness.sh export-support-bundle.sh decommission-merlin.sh; do
-    [ -f "$repo/scripts/$script" ] || {
-      echo "startup_state=failed"
-      echo "missing_prerequisite=scripts/$script"
-      return 2
-    }
-  done
   return 0
 }
 startup_check || exit $?
@@ -113,6 +117,7 @@ show_menu() {
 5. Export a redacted support bundle
 6. Show help and safety boundaries
 7. Review project decommission
+8. Create or refresh a local desktop launcher
 0. Exit without changes
 EOF
     printf 'Select: '
@@ -126,6 +131,7 @@ EOF
 5. 导出脱敏支持包
 6. 查看帮助与安全边界
 7. 审查项目退出
+8. 创建或更新本机桌面启动入口
 0. 不做修改并退出
 EOF
     printf '请选择: '
@@ -231,8 +237,20 @@ ensure_router() {
   return 0
 }
 
+operation_available() {
+  if [ ! -f "$1" ]; then
+    last_action_status=2
+    echo 'capability_state=unavailable'
+    printf 'missing_component=%s\n' "$1"
+    echo 'This operation is not installed. The menu and local launcher remain available; consult the compatibility guide before adding a device adapter.'
+    return 2
+  fi
+  return 0
+}
 run_child() {
-  action=$1; resume_command=$2; write_started=$3; shift 3
+  action=$1; write_started=$2; shift 2
+  if [ "${1:-}" = sh ]; then operation_available "${2:-}" || return 2; fi
+  resume_command=$(command_line "$@")
   tmp_base=${TMPDIR:-/tmp}; [ "$tmp_base" = / ] || tmp_base=${tmp_base%/}
   capture_file=$(mktemp "$tmp_base/home-edge-tui-output.XXXXXX") || return 1
   status_file=$(mktemp "$tmp_base/home-edge-tui-status.XXXXXX") || { cleanup_temp; return 1; }
@@ -251,34 +269,27 @@ run_child() {
   return "$child_status"
 }
 
-doctor_resume() {
-  if [ -n "$router" ]; then printf 'sh scripts/doctor.sh --json %s' "$router"; else printf 'sh scripts/doctor.sh --json'; fi
-}
 run_doctor() {
-  resume=$(doctor_resume)
-  if [ -n "$router" ]; then run_child doctor "$resume" false sh "$repo/scripts/doctor.sh" --json "$router"
-  else run_child doctor "$resume" false sh "$repo/scripts/doctor.sh" --json
+  if [ -n "$router" ]; then run_child doctor false sh "$repo/scripts/doctor.sh" --json "$router"
+  else run_child doctor false sh "$repo/scripts/doctor.sh" --json
   fi
 }
 bootstrap_resume() {
-  flags=$1
-  if [ -n "$selected_session_dir" ]; then
-    session_leaf=${selected_session_dir##*/}
-    printf "sh scripts/run-bootstrap.sh --no-pause %s --session-dir 'logs/bootstrap/%s' %s" "$flags" "$session_leaf" "$router"
-  else printf 'sh scripts/run-bootstrap.sh --no-pause %s %s' "$flags" "$router"
-  fi
+  bootstrap_operation display '' "$1" false
 }
 run_bootstrap_child() {
-  action=$1; flags=$2; write_started=$3
-  resume=$(bootstrap_resume "$flags")
+  bootstrap_operation run "$1" "$2" "$3"
+}
+bootstrap_operation() {
+  mode=$1; action=$2; flags=$3; write_started=$4
+  set -- --no-pause
+  [ -z "$flags" ] || set -- "$@" "$flags"
   if [ -n "$selected_session_dir" ]; then
-    if [ -n "$flags" ]; then run_child "$action" "$resume" "$write_started" sh "$repo/scripts/run-bootstrap.sh" --no-pause "$flags" --session-dir "$selected_session_dir" "$router"
-    else run_child "$action" "$resume" "$write_started" sh "$repo/scripts/run-bootstrap.sh" --no-pause --session-dir "$selected_session_dir" "$router"
-    fi
-  else
-    if [ -n "$flags" ]; then run_child "$action" "$resume" "$write_started" sh "$repo/scripts/run-bootstrap.sh" --no-pause "$flags" "$router"
-    else run_child "$action" "$resume" "$write_started" sh "$repo/scripts/run-bootstrap.sh" --no-pause "$router"
-    fi
+    set -- "$@" --session-dir "$selected_session_dir"
+  fi
+  set -- "$@" "$router"
+  if [ "$mode" = display ]; then command_line sh "$repo/scripts/run-bootstrap.sh" "$@"
+  else run_child "$action" "$write_started" sh "$repo/scripts/run-bootstrap.sh" "$@"
   fi
 }
 output_value() { printf '%s\n' "$child_output" | awk -F= -v wanted="$1" '$1 == wanted { print substr($0, index($0, "=") + 1); exit }'; }
@@ -289,13 +300,15 @@ show_write_disclosure() {
   [ -n "$log_destination" ] || log_destination=unknown
   echo "exact_command=$command"
   echo "expected_effect=$effect"
-  echo "rollback_path=sh scripts/rollback-merlin.sh \"$router\""
+  printf 'rollback_path=%s\n' "$(command_line sh "$repo/scripts/rollback-merlin.sh" "$router")"
   echo "session_destination=$session_destination"
   echo "log_destination=$log_destination"
 }
 
 start_or_resume() {
   last_action_status=0
+  operation_available "$repo/scripts/run-bootstrap.sh" || return 0
+  operation_available "$repo/scripts/doctor.sh" || return 0
   ensure_router || return 0
   run_doctor || return 0
   run_bootstrap_child bootstrap_read_only "" false || return 0
@@ -357,10 +370,10 @@ show_session() {
   known_next_code "$state_next_code" || echo "attention_state=unknown_session_state"
 }
 
-verify_bundle() { run_child verify_offline_bundle 'sh scripts/check-no-wall-readiness.sh' false sh "$repo/scripts/check-no-wall-readiness.sh" || return 0; }
+verify_bundle() { run_child verify_offline_bundle false sh "$repo/scripts/check-no-wall-readiness.sh" || return 0; }
 export_support() {
-  if [ -n "$router" ]; then run_child export_support_bundle "sh scripts/export-support-bundle.sh $router" false sh "$repo/scripts/export-support-bundle.sh" "$router" || return 0
-  else run_child export_support_bundle 'sh scripts/export-support-bundle.sh' false sh "$repo/scripts/export-support-bundle.sh" || return 0
+  if [ -n "$router" ]; then run_child export_support_bundle false sh "$repo/scripts/export-support-bundle.sh" "$router" || return 0
+  else run_child export_support_bundle false sh "$repo/scripts/export-support-bundle.sh" || return 0
   fi
 }
 show_safety_help() {
@@ -371,9 +384,11 @@ show_safety_help() {
 }
 review_decommission() {
   last_action_status=0
+  operation_available "$repo/scripts/decommission-merlin.sh" || return 0
   ensure_router || return 0
-  plan_resume="sh scripts/decommission-merlin.sh $router"
-  run_child decommission_plan "$plan_resume" false sh "$repo/scripts/decommission-merlin.sh" "$router" || return 0
+  run_child decommission_plan false sh "$repo/scripts/decommission-merlin.sh" "$router" || return 0
+  apply_resume=$(command_line sh "$repo/scripts/decommission-merlin.sh" --apply --confirm DECOMMISSION "$router")
+  printf 'exact_command=%s\nexpected_effect=apply_reviewed_decommission_plan\n' "$apply_resume"
   if [ "$language" = en ]; then
     printf 'The project decommission plan is shown above. Type DECOMMISSION to confirm; anything else cancels: '
   else
@@ -383,11 +398,11 @@ review_decommission() {
     if [ "$language" = en ]; then echo "Action cancelled."; else echo "操作已取消。"; fi
     return 0
   fi
-  apply_resume="sh scripts/decommission-merlin.sh --apply --confirm DECOMMISSION $router"
-  run_child decommission_apply "$apply_resume" true sh "$repo/scripts/decommission-merlin.sh" --apply --confirm DECOMMISSION "$router" || return 0
+  run_child decommission_apply true sh "$repo/scripts/decommission-merlin.sh" --apply --confirm DECOMMISSION "$router" || return 0
 }
 
 while :; do
+  if ! home_edge_project_dir "$repo" >/dev/null; then echo 'startup_state=invalid_project'; exit 2; fi
   show_menu
   if ! IFS= read -r choice; then printf '\n'; exit "$last_action_status"; fi
   case "$choice" in
@@ -399,6 +414,7 @@ while :; do
     5) export_support ;;
     6) show_safety_help ;;
     7) review_decommission ;;
+    8) run_child create_local_launcher true sh "$repo/scripts/create-desktop-shortcut.sh" || true ;;
     *) if [ "$language" = en ]; then echo "Invalid selection."; else echo "无效选择。"; fi ;;
   esac
   echo
