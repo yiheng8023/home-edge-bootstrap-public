@@ -3,6 +3,10 @@ set -eu
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-launcher-test.XXXXXX")
 trap 'rm -rf "$tmp"' 0 HUP INT TERM
+# macOS TMPDIR can use /var while the launcher records its physical /private/var
+# location. Keep fixture expectations in the same physical directory namespace.
+tmp_physical=$(CDPATH= cd "$tmp" && pwd -P) || exit 1
+tmp=$tmp_physical
 fail() { echo "launcher_fixture_tests=failed: $*" >&2; exit 1; }
 project="$tmp/portable copy & 中文"
 desktop="$tmp/fixture desktop"
