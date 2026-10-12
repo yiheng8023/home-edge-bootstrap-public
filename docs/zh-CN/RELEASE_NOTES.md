@@ -4,6 +4,14 @@
 
 ## v0.1.8（2026-10-12）
 
+### 获取与启动方式（发行页指引修订）
+
+获取方式任选其一：发行包下载并校验解压、Git 克隆、复用完整本地目录／桌面入口，或离线转移完整包。Windows 打开 `start.cmd`；macOS 打开 `start.command`；Linux 通过 `sh` 打开 `start.sh`；随后选择 **1** 按实际状态开始／接续。不存在 npm、pnpm 或 npx 安装入口。
+
+公仓 source 包和克隆不含离线运行时；只需脚本且运行时已有时可用，目标缺少运行时时选择 offline 包。
+
+本段是发行页的文档修订；下载包仍精确绑定 manifest 中的原 v0.1.8 提交，不包含后续 README 改写。完整最新路径见[中文 README](https://github.com/yiheng8023/home-edge-bootstrap-public/blob/main/README.zh-CN.md)。已有资产、标签及校验值保持不变。
+
 修复 OpenAI 服务策略组推断：精确 `DOMAIN-KEYWORD,openai/chatgpt` 规则与依赖域名规则一起参与判断；存在策略组冲突时要求显式 `HOME_EDGE_SERVICE_GROUP`，不再静默选择媒体组。依照当前官方网络建议补充精确 `frontend-apps-multi-region.workos.com` 依赖。
 
 安装观测仅将普通、可读、空的历史 `home-edge-policy.local.bak.<14 位数字>` 备份排除出活动文件所有权检查，并保留原文件。非空未知备份、其他名称及链接继续受保护；被动备份不能证明安装所有权或授予替换权。
@@ -43,6 +51,8 @@ Windows 下载完整 ZIP、全部解压后双击 start.cmd；macOS/Linux 选择 
 选择对应系统的一种包和 `SHA256SUMS`；只校验你下载的文件。manifest、SBOM（公开发行）和完整对应源码是审计／源码可用性资料，不是额外安装部件。GitHub 自动生成的 Source code 不是契约发行包。
 
 只有已有运行时且只需要脚本／文档时才选 source 包；全新离线运行时准备选择 offline 包。
+
+先将选中的发行包与 `SHA256SUMS` 放在同一文件夹。下面的校验命令在该文件夹的终端执行：Windows 可在资源管理器中打开该文件夹，在地址栏输入 `powershell` 并回车；macOS/Linux 可打开终端，输入 `cd `（保留空格），拖入下载文件夹后按回车。校验成功后再解压；无需回到项目目录。
 
 Windows PowerShell 只校验已下载的离线 ZIP：
 

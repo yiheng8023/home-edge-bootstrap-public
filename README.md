@@ -2,6 +2,87 @@
 
 English | [简体中文](README.zh-CN.md)
 
+## First use: obtain the project, open the guide, keep an entry
+
+**Choose ONE acquisition route below; downloading, cloning and installing are not consecutive requirements.** Reuse a complete project folder or a working desktop entry if you already have one. Obtaining files on your computer, opening the TUI and deploying to a router are separate steps; opening the guide does not automatically install or replace router contents.
+
+| Your situation | Choose | Complete flow |
+|---|---|---|
+| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
+| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
+| Git already available; keep a local repository | Git clone | Use the commands below to choose a known location → open the same entry in that clone; no second project download is required |
+| Complete extracted folder or clone already present | Reuse that folder | Skip acquisition and continue at “Open and validate the project location” below; keep different copies separate |
+| Local desktop entry already created | Reuse the desktop entry | Open `Home Edge Bootstrap` → entry revalidates its registered folder, or asks you to select and validate a replacement → choose **1** to resume |
+| This computer cannot reach the download site | Transfer a complete package offline | Download and verify on a connected device → transfer archive and checksum file → verify locally, extract all and open the same entry |
+
+**Public clones and source packages contain no ShellCrash/Mihomo offline payloads.** They can open the guide, run applicable diagnosis or manage an existing runtime. If the target lacks a runtime, choose the offline package and follow preparation guidance; obtaining project source does not install a runtime.
+
+**There is currently no npm, pnpm or npx installation entry, and Node.js is not required.** Choose one compression format. Manifests, SBOMs and third-party complete corresponding source are audit material, not consecutive installation parts. GitHub automatic `Source code` archives are not the contracted release packages; prefer the explicitly named project assets. Package details and verification steps are in the [release notes](docs/RELEASE_NOTES.md).
+
+### Open the same entry for your computer
+
+Release packages, existing folders and desktop entries do not require Git. **The download column is only for the release-package route; with a clone or complete existing folder, use its startup file without downloading again.**
+
+| Operator computer | Download | Open after extraction |
+|---|---|---|
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+
+Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
+
+When downloads are unavailable, obtain and verify the complete package on a device with access to the release page, then transfer it offline. A clone is also valid, but is not an operator prerequisite. These systems describe the operator computer; offline runtime payloads still target the current reference device adapter, not every device architecture.
+
+### Open and validate the project location
+
+In the extracted folder or clone, find the level containing `PROJECT`, `README` and `scripts`, and open the entry above. It resolves its own directory, validates project identity and required launcher files, and shows the actual `project_dir`. It does not depend on terminal cwd or the presence of `.git`. This is a structural check, not a code signature or whole-repository security attestation.
+
+If macOS requests source confirmation, verify the download source and use the system's Open flow. If execution permission was not retained, use Terminal. Linux desktop script associations vary: when Run in Terminal is unavailable, open a terminal, type `sh ` (including the space), drag `start.sh` into it and press Enter. The same fallback works on macOS; neither requires `cd` first.
+
+The menu defaults to Chinese; type **L**, **language** or **9** in the menu to switch to English. For advanced arguments use a full path, such as `& "C:\actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
+
+### Git clone: know the location and start the guide
+
+Use these commands only if you chose cloning. Git must already be available; otherwise choose a release package. The examples store the project in `home-edge-bootstrap` under your current user home directory. Keep that directory, or replace the destination with your chosen full path. Git refuses an existing nonempty destination: reuse the existing project or choose a new folder instead of deleting or overwriting its contents.
+
+Windows PowerShell:
+
+```powershell
+$ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
+git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+if ($LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") -Language en }
+```
+
+macOS / Linux:
+
+```sh
+project_dir="$HOME/home-edge-bootstrap"
+git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+  sh "$project_dir/start.sh" --lang en
+```
+
+The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.8` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
+
+### Keep an entry for later
+
+All three systems offer menu **8: Create or refresh a local desktop launcher**. Alternatively open `create-desktop-shortcut.cmd`, `create-desktop-shortcut.command`, or invoke `create-desktop-shortcut.sh` through `sh`.
+
+The independent entry stores your chosen location and directory-instance identity and rechecks them at startup. A move, deletion, damaged record or replacement directory prompts for a new explicit selection followed by validation. A native folder picker is used when available, otherwise a path prompt; cancellation or EOF executes no project. Multiple clones can coexist: a directory-local entry uses its own copy, and the independent entry uses the explicitly registered copy. There is no disk-wide scan or arbitrary selection. If a Linux desktop requires Allow Launching, check the entry and follow its prompt; headless environments retain the terminal entry.
+
+If the registered target and cached launcher files already match this copy and the desktop entry points to that registered launcher, desktop setup reports `shortcut_state=reused`. Updating another project-owned target, an incomplete registration or changed cached launcher files requires **REPLACE** then **APPLY**. Unowned storage and unrelated desktop files are not overwritable. This updates the local entry, not the router installation.
+
+For absent Git, offline access, missing desktops/tools/permissions or uninstalled optional operations, use [conditions and recovery](docs/LAUNCHER.md). The core entry does not require ASUS or Merlin adapter files; device operations require their implementation and target capabilities. Opening the menu performs no automatic deployment, runtime update or router change; write actions retain explicit confirmation and recovery.
+
+### Help, language and an existing installation
+
+At the main menu, type **H**, **?**, **help**, or **6** for local help: menu actions, prerequisites, confirmations, recovery and documentation paths. Type **L**, **language**, or **9** to switch Chinese/English immediately. The switch keeps the router target and selected session, lasts for this TUI session only, and performs no network access or global setting write. **0** exits.
+
+Choose **1** to start or resume. A fresh read-only probe of the selected router and project path distinguishes `installed`, `partial`, `not_installed` and `unknown`. Existing project content defaults to diagnosis and saved-session reuse. `installed` means recognized project-owned presence, not a healthy runtime or complete network/lifecycle acceptance. ShellCrash/Mihomo alone does not mean this project is installed. Only positively observed absence permits first installation; unknown ownership, foreign content, links or a failed/malformed probe stop deployment for review.
+
+To refresh an owned project, deliberately choose **R**, review the target, plan and `<project-path>.prev` backup, then type **REPLACE** followed by **APPLY** exactly. An older `.prev` backup may be replaced. This uses the project-only deployment scope: it prevents runtime/core asset replacement, but can update project-managed integration and configuration. It is not a complete runtime rollback. The writer rechecks ownership under its lock before applying. Runtime replacement and core replacement remain separate opt-in actions; runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is separately selected.
+
+The guide rechecks current project structure/directory identity and required tool availability at menu/action transitions and around important work. Known degradation stops affected actions and gives recovery guidance while **H**, **L** and **0** remain usable. These are event-driven checks, not a background daemon or detection of every unknown fault. See the launcher contract for the supported recovery paths.
+
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
@@ -22,50 +103,6 @@ The framework reuses mature proxy runtimes and their existing management interfa
 Future device, firmware, and runtime families may join through
 separate adapters only after their capability, safety, recovery, evidence, maintenance, migration,
 and decommission contracts are defined and verified. No unimplemented adapter is listed as supported.
-
-## First use: obtain the project, open the guide, keep an entry
-
-**You do not need Git, a pre-opened terminal, or a remembered project directory.** If you already have a clone or complete extracted folder, start at step 2.
-
-### 1. Obtain the complete project
-
-| Operator computer | Download | Open after extraction |
-|---|---|---|
-| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | Double-click `start.cmd` |
-| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | Double-click `start.command` |
-| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
-
-Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
-
-When downloads are unavailable, obtain and verify the complete package on a device with access to the release page, then transfer it offline. A clone is also valid, but is not an operator prerequisite. These systems describe the operator computer; offline runtime payloads still target the current reference device adapter, not every device architecture.
-
-### 2. Open and validate the project location
-
-In the extracted folder or clone, find the level containing `PROJECT`, `README` and `scripts`, and open the entry above. It resolves its own directory, validates project identity and required launcher files, and shows the actual `project_dir`. It does not depend on terminal cwd or the presence of `.git`. This is a structural check, not a code signature or whole-repository security attestation.
-
-If macOS requests source confirmation, verify the download source and use the system's Open flow. If execution permission was not retained, use Terminal. Linux desktop script associations vary: when Run in Terminal is unavailable, open a terminal, type `sh ` (including the space), drag `start.sh` into it and press Enter. The same fallback works on macOS; neither requires `cd` first.
-
-The menu defaults to Chinese; type **L**, **language** or **9** in the menu to switch to English. For advanced arguments use a full path, such as `& "actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
-
-### 3. Keep an entry for later
-
-All three systems offer menu **8: Create or refresh a local desktop launcher**. Alternatively open `create-desktop-shortcut.cmd`, `create-desktop-shortcut.command`, or invoke `create-desktop-shortcut.sh` through `sh`.
-
-The independent entry stores your chosen location and directory-instance identity and rechecks them at startup. A move, deletion, damaged record or replacement directory prompts for a new explicit selection followed by validation. A native folder picker is used when available, otherwise a path prompt; cancellation or EOF executes no project. Multiple clones can coexist: a directory-local entry uses its own copy, and the independent entry uses the explicitly registered copy. There is no disk-wide scan or arbitrary selection. If a Linux desktop requires Allow Launching, check the entry and follow its prompt; headless environments retain the terminal entry.
-
-If the registered target and cached launcher files already match this copy and the desktop entry points to that registered launcher, desktop setup reports `shortcut_state=reused`. Updating another project-owned target, an incomplete registration or changed cached launcher files requires **REPLACE** then **APPLY**. Unowned storage and unrelated desktop files are not overwritable. This updates the local entry, not the router installation.
-
-For absent Git, offline access, missing desktops/tools/permissions or uninstalled optional operations, use [conditions and recovery](docs/LAUNCHER.md). The core entry does not require ASUS or Merlin adapter files; device operations require their implementation and target capabilities. Opening the menu performs no automatic deployment, runtime update or router change; write actions retain explicit confirmation and recovery.
-
-### Help, language and an existing installation
-
-At the main menu, type **H**, **?**, **help**, or **6** for local help: menu actions, prerequisites, confirmations, recovery and documentation paths. Type **L**, **language**, or **9** to switch Chinese/English immediately. The switch keeps the router target and selected session, lasts for this TUI session only, and performs no network access or global setting write. **0** exits.
-
-Choose **1** to start or resume. A fresh read-only probe of the selected router and project path distinguishes `installed`, `partial`, `not_installed` and `unknown`. Existing project content defaults to diagnosis and saved-session reuse. `installed` means recognized project-owned presence, not a healthy runtime or complete network/lifecycle acceptance. ShellCrash/Mihomo alone does not mean this project is installed. Only positively observed absence permits first installation; unknown ownership, foreign content, links or a failed/malformed probe stop deployment for review.
-
-To refresh an owned project, deliberately choose **R**, review the target, plan and `<project-path>.prev` backup, then type **REPLACE** followed by **APPLY** exactly. An older `.prev` backup may be replaced. This uses the project-only deployment scope: it prevents runtime/core asset replacement, but can update project-managed integration and configuration. It is not a complete runtime rollback. The writer rechecks ownership under its lock before applying. Runtime replacement and core replacement remain separate opt-in actions; runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is separately selected.
-
-The guide rechecks current project structure/directory identity and required tool availability at menu/action transitions and around important work. Known degradation stops affected actions and gives recovery guidance while **H**, **L** and **0** remain usable. These are event-driven checks, not a background daemon or detection of every unknown fault. See the launcher contract for the supported recovery paths.
 
 ## Start here
 

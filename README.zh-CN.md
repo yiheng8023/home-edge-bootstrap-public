@@ -2,30 +2,26 @@
 
 [English](README.md) | 简体中文
 
-最短路径：[快速开始](QUICKSTART.zh-CN.md)。
-
-发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) ·
-[发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
-
-Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
-它将未准备好的边缘网关渐进式引导为可观测、可恢复、可自愈的代理路径，同时把必须由人
-判断的事项保留为明确边界。
-
-当前已实现的参考适配器面向运行官方 Asuswrt-Merlin 的华硕路由器，并使用
-ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配器，不是永久架构边界，
-也不代表该适配器已经取得“已验证”成熟阶段。Windows、macOS 与 Linux 是当前声明能力
-边界内的操作宿主机系列。
-
-框架复用成熟代理运行时及其既有管理界面，不重复实现代理核心或仪表盘。未来可通过独立
-适配器接入其他设备、固件和运行时系列，但必须先明确并验证相应能力、安全、恢复、证据和
-维护契约。
-
 ## 首次进入：取得文件、打开向导、保存入口
 
-**不需要先安装 Git，也不用先打开终端或记住项目目录。** 已有 clone 或完整解压目录时直接看第 2 步。
+**以下获取方式任选一种即可，不需要依次完成下载、克隆和安装。** 已有完整项目目录或可用桌面入口时直接复用。取得电脑上的文件、打开 TUI、向路由器部署是三个不同环节；打开向导不会自动安装或覆盖路由器。
 
-### 1. 取得完整项目
+| 你的情况 | 选择的方式 | 完整流程 |
+|---|---|---|
+| 首次使用，或需要准备离线运行时（推荐） | [发行版离线包（offline）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) | 选对应系统的一个包与 `SHA256SUMS` → 校验 → 全部解压 → 打开下表入口 → 选择 **1**，按检测结果继续 |
+| 路由器已有运行时，只需项目脚本与文档 | [发行版源码包（source）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) | 选 `-source.zip` 或 `-source.tar.gz` 与 `SHA256SUMS` → 校验并解压 → 同样打开入口；该包不含运行时 |
+| 已有 Git，想保留本地仓库 | Git 克隆 | 按下方命令明确保存位置 → 打开克隆目录中的同一入口；无需再下载另一份项目包 |
+| 已有完整解压目录或克隆目录 | 复用现有目录 | 跳过获取，直接执行下方“打开并核实目录”；不同副本不要混用 |
+| 已创建本机桌面入口 | 复用桌面入口 | 打开 `Home Edge Bootstrap` → 入口核实登记目录；目录失效时重新选择并核实 → 选择 **1** 接续 |
+| 本机无法访问下载站 | 离线转移完整包 | 在可访问的设备上下载并校验发行包 → 转移包与校验文件 → 在本机校验、全部解压 → 打开同一入口 |
+
+**公仓克隆与 source 包均不含 ShellCrash/Mihomo 离线载荷。** 可以打开向导、运行适用的诊断或管理已有运行时；若目标缺少运行时，应改选 offline 包并按向导准备，不要把源码下载当成运行时已安装。
+
+**当前没有 npm、pnpm 或 npx 安装入口，也不要求 Node.js。** 每个包只取一种压缩格式；manifest、SBOM 和第三方完整对应源码用于审计，并不是要依次安装的部件。GitHub 自动生成的 `Source code` 归档不是契约发行包，优先使用项目明确命名的资产。具体包与校验步骤见[发布说明](docs/zh-CN/RELEASE_NOTES.md)。
+
+### 按电脑系统打开同一入口
+
+发行包、已有目录和桌面入口不需要 Git。**下表下载列仅供选择发行包的用户使用；已克隆或已有完整目录时只看启动文件，不必再次下载。**
 
 | 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
 |---|---|---|
@@ -37,15 +33,37 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 
 下载条件不足时，可以在可访问发布页的设备上下载并校验完整包，再离线转移。clone 也是有效取得方式，但不是普通用户的前提。上述系统是操作电脑；离线运行载荷仍面向当前参考设备适配器，不代表已支持所有设备架构。
 
-### 2. 打开并核实目录
+### 打开并核实目录
 
 在解压或 clone 的文件夹里，找到同时包含 `PROJECT`、`README` 和 `scripts` 的那一层，打开上表的入口。入口自动定位自身所在目录，核实项目标记与启动所需文件，并显示实际使用的 `project_dir`；不依赖当前终端目录，不要求 `.git` 存在。它检查的是启动结构，不是代码签名或整仓安全认证。
 
 macOS 若系统要求确认来源，核对下载来源后按系统提供的“打开”流程处理；如果执行权限没有保留，可通过终端运行。Linux 不同桌面的脚本关联不同：没有“在终端运行”时，打开终端，输入 `sh `（末尾保留空格），把 `start.sh` 拖进去，再按回车。macOS 也支持这个替代入口，均无需先 `cd`。
 
-菜单默认中文；菜单内输入 **L**、**language** 或 **9** 即可切换英文。需要非交互参数时，可使用完整路径，例如 Windows 的 `& "实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
+菜单默认中文；菜单内输入 **L**、**language** 或 **9** 即可切换英文。需要非交互参数时，可使用完整路径，例如 Windows 的 `& "D:\实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
 
-### 3. 以后从固定入口进入
+### Git 克隆：保存在哪里，如何启动
+
+只在选择克隆方式时执行。需要已安装 Git；没有 Git 就选发行包。下面固定到当前用户主目录下的 `home-edge-bootstrap`，执行后保留该目录。也可将目标改成自己的完整路径。目标已存在且非空时 Git 会拒绝克隆；复用已有项目或另选一个新目录，不要删除或覆盖已有内容。
+
+Windows PowerShell:
+
+```powershell
+$ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
+git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+if ($LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") }
+```
+
+macOS / Linux:
+
+```sh
+project_dir="$HOME/home-edge-bootstrap"
+git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+  sh "$project_dir/start.sh"
+```
+
+克隆输出的目录就是项目位置；不需要先 `cd`。这里选择发行标签 `v0.1.8`，并非自动跟随开发分支；后续更新由你有意选择。电脑上已有项目不等于路由器已安装，实际安装状态仍由向导探测。
+
+### 以后从固定入口进入
 
 三种系统均可在向导里选择 **8：创建或更新本机桌面启动入口**。也可从文件夹直接打开对应的 `create-desktop-shortcut.cmd`、`create-desktop-shortcut.command` 或通过 `sh` 运行 `create-desktop-shortcut.sh`。
 
@@ -64,6 +82,25 @@ macOS 若系统要求确认来源，核对下载来源后按系统提供的“�
 需要刷新项目自有内容时，主动选择 **R**，审阅目标、计划和 `<项目路径>.prev` 备份，再精确输入 **REPLACE**，随后输入 **APPLY**。旧 `.prev` 备份可能被替换。此操作使用仅项目部署范围，阻止运行时／core 载荷替换，但可能更新项目受管集成与配置，不是完整运行时回滚。实际写者在取得锁后重新检查所有权。运行时替换与 core 替换仍须分别显式选择；仅替换运行时会保留已有 core，除非另行指定 `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1`。
 
 向导在菜单／动作切换及重要工作前后重新检查当前项目结构、目录实例和所需工具可用性。已知条件退化会阻断受影响动作并提供恢复指引，**H**、**L** 与 **0** 仍可用。这是事件触发的检查，不是后台守护，也不声称识别全部未知故障。支持的恢复路径见启动契约。
+
+最短路径：[快速开始](QUICKSTART.zh-CN.md)。
+
+发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) ·
+[发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
+
+Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
+它将未准备好的边缘网关渐进式引导为可观测、可恢复、可自愈的代理路径，同时把必须由人
+判断的事项保留为明确边界。
+
+当前已实现的参考适配器面向运行官方 Asuswrt-Merlin 的华硕路由器，并使用
+ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配器，不是永久架构边界，
+也不代表该适配器已经取得“已验证”成熟阶段。Windows、macOS 与 Linux 是当前声明能力
+边界内的操作宿主机系列。
+
+框架复用成熟代理运行时及其既有管理界面，不重复实现代理核心或仪表盘。未来可通过独立
+适配器接入其他设备、固件和运行时系列，但必须先明确并验证相应能力、安全、恢复、证据和
+维护契约。
 
 ## 从这里开始
 

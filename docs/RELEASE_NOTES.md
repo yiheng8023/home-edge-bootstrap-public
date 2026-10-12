@@ -4,6 +4,14 @@
 
 ## v0.1.8 (2026-10-12)
 
+### Acquisition and startup (release-page guidance revision)
+
+Choose one acquisition route: verify/extract a release package, Git clone, reuse a complete local folder/desktop entry, or transfer a complete package offline. Windows opens `start.cmd`; macOS opens `start.command`; Linux runs `start.sh` through `sh`; then choose **1** to start/resume from observed state. No npm, pnpm or npx installation entry is provided.
+
+Public source packages and clones omit offline runtime payloads; use them for scripts with an existing runtime, or choose an offline package when the target lacks one.
+
+This is a release-page documentation revision. Downloaded packages remain bound to the original v0.1.8 commits recorded in their manifests and do not contain the later README rewrite. For complete current paths, see the [English README](https://github.com/yiheng8023/home-edge-bootstrap-public/blob/main/README.md). Existing assets, tags and checksums remain unchanged.
+
 Fix OpenAI service-policy inference: exact `DOMAIN-KEYWORD,openai/chatgpt` anchors now participate alongside dependency-domain rules. Conflicting groups require an explicit `HOME_EDGE_SERVICE_GROUP` instead of silently choosing the media policy. Add the exact `frontend-apps-multi-region.workos.com` dependency from the current official network guidance.
 
 Installation observation preserves and excludes only an empty regular historical `home-edge-policy.local.bak.<14 digits>` from active-file ownership checks. Nonempty unknown backups, other names and links remain protected; a passive backup does not establish installation ownership or replacement permission.
@@ -43,6 +51,8 @@ Windows: download one complete ZIP, Extract All, then double-click start.cmd. ma
 Choose one package for your system plus `SHA256SUMS`; verify only the file you downloaded. Manifest, SBOM (public release) and complete-source assets are audit/source-availability material, not extra installation parts. GitHub automatic Source code archives are not the contracted packages.
 
 Choose a source-only package only when the runtime is already present and you need scripts/documentation; choose an offline package for fresh offline runtime preparation.
+
+Save the chosen archive and `SHA256SUMS` in the same folder. Run the verification commands below in a terminal opened in that download folder: on Windows, open the folder in Explorer, type `powershell` in the address bar and press Enter; on macOS/Linux, open Terminal, type `cd ` (with the space), drag the download folder into it and press Enter. Extract only after verification succeeds; the project directory is not needed for this check.
 
 Windows PowerShell, checking only the offline ZIP you downloaded:
 
