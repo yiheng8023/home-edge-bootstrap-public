@@ -9,7 +9,9 @@ fail() { echo "project_installation_fixture_tests=failed: $*" >&2; exit 1; }
 export HOME_EDGE_INSTALLATION_ROUTER=user@router
 export KNOWN_HOSTS_FILE="$tmp/known_hosts"
 observe() {
-  HOME_EDGE_INSTALLATION_FIXTURE_ROOT="$1" home_edge_inspect_installation >"$tmp/observation"
+  # Bash 3.2 function-prefix assignments can retain the earlier custom path.
+  # Bind each ordinary observation explicitly instead of inheriting that probe.
+  HOME_EDGE_INSTALLATION_DIR=/jffs/home-edge-bootstrap HOME_EDGE_INSTALLATION_FIXTURE_ROOT="$1" home_edge_inspect_installation >"$tmp/observation"
   grep -Fxq "project_install_state=$2" "$tmp/observation" || { cat "$tmp/observation" >&2; fail "expected $2"; }
 }
 owned_kit() {
