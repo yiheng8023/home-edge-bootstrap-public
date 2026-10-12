@@ -204,10 +204,13 @@ sed -e "s#remote_dir=\"/jffs/custom\"#remote_dir=\"$custom_root/jffs/custom\"#" 
   -e "s#state_schema=/jffs/home-edge-bootstrap-state/lifecycle/state.env#state_schema=$custom_root/jffs/home-edge-bootstrap-state/lifecycle/state.env#" \
   "$tmp/deploy-command" >"$tmp/custom-command"
 run_custom_adapter_transaction() {
+  # The captured deploy template owns the physical scratch lock. The adapter and
+  # reconciler inherit held=1 and validate a logical router /tmp path without
+  # touching it; host TMPDIR may be /var/folders on macOS.
   BOOTSTRAP_ADAPTER=merlin BOOTSTRAP_JFFS_DIR="$custom_root/jffs" \
     BOOTSTRAP_SCRIPT_DIR="$custom_root/jffs/scripts" BOOTSTRAP_SHELLCRASH_DIR="$custom_root/jffs/ShellCrash" \
     BOOTSTRAP_STATE_ROOT="$custom_root/jffs/home-edge-bootstrap-state" BOOTSTRAP_STATE_FIXTURE_ROOT="$custom_root" \
-    BOOTSTRAP_RECONCILE_ROOT="$custom_root" HOME_EDGE_WRITE_LOCK_DIR="$custom_root/write.lock" \
+    BOOTSTRAP_RECONCILE_ROOT="$custom_root" HOME_EDGE_WRITE_LOCK_DIR=/tmp/home-edge-custom-fixture.lock \
     CRU_STATE="$tmp/custom-cru" PATH="$tmp/adapter-bin:$PATH" \
     sh "$1" <"$tmp/custom-kit.tgz"
 }
