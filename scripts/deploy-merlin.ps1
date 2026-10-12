@@ -20,6 +20,24 @@ function ConvertTo-PosixRemoteCommand {
   # Windows here-strings retain CRLF; ssh's remote POSIX shell needs LF.
   return $Command.Replace("`r`n", "`n").Replace("`r", "")
 }
+function Invoke-RemoteScript {
+  param([string]$Script, [string]$ArchivePath = '')
+  $Script = ConvertTo-PosixRemoteCommand $Script
+  if ($ArchivePath) {
+    $Payload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($ArchivePath))
+    $Wrapped = [regex]::Replace($Payload, '.{1,76}', ('$0' + "`n"))
+    # The delimiter contains underscores, which cannot occur in base64 data.
+    $Script = $Script.Replace('__PAYLOAD__', $Wrapped.TrimEnd("`n"))
+  }
+  # PS5 native stdin uses the session's OutputEncoding rather than this
+  # function's local value. Restore it even if a selected SSH hook throws.
+  $PreviousOutputEncoding = $global:OutputEncoding
+  try {
+    $global:OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    # Exit before PowerShell's appended CRLF reaches POSIX sh.
+    ($Script + "`nexit `$?`n") | & $SshCommand @SshArgs 'sh -s'
+  } finally { $global:OutputEncoding = $PreviousOutputEncoding }
+}
 if (-not $Router) {
   throw "Router is required. Pass -Router <ssh-user>@<router-ip> or set ROUTER."
 }
@@ -85,7 +103,7 @@ if ($RuntimeRequested) {
   $RuntimeSpaceRequiredKiB = [int64][Math]::Ceiling(($RuntimePayloadBytes * 2) / 1KB) + 16384
 }
 
-$InstallationLibrary = Get-Content -LiteralPath (Join-Path $Repo "adapters/merlin/lib/installation-state.sh") -Raw
+$InstallationLibrary = Get-Content -LiteralPath (Join-Path $Repo "adapters/merlin/lib/installation-state.sh") -Raw -Encoding UTF8
 $InstallationOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "check-project-installation.ps1") -Router $Router -RemoteDir $RemoteDir -KnownHostsFile $KnownHostsFile | Out-String
 $InstallationStatus = $LASTEXITCODE
 Write-Host $InstallationOutput.TrimEnd()
@@ -275,7 +293,9 @@ decode_payload() {
     return 1
   fi
 }
-decode_payload | tar -xzf - -C "$staging"
+decode_payload <<'HOME_EDGE_ARCHIVE_BASE64' | tar -xzf - -C "$staging"
+__PAYLOAD__
+HOME_EDGE_ARCHIVE_BASE64
 [ -s "$staging/bootstrap.sh" ] || { echo "deploy-merlin: staged kit is incomplete" >&2; exit 1; }
 rm -rf "$previous"
 [ ! -d "$remote_dir" ] || mv "$remote_dir" "$previous"
@@ -377,7 +397,7 @@ echo "runtime_space_preflight_state=ready"
     $RuntimeSpaceRemote = ConvertTo-PosixRemoteCommand ($RuntimeSpaceTemplate.
       Replace("__REQUIRED_KIB__", $RuntimeSpaceRequiredKiB.ToString([Globalization.CultureInfo]::InvariantCulture)).
       Replace("__PAYLOAD_BYTES__", $RuntimePayloadBytes.ToString([Globalization.CultureInfo]::InvariantCulture)))
-    & $SshCommand @SshArgs $RuntimeSpaceRemote
+    Invoke-RemoteScript $RuntimeSpaceRemote
     if ($LASTEXITCODE -ne 0) {
       exit $LASTEXITCODE
     }
@@ -397,18 +417,21 @@ echo "runtime_space_preflight_state=ready"
     throw "Failed to create deployment archive"
   }
 
-  $Payload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($Archive))
-  $Payload | & $SshCommand @SshArgs $Remote
-  if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
-  }
-
+  # Finish all local archive preparation before staging the remote control
+  # plane, so a local bundle failure needs no remote recovery transaction.
   if ($RuntimeRequested) {
     & tar -C $BundleDir -czf $BundleArchive .
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $BundleArchive -PathType Leaf)) {
       throw "Failed to create temporary runtime bundle archive"
     }
+  }
 
+  Invoke-RemoteScript $Remote $Archive
+  if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+  }
+
+  if ($RuntimeRequested) {
     $RuntimeTemplate = @'
 set -eu
 remote_dir="__REMOTE_DIR__"
@@ -438,7 +461,9 @@ decode_payload() {
 
 [ ! -L "$runtime_stage" ] || { echo "deploy-merlin: refusing symbolic-link runtime stage" >&2; exit 1; }
 mkdir -m 700 "$runtime_stage"
-decode_payload | tar -xzf - -C "$runtime_stage"
+decode_payload <<'HOME_EDGE_ARCHIVE_BASE64' | tar -xzf - -C "$runtime_stage"
+__PAYLOAD__
+HOME_EDGE_ARCHIVE_BASE64
 [ -s "$runtime_stage/mihomo-linux-arm64" ] || { echo "deploy-merlin: temporary runtime bundle is missing Mihomo" >&2; exit 1; }
 [ -s "$runtime_stage/ShellCrash.tar.gz" ] || { echo "deploy-merlin: temporary runtime bundle is missing ShellCrash" >&2; exit 1; }
 [ -s "$runtime_stage/SHA256SUMS" ] || { echo "deploy-merlin: temporary runtime bundle is missing SHA256SUMS" >&2; exit 1; }
@@ -552,12 +577,11 @@ else
 fi
 '@
     $RuntimeRollbackRemote = ConvertTo-PosixRemoteCommand ($RuntimeRollbackTemplate.Replace("__REMOTE_DIR__", $RemoteDir))
-    $RuntimePayload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($BundleArchive))
-    $RuntimePayload | & $SshCommand @SshArgs $RuntimeRemote
+    Invoke-RemoteScript $RuntimeRemote $BundleArchive
     if ($LASTEXITCODE -ne 0) {
       $RuntimeExitCode = $LASTEXITCODE
       Write-Warning "Runtime stage failed; restoring the prior staged control plane."
-      & $SshCommand @SshArgs $RuntimeRollbackRemote
+      Invoke-RemoteScript $RuntimeRollbackRemote
       if ($LASTEXITCODE -ne 0) {
         throw "Runtime stage failed and control-plane rollback could not be verified."
       }

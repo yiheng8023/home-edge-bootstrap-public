@@ -157,9 +157,12 @@ done
 cat >"$tmp/bin/capture-ssh" <<'EOF'
 #!/bin/sh
 last=''; for arg in "$@"; do last=$arg; done
-if [ "$last" = 'sh -s' ]; then exec "$INSTALL_PROBE_SSH" "$@"; fi
-printf '%s\n' "$last" >"$INSTALL_CAPTURE_COMMAND"
-cat >/dev/null
+[ "$last" = 'sh -s' ] || exit 27
+payload=$(cat)
+case "$payload" in
+  *"HOME_EDGE_INSTALLATION_DIR='"*) printf '%s\n' "$payload" | "$INSTALL_PROBE_SSH" "$@" ;;
+  *) printf '%s\n' "$payload" >"$INSTALL_CAPTURE_COMMAND" ;;
+esac
 EOF
 chmod 755 "$tmp/bin/capture-ssh"
 export INSTALL_PROBE_SSH="$tmp/bin/ssh" HOME_EDGE_SSH_COMMAND="$tmp/bin/capture-ssh" INSTALL_CAPTURE_COMMAND="$tmp/deploy-command"
@@ -202,13 +205,26 @@ printf 'HEAL_DRY_RUN=1\n' >"$INSTALL_APPLY_ROOT/jffs/scripts/home-edge-self-heal
 printf 'SUBSCRIPTION_POLICY_FILE=fixture\n' >"$INSTALL_APPLY_ROOT/jffs/scripts/home-edge-update-sub.sh"
 EOF
 tar -C "$tmp/kit" -czf "$tmp/kit.tgz" .
+with_fixture_archive() {
+  # Keep the actual heredoc/decoder transaction; substitute only the archive
+  # bytes with a synthetic kit whose effects remain inside this fixture.
+  base64 <"$1" >"$tmp/fixture.base64"
+  awk -v payload_file="$tmp/fixture.base64" '
+    /^decode_payload <<.* | tar -xzf/ {
+      print; while ((getline payload_line < payload_file) > 0) print payload_line
+      close(payload_file); payload=1; next
+    }
+    /^HOME_EDGE_ARCHIVE_BASE64$/ { payload=0 }
+    !payload { print }
+  '
+}
 rewrite_transaction() {
   sed -e "s#remote_dir=\"/jffs/home-edge-bootstrap\"#remote_dir=\"$apply_root/jffs/home-edge-bootstrap\"#" \
     -e 's#HOME_EDGE_INSTALLATION_DIR="$remote_dir"#HOME_EDGE_INSTALLATION_DIR="/jffs/home-edge-bootstrap"#' \
     -e "s#HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''#HOME_EDGE_INSTALLATION_FIXTURE_ROOT='$apply_root'#" \
     -e "s#lock_dir=\"/tmp/home-edge-bootstrap-write.lock\"#lock_dir=\"$apply_root/write.lock\"#" \
     -e "s#state_schema=/jffs/home-edge-bootstrap-state/lifecycle/state.env#state_schema=$apply_root/jffs/home-edge-bootstrap-state/lifecycle/state.env#" \
-    "$tmp/deploy-command" >"$tmp/apply-command"
+    "$tmp/deploy-command" | with_fixture_archive "$tmp/kit.tgz" >"$tmp/apply-command"
 }
 rewrite_transaction
 HOME_EDGE_INSTALLATION_FIXTURE_ROOT="$apply_root" INSTALL_APPLY_ROOT="$apply_root" sh "$tmp/apply-command" <"$tmp/kit.tgz" >"$tmp/apply-out" 2>"$tmp/apply-err" || { cat "$tmp/apply-err" >&2; fail 'fresh isolated transaction failed'; }
@@ -259,7 +275,7 @@ sed -e "s#remote_dir=\"/jffs/custom\"#remote_dir=\"$custom_root/jffs/custom\"#" 
   -e "s#HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''#HOME_EDGE_INSTALLATION_FIXTURE_ROOT='$custom_root'#" \
   -e "s#lock_dir=\"/tmp/home-edge-bootstrap-write.lock\"#lock_dir=\"$custom_root/write.lock\"#" \
   -e "s#state_schema=/jffs/home-edge-bootstrap-state/lifecycle/state.env#state_schema=$custom_root/jffs/home-edge-bootstrap-state/lifecycle/state.env#" \
-  "$tmp/deploy-command" >"$tmp/custom-command"
+  "$tmp/deploy-command" | with_fixture_archive "$tmp/custom-kit.tgz" >"$tmp/custom-command"
 run_custom_adapter_transaction() {
   # The captured deploy template owns the physical scratch lock. The adapter and
   # reconciler inherit held=1 and validate a logical router /tmp path without

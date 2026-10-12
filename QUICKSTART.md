@@ -57,9 +57,14 @@ Use these commands only if you chose cloning. Git must already be available; oth
 Windows PowerShell:
 
 ```powershell
-$ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
-if ($LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") -Language en }
+$GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($GitCommand) {
+  $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
+  & $GitCommand.Source clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") -Language en }
+} else {
+  Write-Host "Git was not found; use the release-package route above."
+}
 ```
 
 macOS / Linux:
@@ -114,6 +119,15 @@ before touching the router. For an optional deep, offline,
 fixture-based checkout check, run `scripts\verify-local.ps1` or `sh scripts/verify-local.sh`.
 Success ends with `local_verification_state=ready`; a failure names the first gate to inspect. These
 fixtures are not field certification for a router, firmware build, provider, or network.
+
+## Automatic management and manual choices
+
+Subscription refresh and route self-heal have separate authority. Refresh validates node changes, preserves the selected nodes, and cancels when those choices change during preparation; it does not decide which node is best for an application. A latency result or an `[AI]` label is not an application-availability guarantee.
+
+Self-heal keeps a healthy current route. When enabled for writes, it may fail over the explicitly managed main selector after a failed probe or an unmet explicit region constraint. Set `HEAL_GROUP` to the **exact writable selector name** to define that boundary; a missing or non-writable named group stops the run. Automatic main-group discovery excludes names containing Chinese `手动` or the English word `Manual`; explicitly naming such a group deliberately authorizes its automation. Nested switching remains off by default, and role policies have their own enable/matching controls. Those opt-ins can still authorize changes outside the automatically discovered main group. Before every switch or compensating rollback, the helper checks the current selection and membership again; a changed plan is cancelled. The controller has no established compare-and-set API, so this check does not eliminate the short read-to-write or same-value ABA race.
+
+For the current Merlin reference adapter, site overrides live in `/jffs/home-edge-bootstrap-state/policy.local`. Keep nested switching disabled and role mutation disabled if the other groups are to remain under manual control. Local source, the registered desktop entry, deployed kit files, active helpers and loaded runtime rules are separate states: update only the differing layer and verify it. A new README or Git commit alone does not require router reinstallation; project-only refresh preserves runtime/core assets but may change managed integration/configuration. Preview that refresh and keep recovery material before applying it.
+
 
 ## 2. Prepare the router and recovery boundary
 

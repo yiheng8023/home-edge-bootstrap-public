@@ -46,7 +46,7 @@ source_kind=non_git
 source_commit=non-git
 source_tree_state=not_applicable
 source_version=unversioned
-if git -C "$source_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if [ -e "$source_root/.git" ] && git -C "$source_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   source_kind=git
   source_commit=$(git -C "$source_root" rev-parse HEAD)
   source_tree_state=clean

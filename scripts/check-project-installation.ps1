@@ -19,13 +19,17 @@ try {
   # Keep the project's selected-target trust history; never modify global .ssh.
   $KnownHostsDirectory = Split-Path -Parent $KnownHostsFile
   if ($KnownHostsDirectory) { New-Item -ItemType Directory -Force -Path $KnownHostsDirectory | Out-Null }
-  $Library = Get-Content -LiteralPath (Join-Path $PSScriptRoot "../adapters/merlin/lib/installation-state.sh") -Raw
+  $Library = Get-Content -LiteralPath (Join-Path $PSScriptRoot "../adapters/merlin/lib/installation-state.sh") -Raw -Encoding UTF8
   # Native Windows pipelines append CRLF. Exit before the trailing bare CR is
   # interpreted by sh, preserving the observer's status and validation below.
   $Payload = ($Library + "`nHOME_EDGE_INSTALLATION_DIR='$RemoteDir'`nHOME_EDGE_INSTALLATION_ROUTER='$Router'`nHOME_EDGE_INSTALLATION_FIXTURE_ROOT=''`nhome_edge_inspect_installation`nexit `$?`n").Replace("`r", "")
   $SshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ConnectionAttempts=1', '-o', 'StrictHostKeyChecking=accept-new', '-o', "UserKnownHostsFile=$KnownHostsFile", '--', $Router, 'sh -s')
   $global:LASTEXITCODE = 0
-  $Lines = @($Payload | & $SshCommand @SshArgs 2>$null)
+  $PreviousOutputEncoding = $OutputEncoding
+  try {
+    $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $Lines = @($Payload | & $SshCommand @SshArgs 2>$null)
+  } finally { $OutputEncoding = $PreviousOutputEncoding }
   if ($LASTEXITCODE -ne 0) { Write-Unknown "probe_failed"; exit 1 }
 } catch { Write-Unknown "probe_failed"; exit 1 }
 $Values = @{}

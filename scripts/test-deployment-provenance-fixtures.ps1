@@ -39,6 +39,20 @@ try {
   if ((Get-Content -LiteralPath (Join-Path $Stage "DEPLOYMENT-CONTENT-SHA256SUMS") -Raw) -notmatch "scripts/migrate-router-state\.sh") {
     throw "PowerShell provenance omits migrator content hash"
   }
+  $ReleaseSource = Join-Path $Base "release-source"
+  New-Item -ItemType Directory -Path $ReleaseSource | Out-Null
+  Set-Content -LiteralPath (Join-Path $ReleaseSource "VERSION") -Value "v9.8.7" -Encoding ASCII
+  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo "scripts\new-deployment-provenance.ps1") -StageRoot $Stage -SourceRoot $ReleaseSource
+  if ($LASTEXITCODE -ne 0) { throw "non-Git release provenance generator failed" }
+  $ReleaseMetadata = Get-Content -LiteralPath (Join-Path $Stage "DEPLOYMENT-PROVENANCE.env")
+  if ($ReleaseMetadata -notcontains "source_kind=release" -or $ReleaseMetadata -notcontains "source_version=v9.8.7") { throw "non-Git release identity was not retained" }
+  $NestedRelease = Join-Path $Source "extracted-package"
+  New-Item -ItemType Directory -Path $NestedRelease | Out-Null
+  Set-Content -LiteralPath (Join-Path $NestedRelease "VERSION") -Value "v9.8.7" -Encoding ASCII
+  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo "scripts\new-deployment-provenance.ps1") -StageRoot $Stage -SourceRoot $NestedRelease
+  if ($LASTEXITCODE -ne 0) { throw "nested release provenance generator failed" }
+  $NestedMetadata = Get-Content -LiteralPath (Join-Path $Stage "DEPLOYMENT-PROVENANCE.env")
+  if ($NestedMetadata -notcontains "source_kind=release" -or $NestedMetadata -notcontains "source_version=v9.8.7") { throw "extracted release borrowed unrelated parent Git identity" }
 }
 finally { Remove-Item -LiteralPath $Base -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host "deployment_provenance_fixture_tests=ok"

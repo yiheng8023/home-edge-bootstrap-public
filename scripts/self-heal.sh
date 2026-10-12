@@ -14,7 +14,7 @@
 #   CLASH_SECRET   API secret (blank by default)
 #   CLASH_SECRET_FILE   one-line private file containing the API secret; ignored when CLASH_SECRET is set
 #   CURL_BIN / JQ_BIN   explicit tool paths for restricted Merlin/cron PATH environments
-#   HEAL_GROUP  explicit selector group name; blank means auto-discover
+#   HEAL_GROUP  exact writable selector name; blank auto-discovers, excluding manual groups
 #   HEAL_GROUP_MATCH_REGEX  preferred main-selector group-name regex
 #   HEAL_GROUP_EXCLUDE_REGEX  group-name regex to deprioritize during auto-discovery
 #   HEAL_PROBE_URL  reachability probe      default: https://cp.cloudflare.com/generate_204
@@ -49,7 +49,10 @@ SECRET_FILE="${CLASH_SECRET_FILE:-}"
 CURL_BIN="${CURL_BIN:-}"
 JQ_BIN="${JQ_BIN:-}"
 GROUP="${HEAL_GROUP:-}"
-GROUP_MATCH_RE="${HEAL_GROUP_MATCH_REGEX:-节点选择|代理选择|主选择|手动切换|自动选择|选择代理|全局选择|默认代理|国外|境外|(^|[^A-Za-z0-9])(PROXY|SELECT|Selector|Manual|Fallback|Auto|URL[ _.-]*Test|Load[ _.-]*Balance|Node[ _.-]*(Select|Selector|Choice)|Proxy[ _.-]*(Select|Selector|Choice)|Global[ _.-]*(Proxy|Select|Selector)|Main[ _.-]*(Proxy|Select|Selector)|Default[ _.-]*(Proxy|Select|Selector)|Outbound|Route[ _.-]*(Select|Selector))([^A-Za-z0-9]|$)}"
+GROUP_MATCH_RE="${HEAL_GROUP_MATCH_REGEX:-节点选择|代理选择|主选择|自动选择|选择代理|全局选择|默认代理|国外|境外|(^|[^A-Za-z0-9])(PROXY|SELECT|Selector|Fallback|Auto|URL[ _.-]*Test|Load[ _.-]*Balance|Node[ _.-]*(Select|Selector|Choice)|Proxy[ _.-]*(Select|Selector|Choice)|Global[ _.-]*(Proxy|Select|Selector)|Main[ _.-]*(Proxy|Select|Selector)|Default[ _.-]*(Proxy|Select|Selector)|Outbound|Route[ _.-]*(Select|Selector))([^A-Za-z0-9]|$)}"
+# Manual intent cannot be overridden by a broad discovery hint. Exact HEAL_GROUP
+# remains the operator's explicit authorization for automating such a selector.
+GROUP_MANUAL_RE='手动|(^|[^A-Za-z0-9])Manual([^A-Za-z0-9]|$)'
 GROUP_EXCLUDE_RE="${HEAL_GROUP_EXCLUDE_REGEX:-广告|拦截|REJECT|DIRECT|直连|微软|Microsoft|苹果|Apple|谷歌|Google|FCM|电报|Telegram|Netflix|NETFLIX|Disney|YouTube|TikTok|媒体|Media|人工智能|(^|[^A-Za-z0-9])AI([^A-Za-z0-9]|$)|漏网|Final|MATCH}"
 PROBE_URL="${HEAL_PROBE_URL:-${HEAL_TEST_URL:-https://cp.cloudflare.com/generate_204}}"
 REGION_RE="${HEAL_ROUTE_REGION_REGEX:-${HEAL_US_REGEX:-}}"
@@ -533,30 +536,22 @@ resolve_group() {
 
   if [ -n "$GROUP" ]; then
     printf '%s\n' "$proxies_json" \
-      | "$JQ_BIN" -e --arg group "$GROUP" '.proxies[$group].all? | type == "array"' >/dev/null 2>&1 && {
+      | "$JQ_BIN" -e --arg group "$GROUP" '.proxies[$group] | (.all? | type == "array") and ((.type // "") | test("(?i)^selector$|^select$"))' >/dev/null 2>&1 && {
         printf '%s\n' "$GROUP"
         return 0
       }
 
-    found=$(printf '%s\n' "$proxies_json" \
-      | "$JQ_BIN" -r --arg term "$GROUP" '
-          .proxies
-          | to_entries[]
-          | select((.value.all? | type) == "array")
-          | select(.key == $term or (.key | contains($term)))
-          | .key
-        ' 2>/dev/null \
-      | head -1)
-    [ -n "$found" ] && { printf '%s\n' "$found"; return 0; }
+    return 1
   fi
 
   found=$(printf '%s\n' "$proxies_json" \
-    | "$JQ_BIN" -r --arg match "$GROUP_MATCH_RE" --arg exclude "$GROUP_EXCLUDE_RE" '
+    | "$JQ_BIN" -r --arg match "$GROUP_MATCH_RE" --arg exclude "$GROUP_EXCLUDE_RE" --arg manual "$GROUP_MANUAL_RE" '
         .proxies as $p
         | [
             $p
             | to_entries[]
-            | select((.value.all? | type) == "array")
+            | select((.value.all? | type) == "array" and ((.value.type // "") | test("(?i)^selector$|^select$")))
+            | select((.key | test($manual; "i")) | not)
             | . as $e
             | ($p | to_entries | map(select((.value.now // "") == $e.key)) | length) as $refs
             | ($match != "" and ($e.key | test($match; "i"))) as $namehit
@@ -635,7 +630,9 @@ add_nested_candidates() {
   [ "$MUTATE_NESTED_GROUPS" = "1" ] || return 0
   parent="$1"
   pg=$(capi "$API/proxies/$(enc "$parent")")
-  echo "$pg" | "$JQ_BIN" -e '.all? | type == "array"' >/dev/null 2>&1 || return 0
+  echo "$pg" | "$JQ_BIN" -e '(.all? | type == "array") and ((.type // "") | test("(?i)^selector$|^select$"))' >/dev/null 2>&1 || return 0
+  parent_previous=$(printf '%s\n' "$pg" | "$JQ_BIN" -r '.now // empty')
+  [ -n "$parent_previous" ] || return 0
   prio=2
   [ -n "$REGION_RE" ] && route_matches_region "$parent" && prio=1
   matches_preferred "$parent" && prio=0
@@ -644,15 +641,33 @@ add_nested_candidates() {
     d=$(delay "$child")
     if [ -n "$d" ]; then
       score=$((prio * 1000000 + d))
-      printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$score" "$prio" "$d" "$parent" "$parent" "$child" >> "$tmp"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$score" "$prio" "$d" "$parent" "$parent" "$child" "$parent_previous" >> "$tmp"
     fi
   done
+}
+
+# The API has no compare-and-set contract. A fresh read narrows the race window;
+# it cannot prevent a user change between this read and the following PUT.
+selection_matches() {
+  check_group=$1
+  check_target=$2
+  check_expected=$3
+  check_payload=$(capi "$API/proxies/$(enc "$check_group")") || return 1
+  printf '%s\n' "$check_payload" | "$JQ_BIN" -e --arg target "$check_target" \
+    '(.all? | type == "array") and ((.type // "") | test("(?i)^selector$|^select$")) and ((.all | index($target)) != null)' >/dev/null 2>&1 || return 1
+  check_current=$(printf '%s\n' "$check_payload" | "$JQ_BIN" -r '.now // empty' 2>/dev/null) || return 1
+  [ -n "$check_expected" ] && [ "$check_current" = "$check_expected" ]
 }
 
 switch_group() {
   target_group="$1"
   target_node="$2"
+  expected_node="$3"
   payload=$(printf '%s' "$target_node" | "$JQ_BIN" -Rs '{name:.}')
+  selection_matches "$target_group" "$target_node" "$expected_node" || {
+    log "SKIP selector changed or is no longer writable; cancelled stale switch plan"
+    return 3
+  }
   capi -X PUT "$API/proxies/$(enc "$target_group")" -d "$payload" >/dev/null || return 1
   applied=$(capi "$API/proxies/$(enc "$target_group")" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
   [ "$applied" = "$target_node" ]
@@ -721,6 +736,8 @@ choose_route_role_target() {
 enforce_role_group() {
   role_kind="$1"
   role_group="$2"
+  role_payload=$(capi "$API/proxies/$(enc "$role_group")") || return 1
+  current=$(printf '%s\n' "$role_payload" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
   target=""
   case "$role_kind" in
     ad) target=$(choose_exact_role_target "$role_group" "$ROLE_AD_TARGET") ;;
@@ -732,8 +749,6 @@ enforce_role_group() {
     return 0
   fi
 
-  role_payload=$(capi "$API/proxies/$(enc "$role_group")")
-  current=$(printf '%s\n' "$role_payload" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
   [ "$current" = "$target" ] && return 0
 
   if [ "$DRY_RUN" = "1" ]; then
@@ -746,10 +761,13 @@ enforce_role_group() {
     return 0
   fi
 
-  if switch_group "$role_group" "$target"; then
+  if switch_group "$role_group" "$target" "$current"; then
     record_switch "$current" "$target"
     log "SWITCHED a recognized $role_kind role group"
     return 0
+  else
+    role_switch_status=$?
+    [ "$role_switch_status" -ne 3 ] || return 0
   fi
   log "ERROR recognized $role_kind role switch failed or was not applied"
   return 1
@@ -780,14 +798,12 @@ resolved=$(resolve_group || true)
 }
 if [ -z "$GROUP" ]; then
   log "INFO auto-discovered one selectable main proxy group"
-elif [ "$resolved" != "$GROUP" ]; then
-  log "INFO resolved the configured selector through a nested selectable group"
 fi
 GROUP="$resolved"
 
 g=$(capi "$API/proxies/$(enc "$GROUP")")
 [ -n "$g" ] || { log "ERROR: clash API unreachable at $API"; exit 1; }
-if ! echo "$g" | "$JQ_BIN" -e '.all? | type == "array"' >/dev/null 2>&1; then
+if ! echo "$g" | "$JQ_BIN" -e '(.all? | type == "array") and ((.type // "") | test("(?i)^selector$|^select$"))' >/dev/null 2>&1; then
   log "ERROR configured group was not found or is not selectable at $API; set HEAL_GROUP"
   exit 1
 fi
@@ -837,6 +853,7 @@ bestd=$(printf '%s\n' "$bestline" | cut -f3)
 best=$(printf '%s\n' "$bestline" | cut -f4)
 child_group=$(printf '%s\n' "$bestline" | cut -f5)
 child=$(printf '%s\n' "$bestline" | cut -f6)
+child_previous=$(printf '%s\n' "$bestline" | cut -f7)
 
 if [ -z "$best" ]; then
   log "WARN no eligible route reached probe target; current route left unchanged"
@@ -862,22 +879,37 @@ else
     enforce_role_groups
     exit 0
   fi
-  child_previous=""
   if [ -n "$child" ]; then
-    child_previous=$(capi "$API/proxies/$(enc "$child_group")" | "$JQ_BIN" -r '.now // empty' 2>/dev/null)
-    switch_group "$child_group" "$child" || { log "ERROR nested switch failed or was not applied"; exit 1; }
+    # Check the main plan before touching a dependent nested selector as well.
+    selection_matches "$GROUP" "$best" "$cur" || { log "SKIP selector changed or is no longer writable; cancelled stale switch plan"; exit 0; }
+    if switch_group "$child_group" "$child" "$child_previous"; then
+      :
+    else
+      child_switch_status=$?
+      [ "$child_switch_status" -ne 3 ] || exit 0
+      log "ERROR nested switch failed or was not applied"
+      exit 1
+    fi
   fi
-  if switch_group "$GROUP" "$best"; then
+  if switch_group "$GROUP" "$best" "$cur"; then
     record_switch "$cur" "$best"
     log "SWITCHED main selector to a reachable eligible route (${bestd}ms priority=$bestprio)"
   else
+    main_switch_status=$?
     if [ -n "$child" ] && [ -n "$child_previous" ]; then
-      if switch_group "$child_group" "$child_previous"; then
+      if switch_group "$child_group" "$child_previous" "$child"; then
         log "ROLLBACK restored the prior nested selector route"
       else
-        log "ERROR nested rollback failed"
+        rollback_status=$?
+        if [ "$rollback_status" -eq 3 ]; then
+          log "SKIP nested rollback because its selector changed; preserved the later choice"
+        else
+          log "ERROR nested rollback failed"
+          exit 1
+        fi
       fi
     fi
+    [ "$main_switch_status" -ne 3 ] || exit 0
     log "ERROR main selector switch failed or was not applied"
     exit 1
   fi

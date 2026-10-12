@@ -1,10 +1,16 @@
-param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
+param(
+  [string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
+  [switch]$LocalRuntimeArchiveOnly
+)
 $ErrorActionPreference = "Stop"
 $Deploy = Join-Path $Repo "scripts\deploy-merlin.ps1"
 $FixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("home-edge-deploy-ps-" + [guid]::NewGuid().ToString("N"))
 $FixtureBundle = Join-Path $FixtureRoot "bundle"
 $PreviousBundleDir = $env:DEPLOY_BUNDLE_DIR
 $PreviousSsh = $env:HOME_EDGE_SSH_COMMAND
+$NativeNames = @('DEPLOY_NATIVE_TOOLS', 'DEPLOY_NATIVE_ROOT', 'DEPLOY_NATIVE_FAIL_AT', 'DEPLOY_NATIVE_ROLLBACK_FAIL')
+$NativePrevious = @{}
+foreach ($Name in $NativeNames) { $NativePrevious[$Name] = [Environment]::GetEnvironmentVariable($Name) }
 try {
   New-Item -ItemType Directory -Path $FixtureRoot | Out-Null
   $ProbeStub = Join-Path $FixtureRoot 'ssh.ps1'
@@ -38,15 +44,197 @@ $global:LASTEXITCODE = 0
   $RuntimePlan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -InstallRuntime 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0 -or $RuntimePlan -notmatch '(?m)^include_bundle=0\r?$') { throw "PowerShell runtime plan persists the bundle in JFFS" }
   if ($RuntimePlan -notmatch '(?m)^runtime_bundle_transport=temporary\r?$') { throw "PowerShell runtime plan does not disclose temporary bundle transport" }
+  # Exercise native stdin under both installed PowerShell hosts. The fake SSH
+  # accepts only a small argv and executes the real decoder through POSIX dash.
+  $Sh = (Get-Command sh -CommandType Application -ErrorAction Stop).Source
+  $Dash = Join-Path (Split-Path -Parent $Sh) '../usr/bin/dash.exe'
+  if (-not (Test-Path -LiteralPath $Dash)) { $Dash = Join-Path (Split-Path -Parent $Sh) 'dash.exe' }
+  $Dash = (Resolve-Path -LiteralPath $Dash).Path
+  $Tools = Split-Path -Parent $Dash
+  $env:DEPLOY_NATIVE_TOOLS = '/' + $Tools.Substring(0, 1).ToLowerInvariant() + $Tools.Substring(2).Replace('\', '/')
+  $NativeRoot = Join-Path $FixtureRoot 'native'
+  New-Item -ItemType Directory -Path $NativeRoot | Out-Null
+  $env:DEPLOY_NATIVE_ROOT = '/' + $NativeRoot.Substring(0, 1).ToLowerInvariant() + $NativeRoot.Substring(2).Replace('\', '/')
+  $NativeTransport = Join-Path $FixtureRoot 'native-ssh.cmd'
+  [IO.File]::WriteAllText($NativeTransport, ('@"' + $Dash + '" "%~dp0native-ssh.sh" %*' + "`r`n"), [Text.Encoding]::ASCII)
+  [IO.File]::WriteAllText((Join-Path $FixtureRoot 'native-ssh.sh'), (@'
+#!/bin/sh
+set -eu
+PATH="$DEPLOY_NATIVE_TOOLS:$PATH"
+export PATH
+last=''
+for arg in "$@"; do
+  [ "${#arg}" -le 4096 ] || exit 27
+  last=$arg
+done
+[ "$last" = 'sh -s' ] || exit 27
+count=$(cat "$DEPLOY_NATIVE_ROOT/count" 2>/dev/null || echo 0)
+count=$((count + 1)); printf '%s\n' "$count" >"$DEPLOY_NATIVE_ROOT/count"
+payload="$DEPLOY_NATIVE_ROOT/script.$count"
+cat >"$payload"
+"$DEPLOY_NATIVE_TOOLS/dash.exe" -n "$payload"
+case "$(cat "$payload")" in
+  *"HOME_EDGE_INSTALLATION_DIR='"*)
+    target=$(sed -bn "s/^HOME_EDGE_INSTALLATION_ROUTER='\([^']*\)'$/\1/p" "$payload")
+    printf 'project_install_schema=1\nproject_install_router=%s\nproject_install_state=not_installed\nproject_install_reason=no_project_artifacts\nproject_install_path=/jffs/home-edge-bootstrap\nproject_install_replace_allowed=0\n' "$target"
+    exit 0 ;;
+  *runtime_space_preflight_state*) echo 'runtime_space_preflight_state=ready'; exit 0 ;;
+  *control_plane_rollback_state=restored*)
+    [ "${DEPLOY_NATIVE_ROLLBACK_FAIL:-0}" != 1 ] || exit 29
+    echo 'control_plane_rollback_state=restored'; exit 0 ;;
+esac
+decoder="$DEPLOY_NATIVE_ROOT/decoder.$count"
+sed -bn '/^decode_payload() {/,/^}/p' "$payload" >"$decoder"
+sed -bn '/^decode_payload <<.* | tar -xzf/,/^HOME_EDGE_ARCHIVE_BASE64$/p' "$payload" |
+  sed -b "s# | tar -xzf - -C .*# >\"$DEPLOY_NATIVE_ROOT/archive.$count.tgz\"#" >>"$decoder"
+tail -n 2 "$payload" >>"$decoder"
+awk '/^decode_payload <<.* | tar -xzf/ { payload=1; next } /^HOME_EDGE_ARCHIVE_BASE64$/ { payload=0 } payload && length($0)>76 { exit 1 }' "$payload"
+"$DEPLOY_NATIVE_TOOLS/dash.exe" -s <"$decoder" || exit $?
+tar -tzf "$DEPLOY_NATIVE_ROOT/archive.$count.tgz" >/dev/null
+[ "${DEPLOY_NATIVE_FAIL_AT:-0}" != "$count" ] || exit 23
+echo 'deploy_native_archive=decoded'
+exit 0
+'@).Replace("`r", "") + "`n", [Text.Encoding]::ASCII)
+  $FixtureRepo = Join-Path $FixtureRoot 'repo'
+  foreach ($Dir in @('adapters/merlin/lib', 'config', 'docs', 'scripts', 'tools')) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $FixtureRepo $Dir) | Out-Null
+  }
+  foreach ($Name in @('README.md', 'README.zh-CN.md', 'bootstrap.sh')) { Copy-Item -LiteralPath (Join-Path $Repo $Name) -Destination $FixtureRepo }
+  foreach ($Name in @('deploy-merlin.ps1', 'check-project-installation.ps1', 'new-deployment-provenance.ps1')) { Copy-Item -LiteralPath (Join-Path $Repo "scripts/$Name") -Destination (Join-Path $FixtureRepo 'scripts') }
+  Copy-Item -LiteralPath (Join-Path $Repo 'adapters/merlin/lib/installation-state.sh') -Destination (Join-Path $FixtureRepo 'adapters/merlin/lib')
+  $UnicodePolicy = 'selector=' + [char]0x8282 + [char]0x70b9 + [char]0x8def + [char]0x7531 + "`n"
+  [IO.File]::WriteAllText((Join-Path $FixtureRepo 'config/policy.local'), $UnicodePolicy, (New-Object Text.UTF8Encoding($false)))
+  $FixtureLibrary = Join-Path $FixtureRepo 'adapters/merlin/lib/installation-state.sh'
+  [IO.File]::AppendAllText($FixtureLibrary, ("`n# " + $UnicodePolicy), (New-Object Text.UTF8Encoding($false)))
+  $NativeDeploy = Join-Path $FixtureRepo 'scripts/deploy-merlin.ps1'
+  $NativeHosts = @((Get-Command powershell -CommandType Application).Source)
+  $Pwsh = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue
+  if ($Pwsh) { $NativeHosts += $Pwsh.Source }
+  $env:HOME_EDGE_SSH_COMMAND = $NativeTransport
+  $TarShimDir = Join-Path $FixtureRoot 'tar-bin'
+  New-Item -ItemType Directory -Path $TarShimDir | Out-Null
+  $NativeTar = (Get-Command tar -CommandType Application | Select-Object -First 1).Source
+  $TarShim = "@echo off`r`nif `"%~2`"==`"$FixtureBundle`" goto fail_bundle`r`n@`"$NativeTar`" %*`r`nexit /b %errorlevel%`r`n:fail_bundle`r`n>`"%~dp0bundle-tar.failed`" echo 31`r`nexit /b 31`r`n"
+  [IO.File]::WriteAllText((Join-Path $TarShimDir 'tar.cmd'), $TarShim, [Text.Encoding]::ASCII)
+  $NativeModes = if ($LocalRuntimeArchiveOnly) { @('local_runtime_archive_failure') } else { @('ready', 'apply_failure', 'runtime_failure', 'rollback_failure', 'local_runtime_archive_failure') }
+  foreach ($NativeHost in $NativeHosts) {
+    foreach ($Mode in $NativeModes) {
+      Remove-Item -LiteralPath (Join-Path $NativeRoot 'count') -ErrorAction SilentlyContinue
+      $env:DEPLOY_NATIVE_FAIL_AT = if ($Mode -eq 'apply_failure') { '2' } elseif ($Mode -in @('runtime_failure', 'rollback_failure')) { '4' } else { '0' }
+      $env:DEPLOY_NATIVE_ROLLBACK_FAIL = if ($Mode -eq 'rollback_failure') { '1' } else { '0' }
+      $RunArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $NativeDeploy, '-Router', 'user@router', '-KnownHostsFile', $KnownHosts, '-Apply')
+      if ($Mode -in @('runtime_failure', 'rollback_failure', 'local_runtime_archive_failure')) { $RunArgs += '-InstallRuntime' }
+      if ($Mode -eq 'local_runtime_archive_failure') {
+        Remove-Item -LiteralPath (Join-Path $TarShimDir 'bundle-tar.failed') -ErrorAction SilentlyContinue
+        # Limit PATH injection to this child. The caller and native SSH shim
+        # keep their normal tool lookup, including their extraction tar.
+        $Start = New-Object Diagnostics.ProcessStartInfo
+        $Start.FileName = $NativeHost
+        $Start.Arguments = ($RunArgs | ForEach-Object { '"' + $_ + '"' }) -join ' '
+        $Start.UseShellExecute = $false
+        $Start.CreateNoWindow = $true
+        $Start.RedirectStandardOutput = $true
+        $Start.RedirectStandardError = $true
+        $CallerPath = $env:PATH
+        $Start.EnvironmentVariables['PATH'] = $TarShimDir + ';' + $CallerPath
+        $Child = New-Object Diagnostics.Process
+        $Child.StartInfo = $Start
+        try {
+          $null = $Child.Start()
+          $Stdout = $Child.StandardOutput.ReadToEndAsync()
+          $Stderr = $Child.StandardError.ReadToEndAsync()
+          $Child.WaitForExit()
+          $NativeStatus = $Child.ExitCode
+          $NativeOutput = $Stdout.GetAwaiter().GetResult() + $Stderr.GetAwaiter().GetResult()
+        } finally { $Child.Dispose() }
+        if ($env:PATH -cne $CallerPath) { throw 'Local tar failure seam changed the caller PATH' }
+        if (-not (Test-Path -LiteralPath (Join-Path $TarShimDir 'bundle-tar.failed')) -or $NativeOutput -notmatch 'Failed to create temporary runtime bundle archive') { throw 'Local runtime archive failure seam was not exercised' }
+      } else {
+        $ErrorActionPreference = 'Continue'
+        $NativeOutput = & $NativeHost @RunArgs 2>&1 | Out-String
+        $NativeStatus = $LASTEXITCODE
+        $ErrorActionPreference = 'Stop'
+      }
+      $ExpectedStatus = if ($Mode -eq 'ready') { 0 } elseif ($Mode -in @('rollback_failure', 'local_runtime_archive_failure')) { 1 } else { 23 }
+      $ExpectedCount = if ($Mode -in @('ready', 'apply_failure', 'local_runtime_archive_failure')) { 2 } else { 5 }
+      $NativeCount = [int](Get-Content (Join-Path $NativeRoot 'count'))
+      if ($NativeStatus -ne $ExpectedStatus -or $NativeCount -ne $ExpectedCount) { throw "Native deploy status/sequence failed: $NativeHost/$Mode status=$NativeStatus calls=$NativeCount expected_calls=$ExpectedCount`n$NativeOutput" }
+      if ($Mode -eq 'local_runtime_archive_failure') {
+        $Preflight = [IO.File]::ReadAllText((Join-Path $NativeRoot 'script.2'), [Text.Encoding]::UTF8)
+        if ($Preflight -notmatch 'runtime_space_preflight_state' -or $Preflight -match 'acquire_deploy_lock') { throw 'Local bundle failure was observed after a remote transaction' }
+        Write-Host "deploy_local_runtime_archive_failure=ok host=$NativeHost"
+      }
+      if ($Mode -eq 'ready') {
+        foreach ($Number in @(1, 2)) {
+          if (-not [IO.File]::ReadAllText((Join-Path $NativeRoot "script.$Number"), [Text.Encoding]::UTF8).Contains($UnicodePolicy.TrimEnd("`n"))) { throw 'Native observer/deployment stdin lost UTF8 library text' }
+        }
+        $Extract = Join-Path $NativeRoot 'extract'
+        New-Item -ItemType Directory -Force -Path $Extract | Out-Null
+        & tar -xzf (Join-Path $NativeRoot 'archive.2.tgz') -C $Extract
+        if ($LASTEXITCODE -ne 0) { throw 'Native archive extraction failed' }
+        foreach ($Name in @('config/policy.local', 'scripts/deploy-merlin.ps1', 'adapters/merlin/lib/installation-state.sh')) {
+          if ((Get-FileHash -LiteralPath (Join-Path $Extract $Name)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $FixtureRepo $Name)).Hash) { throw "Native transported bytes changed: $Name" }
+        }
+        foreach ($Line in Get-Content -LiteralPath (Join-Path $Extract 'DEPLOYMENT-CONTENT-SHA256SUMS')) {
+          $Parts = $Line -split '\s+', 2
+          if ((Get-FileHash -LiteralPath (Join-Path $Extract $Parts[1])).Hash.ToLowerInvariant() -ne $Parts[0]) { throw 'Native archive provenance differs from received bytes' }
+        }
+      }
+    }
+    if (-not $LocalRuntimeArchiveOnly) { Write-Host "deploy_native_transport=ok host=$NativeHost" }
+  }
 } finally {
   $env:DEPLOY_BUNDLE_DIR = $PreviousBundleDir
   $env:HOME_EDGE_SSH_COMMAND = $PreviousSsh
+  foreach ($Name in $NativeNames) { [Environment]::SetEnvironmentVariable($Name, $NativePrevious[$Name]) }
   Remove-Item -LiteralPath $FixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 $Source = Get-Content -LiteralPath $Deploy -Raw
 $ParseTokens = $null; $ParseErrors = $null
 $DeployAst = [Management.Automation.Language.Parser]::ParseFile($Deploy, [ref]$ParseTokens, [ref]$ParseErrors)
 if ($ParseErrors.Count) { throw 'Deploy source has syntax errors' }
+$Transport = $DeployAst.Find({ param($Node)
+  $Node -is [Management.Automation.Language.FunctionDefinitionAst] -and $Node.Name -eq 'Invoke-RemoteScript'
+}, $true)
+if (-not $Transport) { throw 'Missing actual remote-script transport' }
+# The native cases above detect encoding loss. Selected .ps1 hooks additionally
+# verify that both normal return and an exception restore the caller's encoding.
+& {
+  param($NormalizerDefinition, $TransportDefinition)
+  . ([scriptblock]::Create($NormalizerDefinition))
+  . ([scriptblock]::Create($TransportDefinition))
+  $HookRoot = Join-Path ([IO.Path]::GetTempPath()) ('home-edge-encoding-hook-' + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $HookRoot | Out-Null
+  $OriginalEncoding = $global:OutputEncoding
+  try {
+    $SshArgs = @()
+    foreach ($Throws in @($false, $true)) {
+      $SshCommand = Join-Path $HookRoot 'ssh.ps1'
+      $HookBody = @'
+$null = $input | Out-String
+if ($global:OutputEncoding.CodePage -ne 65001 -or $global:OutputEncoding.GetPreamble().Length -ne 0) { throw 'Selected SSH hook did not receive BOM-less UTF8 encoding' }
+if ($args[-1] -ne 'sh -s') { throw 'Selected SSH hook lost the short command' }
+$global:LASTEXITCODE = 23
+'@
+      if ($Throws) { $HookBody += "`nthrow 'fixture_transport_failure'" }
+      Set-Content -LiteralPath $SshCommand -Value $HookBody -Encoding ASCII
+      $Sentinel = New-Object Text.ASCIIEncoding
+      $global:OutputEncoding = $Sentinel
+      $Caught = $false
+      try { Invoke-RemoteScript 'set -eu' } catch {
+        if ($_.Exception.Message -ne 'fixture_transport_failure') { throw }
+        $Caught = $true
+      }
+      if ($Caught -ne $Throws -or -not [object]::ReferenceEquals($Sentinel, $global:OutputEncoding)) { throw 'SSH helper did not restore caller encoding after return/exception' }
+      if (-not $Throws -and $LASTEXITCODE -ne 23) { throw 'Selected SSH hook failure status was lost' }
+    }
+  } finally {
+    $global:OutputEncoding = $OriginalEncoding
+    Remove-Item -LiteralPath $HookRoot -Recurse -Force
+  }
+} ($DeployAst.Find({ param($Node)
+  $Node -is [Management.Automation.Language.FunctionDefinitionAst] -and $Node.Name -eq 'ConvertTo-PosixRemoteCommand'
+}, $true).Extent.Text) $Transport.Extent.Text
 $Normalizer = $DeployAst.Find({ param($Node)
   $Node -is [Management.Automation.Language.FunctionDefinitionAst] -and $Node.Name -eq 'ConvertTo-PosixRemoteCommand'
 }, $true)

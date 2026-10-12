@@ -170,7 +170,7 @@ echo "runtime_space_preflight_state=ready"
 '
   runtime_space_preflight=$(printf '%s' "$runtime_space_preflight" |
     sed "s#__REQUIRED_KIB__#$runtime_space_required_kib#g; s#__PAYLOAD_BYTES__#$runtime_payload_bytes#g")
-  "$ssh_command" $ssh_opts -- "$router" "$runtime_space_preflight" || exit $?
+  printf '%s\n' "$runtime_space_preflight" | "$ssh_command" $ssh_opts -- "$router" 'sh -s' || exit $?
 fi
 
 mode="BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0"
@@ -318,7 +318,19 @@ if [ -e "$previous" ]; then
 fi
 mkdir "$staging"
 staging_owned=1
-tar -xzf - -C "$staging"
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "deploy-merlin: base64 or openssl is required to decode deployment payload" >&2
+    return 1
+  fi
+}
+decode_payload <<'HOME_EDGE_ARCHIVE_BASE64' | tar -xzf - -C "$staging"
+__PAYLOAD__
+HOME_EDGE_ARCHIVE_BASE64
 [ -s "$staging/bootstrap.sh" ] || { echo "deploy-merlin: staged kit is incomplete" >&2; exit 1; }
 rm -rf "$previous"
 [ ! -d "$remote_dir" ] || mv "$remote_dir" "$previous"
@@ -361,12 +373,34 @@ remote_script="${remote_script%%__INSTALLATION_LIBRARY__*}$installation_library$
 # Stage first so provenance hashes the exact bytes sent to the router.
 tmp_parent=${TMPDIR:-/tmp}
 deploy_stage=$(mktemp -d "${tmp_parent%/}/home-edge-deploy-stage.XXXXXX") || exit 1
+mkdir "$deploy_stage/source"
 # shellcheck disable=SC2086
-tar -C "$repo" -cf - $archive_items | tar -C "$deploy_stage" -xf -
-sh "$repo/scripts/new-deployment-provenance.sh" "$deploy_stage" "$repo" || exit 1
-[ -s "$deploy_stage/DEPLOYMENT-CONTENT-SHA256SUMS" ] || { echo "deploy-merlin: provenance generation failed" >&2; exit 1; }
-tar -C "$deploy_stage" -czf - . |
-  "$ssh_command" $ssh_opts -- "$router" "$remote_script" || exit $?
+tar -C "$repo" -cf "$deploy_stage/source.tar" $archive_items || exit $?
+tar -C "$deploy_stage/source" -xf "$deploy_stage/source.tar" || exit $?
+rm "$deploy_stage/source.tar"
+sh "$repo/scripts/new-deployment-provenance.sh" "$deploy_stage/source" "$repo" || exit 1
+[ -s "$deploy_stage/source/DEPLOYMENT-CONTENT-SHA256SUMS" ] || { echo "deploy-merlin: provenance generation failed" >&2; exit 1; }
+send_archive_script() {
+  script=$1
+  archive=$2
+  if which base64 >/dev/null 2>&1; then
+    base64 <"$archive" >"$archive.base64" || return $?
+  elif which openssl >/dev/null 2>&1; then
+    openssl base64 -A <"$archive" >"$archive.base64" || return $?
+  else
+    echo 'deploy-merlin: host base64 or openssl is required' >&2
+    return 1
+  fi
+  # Underscores in the quoted delimiter cannot collide with base64 data.
+  printf '%s' "${script%%__PAYLOAD__*}" >"$archive.remote.sh" || return $?
+  fold -w 76 "$archive.base64" >>"$archive.remote.sh" || return $?
+  printf '\n%s\n' "${script#*__PAYLOAD__}" >>"$archive.remote.sh" || return $?
+  "$ssh_command" $ssh_opts -- "$router" 'sh -s' <"$archive.remote.sh"
+}
+# Keep transport artifacts outside the source tree whose bytes provenance covers.
+deploy_archive="$deploy_stage/project.tgz"
+tar -C "$deploy_stage/source" -czf "$deploy_archive" . || exit $?
+send_archive_script "$remote_script" "$deploy_archive" || exit $?
 
 if [ "$runtime_install" = "1" ]; then
   runtime_rollback_script='
@@ -484,7 +518,19 @@ trap handle_runtime_signal HUP INT TERM
 
 [ ! -L "$runtime_stage" ] || { echo "deploy-merlin: refusing symbolic-link runtime stage" >&2; exit 1; }
 mkdir -m 700 "$runtime_stage"
-tar -xzf - -C "$runtime_stage"
+decode_payload() {
+  if which base64 >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | base64 -d
+  elif which openssl >/dev/null 2>&1; then
+    tr -cd 'A-Za-z0-9+/=' | openssl base64 -d -A
+  else
+    echo "deploy-merlin: base64 or openssl is required to decode runtime payload" >&2
+    return 1
+  fi
+}
+decode_payload <<'HOME_EDGE_ARCHIVE_BASE64' | tar -xzf - -C "$runtime_stage"
+__PAYLOAD__
+HOME_EDGE_ARCHIVE_BASE64
 [ -s "$runtime_stage/mihomo-linux-arm64" ] || { echo "deploy-merlin: temporary runtime bundle is missing Mihomo" >&2; exit 1; }
 [ -s "$runtime_stage/ShellCrash.tar.gz" ] || { echo "deploy-merlin: temporary runtime bundle is missing ShellCrash" >&2; exit 1; }
 [ -s "$runtime_stage/SHA256SUMS" ] || { echo "deploy-merlin: temporary runtime bundle is missing SHA256SUMS" >&2; exit 1; }
@@ -501,13 +547,13 @@ echo "runtime_deploy_state=applied"
 '
   runtime_script=$(printf '%s' "$runtime_script" |
     sed "s#__REMOTE_DIR__#$remote_dir#g; s#__REPLACE_RUNTIME__#$replace_runtime#g; s#__REPLACE_CORE__#$replace_core#g")
-  if tar -C "$bundle_dir" -czf - . |
-    "$ssh_command" $ssh_opts -- "$router" "$runtime_script"; then
+  if tar -C "$bundle_dir" -czf "$deploy_stage/runtime.tgz" . &&
+    send_archive_script "$runtime_script" "$deploy_stage/runtime.tgz"; then
     :
   else
     runtime_status=$?
     echo "deploy-merlin: runtime stage failed; restoring the prior staged control plane" >&2
-    "$ssh_command" $ssh_opts -- "$router" "$runtime_rollback_script" || {
+    printf '%s\n' "$runtime_rollback_script" | "$ssh_command" $ssh_opts -- "$router" 'sh -s' || {
       echo "deploy-merlin: runtime stage failed and control-plane rollback could not be verified" >&2
       exit 1
     }

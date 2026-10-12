@@ -56,9 +56,14 @@ macOS 若系统要求确认来源，核对下载来源后按系统提供的“�
 Windows PowerShell:
 
 ```powershell
-$ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
-if ($LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") }
+$GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($GitCommand) {
+  $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
+  & $GitCommand.Source clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") }
+} else {
+  Write-Host "未找到 Git；请改用上方发行包下载方式。"
+}
 ```
 
 macOS / Linux:
@@ -111,6 +116,15 @@ sh scripts/doctor.sh
 `scripts\verify-local.ps1` 或 `sh scripts/verify-local.sh`。成功时最后输出
 `local_verification_state=ready`；失败会指出应先检查的门禁。fixture 不会对具体路由器、
 固件构建、服务商或网络形成现场认证。
+
+## 自动管理与手动选择
+
+订阅刷新与线路自愈的权限分开。刷新验证节点变更、保留已选节点，并在准备期间选择发生变化时取消；它不替你判断哪个节点适合某项业务。低延迟和 `[AI]` 标签都不能保证应用可用。
+
+自愈保留可达的当前路线。允许实写后，可在探测失败或显式地区约束不满足时，为明确受管的主选择器做故障切换。用 **准确且可写的选择器名称**设置 `HEAL_GROUP` 来限定权限；指定组不存在或不可写时停止。自动主组发现排除含中文“手动”或英文单词 `Manual` 的名字；显式指定这样的组，即表示有意授权自动管理它。嵌套切换默认关闭，角色策略另有启用与匹配控制；这些显式功能仍可能授权主组之外的变更。每次切换及补偿回滚前重新核对当前选择和候选成员，发现计划变化就取消。控制器没有已确认的原子比较交换 API，所以这不能消除读取到写入间的短竞态及同值 ABA。
+
+当前 Merlin 参考适配器的现场覆盖设置位于 `/jffs/home-edge-bootstrap-state/policy.local`。如果其他组要保持人工控制，应保留嵌套切换关闭并关闭角色修改。本地源码、登记桌面入口、设备项目文件、活跃 helper 和实际加载规则是不同状态：只更新有差异的一层，并逐层验证。README 或 Git 提交变化本身不要求重装路由器；仅项目刷新保留运行时／内核载荷，但可能改变受管集成与配置，应用前应预览并保留恢复材料。
+
 
 ## 2. 准备路由器与恢复边界
 

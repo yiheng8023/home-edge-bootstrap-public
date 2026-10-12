@@ -53,6 +53,10 @@ done
 
 [ -z "${SELF_HEAL_CURL_LOG:-}" ] || printf '%s\n' "$url" >>"$SELF_HEAL_CURL_LOG"
 
+case "${SELF_HEAL_FIXTURE:-}" in
+  guard_*) exec python3 "$(dirname "$0")/guard-api.py" "$method" "$url" "$data" ;;
+esac
+
 fixture="${SELF_HEAL_FIXTURE:-main_select}"
 case "$url" in
   http://*/*) path="/${url#http://*/}" ;;
@@ -273,6 +277,9 @@ chmod 755 "$fake_bin/curl"
 
 cat >"$fake_bin/jq" <<'EOF'
 #!/bin/sh
+case "${SELF_HEAL_FIXTURE:-}" in
+  guard_*) exec python3 "$(dirname "$0")/guard-jq.py" "$@" ;;
+esac
 filter=""
 group=""
 
@@ -443,9 +450,144 @@ cat "$@"
 EOF
 chmod 755 "$fake_bin/sort"
 
+# These fixtures keep JSON selector state across API calls and inject user changes
+# at probe/write boundaries. The jq shim implements only the queries used here;
+# resolver predicates are read from the query so the old broad resolver stays red.
+cat >"$fake_bin/guard-api.py" <<'PY'
+import json, os, sys
+from urllib.parse import urlsplit, unquote
+method, url, data = sys.argv[1:]
+path = unquote(urlsplit(url).path)
+case = os.environ['SELF_HEAL_FIXTURE']
+state_file = os.environ['SELF_HEAL_GUARD_STATE']
+def selector(now='Dead', choices=None, kind='Selector'):
+    return {'type': kind, 'now': now, 'all': choices or ['Dead', 'Good', 'User']}
+try:
+    with open(state_file) as f: state = json.load(f)
+except FileNotFoundError:
+    proxies = {'Main Select': selector(), 'Dead': {'type': 'Http'},
+               'Good': {'type': 'Http'}, 'User': {'type': 'Http'}}
+    if case in ('guard_auto_manual', 'guard_only_manual'):
+        proxies = {'Main Select': selector(), 'Manual Select': selector(), **{k:v for k,v in proxies.items() if k != 'Main Select'}}
+        proxies['Main Select']['now'] = 'Manual Select'
+        proxies['Main Select']['all'] = ['Manual Select', 'Good', 'User']
+        proxies['Manual Select']['now'] = 'Main Select'
+        if case == 'guard_only_manual': del proxies['Main Select']
+        if case == 'guard_auto_manual':
+            proxies['🚀 节点选择'] = proxies.pop('Main Select')
+            proxies['🚀 手动切换'] = proxies.pop('Manual Select')
+            proxies['🚀 节点选择'].update(now='🚀 手动切换', all=['🚀 手动切换', 'Good', 'User'])
+            proxies['🚀 手动切换']['now'] = '🚀 节点选择'
+    if case == 'guard_auto_readonly':
+        proxies['Main Select'] = selector(kind='URLTest')
+        proxies['Gateway'] = selector()
+    if case == 'guard_readonly': proxies['Main Select']['type'] = 'URLTest'
+    if case in ('guard_nested_race', 'guard_nested_main_race', 'guard_rollback_race', 'guard_rollback_restore'):
+        proxies['Main Select']['all'] = ['Dead', 'Nested']
+        proxies['Nested'] = selector(choices=['Dead', 'Good', 'User'])
+    if case == 'guard_role_race':
+        proxies['Main Select']['now'] = 'Good'
+        proxies['Service'] = selector()
+    state = {'proxies': proxies, 'probed': False, 'events': []}
+proxies = state['proxies']
+result = {}
+status = 0
+if path == '/version': result = {'version':'fixture'}
+elif path == '/proxies': result = {'proxies': proxies}
+elif path.startswith('/proxies/'):
+    name = path[len('/proxies/'):]
+    if name.endswith('/delay'):
+        name = name[:-6]
+        result = {'delay':100} if name == 'Good' else {}
+        if name == 'Good' and not state['probed'] and (case != 'guard_role_race' or state.get('role_started')):
+            state['probed'] = True
+            if case == 'guard_main_race': proxies['Main Select']['now'] = 'User'
+            if case == 'guard_nested_race': proxies['Nested']['now'] = 'User'
+            if case == 'guard_role_race': proxies['Service']['now'] = 'User'
+            if case == 'guard_membership_race': proxies['Main Select']['all'].remove('Good')
+    elif method == 'PUT':
+        target = json.loads(data)['name']
+        state['events'].append([name, target])
+        with open(os.environ['SELF_HEAL_PUT_LOG'], 'a') as f:
+            f.write('PUT ' + name + ' ' + target + '\n')
+        if name == 'Main Select' and case in ('guard_rollback_race', 'guard_rollback_restore'):
+            status = 7
+            if case == 'guard_rollback_race': proxies['Nested']['now'] = 'User'
+        else:
+            proxies[name]['now'] = target
+            if name == 'Nested' and case == 'guard_nested_main_race': proxies['Main Select']['now'] = 'User'
+    else:
+        result = dict(proxies.get(name, {}))
+        if name == 'Service': state['role_started'] = True
+with open(state_file, 'w') as f: json.dump(state, f)
+print(json.dumps(result))
+sys.exit(status)
+PY
+
+cat >"$fake_bin/guard-jq.py" <<'PY'
+import json, re, sys
+from urllib.parse import quote
+args = sys.argv[1:]; variables = {}; filters = []; raw = False
+while args:
+    arg = args.pop(0)
+    if arg == '--arg':
+        name = args.pop(0); variables[name] = args.pop(0)
+    elif arg.startswith('-'): raw |= 'R' in arg
+    else: filters.append(arg)
+query = ' '.join(filters); text = sys.stdin.read()
+if '@uri' in query: print(quote(text, safe='')); sys.exit()
+if '{name:.}' in query: print(json.dumps({'name':text})); sys.exit()
+obj = json.loads(text)
+def selectable(value):
+    return isinstance(value.get('all'), list) and re.match(r'^(selector|select)$', value.get('type',''), re.I)
+def emit(value):
+    if value is not None: print(value)
+if 'type == "object"' in query:
+    sys.exit(0 if isinstance(obj, dict) else 1)
+if '.proxies[$group]' in query:
+    value = obj.get('proxies', {}).get(variables['group'], {})
+    ok = isinstance(value.get('all'), list)
+    if 'type' in query and 'selector' in query.lower(): ok = ok and bool(selectable(value))
+    sys.exit(0 if ok else 1)
+if 'sort_by(.score, .key)' in query:
+    proxies = obj['proxies']; rows = []
+    for name, value in proxies.items():
+        if not isinstance(value.get('all'), list): continue
+        # Support the explicit Selector predicate and manual exclusion when present.
+        if 'select(' in query and 'test("(?i)^selector$|^select$")' in query and not selectable(value): continue
+        if 'manual' in variables and re.search(variables['manual'], name, re.I): continue
+        score = (0 if re.search(variables['match'], name, re.I) else 200)
+        score += 0 if value.get('type') == 'Selector' else 80
+        score += 10 if any(v.get('now') == name for v in proxies.values()) else 40
+        score += 200 if re.search(variables['exclude'], name, re.I) else 0
+        score += 250 if name == 'GLOBAL' else 0
+        rows.append((score, name))
+    if rows: emit(min(rows)[1])
+elif 'contains($term)' in query:
+    for name, value in obj['proxies'].items():
+        if isinstance(value.get('all'), list) and variables['term'] in name: emit(name)
+elif '.proxies | to_entries[]' in query:
+    for name, value in obj['proxies'].items():
+        if selectable(value): emit(name)
+elif '.all? | type == "array"' in query:
+    ok = isinstance(obj.get('all'), list)
+    if 'selector' in query.lower(): ok = ok and bool(selectable(obj))
+    if 'index($target)' in query: ok = ok and variables['target'] in obj.get('all', [])
+    sys.exit(0 if ok else 1)
+elif '.all[]' in query:
+    for value in obj.get('all', []): emit(value)
+elif '.now // empty' in query: emit(obj.get('now'))
+elif '.delay // empty' in query: emit(obj.get('delay'))
+else: raise SystemExit('unsupported fixture jq query: ' + query)
+PY
+
 fail() {
   echo "self_heal_fixture_tests=failed"
   echo "$*" >&2
+  if [ "${guard_suite:-0}" = 1 ]; then
+    guard_failures=$((guard_failures + 1))
+    return 1
+  fi
   exit 1
 }
 
@@ -946,5 +1088,76 @@ if PATH="$fake_bin:$PATH" \
   fail "malformed API discovery should fail"
 fi
 assert_log "$tmp_root/malformed_api.log" "ERROR: clash API auto-discovery failed"
+
+run_guard_case() {
+  guard_case=$1
+  guard_status=$2
+  shift 2
+  guard_state="$tmp_root/$guard_case.json"
+  guard_put="$tmp_root/$guard_case.guard-put"
+  guard_log="$tmp_root/$guard_case.guard-log"
+  rm -f "$guard_state"
+  : >"$guard_put"
+  : >"$guard_log"
+  status=0
+  PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE="$guard_case" SELF_HEAL_GUARD_STATE="$guard_state" \
+    SELF_HEAL_PUT_LOG="$guard_put" CLASH_API=http://127.0.0.1:18080 \
+    HEAL_LOG="$guard_log" HEAL_API_CACHE="$tmp_root/$guard_case.api" \
+    HEAL_STATE_DIR="$router_tmp_root/$guard_case-state" HEAL_LOCK_DIR="$router_tmp_root/$guard_case-lock" \
+    HEAL_DELAY_PROBES=1 HEAL_DRY_RUN=0 HEAL_ROLE_GROUPS_ENABLED=0 \
+    "$@" sh "$repo/scripts/self-heal.sh" || status=$?
+  case "$guard_status:$status" in
+    success:0|failure:[1-9]*) ;;
+    *) cat "$guard_log" >&2; fail "$guard_case unexpected status=$status" ;;
+  esac
+}
+assert_guard_events() {
+  python3 - "$guard_state" "$1" <<'PY' || fail "unexpected guard API mutations"
+import json, sys
+with open(sys.argv[1]) as f: state = json.load(f)
+expected = json.loads(sys.argv[2])
+assert state['events'] == expected, (state['events'], expected)
+PY
+}
+
+guard_suite=1
+guard_failures=0
+set +e
+run_guard_case guard_missing failure env HEAL_GROUP='Main'
+assert_guard_events '[]'
+run_guard_case guard_missing failure env HEAL_GROUP='Does Not Exist'
+assert_guard_events '[]'
+run_guard_case guard_readonly failure env HEAL_GROUP='Main Select'
+assert_guard_events '[]'
+run_guard_case guard_only_manual failure env HEAL_GROUP=''
+assert_guard_events '[]'
+run_guard_case guard_only_manual success env HEAL_GROUP='Manual Select'
+assert_guard_events '[["Manual Select", "Good"]]'
+run_guard_case guard_auto_manual success env HEAL_GROUP='' HEAL_GROUP_MATCH_REGEX='.'
+assert_guard_events '[["🚀 节点选择", "Good"]]'
+run_guard_case guard_auto_readonly success env HEAL_GROUP=''
+assert_guard_events '[["Gateway", "Good"]]'
+run_guard_case guard_main_race success env HEAL_GROUP='Main Select'
+assert_guard_events '[]'
+assert_log "$guard_log" 'SKIP selector changed or is no longer writable; cancelled stale switch plan'
+run_guard_case guard_membership_race success env HEAL_GROUP='Main Select'
+assert_guard_events '[]'
+run_guard_case guard_nested_race success env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+assert_guard_events '[]'
+run_guard_case guard_nested_main_race success env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+assert_guard_events '[["Nested", "Good"], ["Nested", "Dead"]]'
+run_guard_case guard_role_race success env HEAL_GROUP='Main Select' HEAL_ROLE_GROUPS_ENABLED=1 \
+  HEAL_ROLE_ROUTE_GROUP_MATCH_REGEX=Service HEAL_ROLE_ROUTE_TARGET_REGEX=Good
+assert_guard_events '[]'
+run_guard_case guard_rollback_race failure env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+assert_guard_events '[["Nested", "Good"], ["Main Select", "Nested"]]'
+assert_log "$guard_log" 'SKIP nested rollback because its selector changed; preserved the later choice'
+run_guard_case guard_rollback_restore failure env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+assert_guard_events '[["Nested", "Good"], ["Main Select", "Nested"], ["Nested", "Dead"]]'
+run_guard_case guard_main_race success env HEAL_GROUP='Main Select' HEAL_DRY_RUN=1
+assert_guard_events '[]'
+
+[ "$guard_failures" -eq 0 ] || { echo "self_heal_manual_guard_failures=$guard_failures"; exit 1; }
+echo "self_heal_manual_guard_tests=ok"
 
 echo "self_heal_fixture_tests=ok"

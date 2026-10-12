@@ -13,11 +13,23 @@ $SourceKind = "non_git"
 $SourceCommit = "non-git"
 $SourceTreeState = "not_applicable"
 $SourceVersion = "unversioned"
-& git -C $SourceRoot rev-parse --is-inside-work-tree *> $null
-if ($LASTEXITCODE -eq 0) {
+$GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+$GitProbeStatus = 127
+# An extracted package may sit inside an unrelated checkout. Only an explicit
+# Git directory/file at this source root can establish this project's identity.
+if ($GitCommand -and (Test-Path -LiteralPath (Join-Path $SourceRoot ".git"))) {
+  $PriorGitPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    & $GitCommand.Source -C $SourceRoot rev-parse --is-inside-work-tree *> $null
+    $GitProbeStatus = $LASTEXITCODE
+  }
+  finally { $ErrorActionPreference = $PriorGitPreference }
+}
+if ($GitProbeStatus -eq 0) {
   $SourceKind = "git"
-  $SourceCommit = (& git -C $SourceRoot rev-parse HEAD).Trim()
-  $Dirty = (& git -C $SourceRoot status --porcelain --untracked-files=no | Out-String).Trim()
+  $SourceCommit = (& $GitCommand.Source -C $SourceRoot rev-parse HEAD).Trim()
+  $Dirty = (& $GitCommand.Source -C $SourceRoot status --porcelain --untracked-files=no | Out-String).Trim()
   $SourceTreeState = $(if ($Dirty) { "dirty" } else { "clean" })
 }
 else {

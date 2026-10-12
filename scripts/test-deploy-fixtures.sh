@@ -21,7 +21,8 @@ mkdir -p \
   "$fixture_repo/adapters/merlin/lib" \
   "$fixture_repo/config" \
   "$fixture_repo/docs" \
-  "$fixture_repo/scripts"
+  "$fixture_repo/scripts" \
+  "$fixture_repo/tools"
 
 # Exercise the current deployment implementation against a deliberately small
 # control-plane tree. Full repository/archive coverage belongs to the
@@ -82,17 +83,25 @@ if [ -n "${DEPLOY_FAKE_SSH_SEQUENCE_DIR:-}" ]; then
 fi
 last=""
 for arg in "$@"; do
+  [ "${#arg}" -le 8192 ] || { echo 'fake ssh: remote argv limit exceeded' >&2; exit 27; }
   last="$arg"
 done
-printf '%s\n' "$last" >"$log"
+printf '%s\n' "$last" >"$log.argv"
+if [ "$last" = 'sh -s' ]; then
+  cat >"$log"
+  sh -n "$log" || exit $?
+  last=$(cat "$log")
+else
+  printf '%s\n' "$last" >"$log"
+fi
 if [ "${DEPLOY_FAKE_SSH_FAIL_AT:-0}" != "0" ] &&
   [ "${DEPLOY_FAKE_SSH_FAIL_AT:-0}" = "$count" ]; then
   cat >/dev/null
   exit 23
 fi
 case "$last" in
-  'sh -s')
-    payload=$(cat)
+  *"HOME_EDGE_INSTALLATION_DIR='"*)
+    payload=$last
     target=$(printf '%s\n' "$payload" | sed -n "s/^HOME_EDGE_INSTALLATION_ROUTER='\([^']*\)'$/\1/p")
     printf 'project_install_schema=1\nproject_install_router=%s\nproject_install_state=not_installed\nproject_install_reason=no_project_artifacts\nproject_install_path=/jffs/home-edge-bootstrap\nproject_install_replace_allowed=0\n' "$target"
     exit 0
@@ -125,11 +134,28 @@ case "$last" in
     exit 0
     ;;
 esac
-cat >"$archive"
+# Run the transported decoder/heredoc through the real shell; route only its
+# extraction destination to this fixture. No device transaction is executed.
+decoder="$log.decoder"
+sed -n '/^decode_payload() {/,/^}/p' "$log" >"$decoder"
+sed -n '/^decode_payload <<.* | tar -xzf/,/^HOME_EDGE_ARCHIVE_BASE64$/p' "$log" |
+  sed "s# | tar -xzf - -C .*# >\"$archive\"#" >>"$decoder"
+sh -s <"$decoder" || exit $?
+[ -s "$archive" ] || { echo 'transported archive missing' >&2; exit 28; }
 [ "${DEPLOY_FAKE_SSH_FAIL:-0}" = "1" ] && exit 23
 exit 0
 EOF
 chmod 755 "$fake_bin/ssh"
+
+# A local archive failure must stop before a remote transaction is sent.
+rmdir "$fixture_repo/tools"
+missing_source_sequence="$tmp_root/missing-source-sequence"
+if PATH="$fake_bin:$PATH" APPLY=1 DEPLOY_FAKE_SSH_SEQUENCE_DIR="$missing_source_sequence" \
+  sh "$deploy" user@router >"$tmp_root/missing-source.out" 2>"$tmp_root/missing-source.err"; then
+  fail 'incomplete local source was deployed'
+fi
+[ "$(cat "$missing_source_sequence/count")" -eq 1 ] || fail 'local source archive failure reached a remote transaction'
+mkdir "$fixture_repo/tools"
 
 if sh "$deploy" >"$tmp_root/deploy-missing.out" 2>"$tmp_root/deploy-missing.err"; then
   fail "missing router should fail"
@@ -152,7 +178,7 @@ PATH="$fake_bin:$PATH" DEPLOY_FAKE_SSH_LOG="$plan_log" DEPLOY_FAKE_SSH_ARCHIVE="
   sh "$deploy" user@router >"$tmp_root/deploy-plan.out" 2>"$tmp_root/deploy-plan.err"
 grep -q '^deploy_state=plan$' "$tmp_root/deploy-plan.out" || fail "plan state missing"
 grep -q '^apply_required=1$' "$tmp_root/deploy-plan.out" || fail "plan apply boundary missing"
-grep -Fxq 'sh -s' "$plan_log" || fail "plan mode did not perform the read-only installation probe"
+grep -Fxq 'sh -s' "$plan_log.argv" || fail "plan mode did not perform the read-only installation probe"
 grep -Fxq 'installation_probe=read_only' "$tmp_root/deploy-plan.out" || fail "plan mode did not disclose the probe"
 [ ! -e "$plan_archive" ] || fail "plan mode streamed an archive"
 
@@ -173,6 +199,8 @@ if ! PATH="$fake_bin:$PATH" \
   fail "control-plane apply fixture failed"
 fi
 grep -q "BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh bootstrap.sh" "$apply_log" || fail "apply remote command missing BOOTSTRAP_APPLY"
+grep -Fxq 'sh -s' "$apply_log.argv" || fail "apply did not use fixed short SSH command"
+awk '/^decode_payload <<.* | tar -xzf/ { payload=1; next } /^HOME_EDGE_ARCHIVE_BASE64$/ { payload=0 } payload && length($0)>76 { exit 1 }' "$apply_log" || fail "archive base64 lines exceed 76 columns"
 grep -q "preserve_local_state" "$apply_log" || fail "apply remote command missing local-state preservation"
 grep -q "deploy.lock" "$apply_log" || fail "apply remote command missing deployment lock"
 grep -q "rollback_deploy" "$apply_log" || fail "apply remote command missing failure rollback"
@@ -185,6 +213,8 @@ tar -xzf "$apply_archive" -C "$tmp_root/apply-extract"
 [ -s "$tmp_root/apply-extract/DEPLOYMENT-CONTENT-SHA256SUMS" ] || fail "deployment archive missing content hashes"
 [ -s "$tmp_root/apply-extract/scripts/migrate-router-state.sh" ] || fail "deployment archive missing state migrator"
 (cd "$tmp_root/apply-extract" && sha256sum -c DEPLOYMENT-CONTENT-SHA256SUMS >/dev/null) || fail "deployment provenance does not match archived bytes"
+cmp "$fixture_repo/scripts/deploy-merlin.sh" "$tmp_root/apply-extract/scripts/deploy-merlin.sh" || fail 'transport changed deployment source bytes'
+cmp "$fixture_repo/adapters/merlin/lib/installation-state.sh" "$tmp_root/apply-extract/adapters/merlin/lib/installation-state.sh" || fail 'transport changed installation library bytes'
 grep -Eq '^source_commit=([0-9a-f]{40}|non-git)$' "$tmp_root/apply-extract/DEPLOYMENT-PROVENANCE.env" || fail "deployment archive lacks bounded source identity"
 grep -Eq '^content_id=[0-9a-f]{64}$' "$tmp_root/apply-extract/DEPLOYMENT-PROVENANCE.env" || fail "deployment archive lacks content id"
 if grep -Fq 'hash=$(hash_file "$path")' "$repo/scripts/new-deployment-provenance.sh"; then

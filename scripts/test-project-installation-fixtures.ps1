@@ -14,8 +14,9 @@ try {
   @'
 $Payload = $input | Out-String
 $Remote = [string]$args[-1]
-if ($Remote -ne 'sh -s') {
-  [IO.File]::WriteAllText($env:INSTALLATION_CAPTURE_FILE, $Remote)
+if ($Payload -match '(?m)^remote_dir=') {
+  if ($Remote -ne 'sh -s') { throw 'Deployment did not use the short remote command' }
+  [IO.File]::WriteAllText($env:INSTALLATION_CAPTURE_FILE, $Payload, (New-Object Text.UTF8Encoding($false)))
   $global:LASTEXITCODE = 0
   return
 }
