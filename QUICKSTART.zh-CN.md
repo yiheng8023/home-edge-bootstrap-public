@@ -10,14 +10,16 @@ Asuswrt-Merlin、ShellCrash/ShellClash 与 Mihomo 兼容运行时的华硕网关
 设备、网络和离线转移需求变化，不承诺固定完成时间。完整本地验证对首次只读探测是可选的，
 可能需要数分钟，也可能明显更久。
 
+v0.1.9 当前为发行候选；以下下载／克隆链接仅在其正式发布／标签建立后可用。v0.1.8 保留为未发布候选，不能当作已发布版本。
+
 ## 1. 取得文件并打开向导
 
 **以下获取方式任选一种即可，不需要依次完成下载、克隆和安装。** 已有完整项目目录或可用桌面入口时直接复用。取得电脑上的文件、打开 TUI、向路由器部署是三个不同环节；打开向导不会自动安装或覆盖路由器。
 
 | 你的情况 | 选择的方式 | 完整流程 |
 |---|---|---|
-| 首次使用，或需要准备离线运行时（推荐） | [发行版离线包（offline）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) | 选对应系统的一个包与 `SHA256SUMS` → 校验 → 全部解压 → 打开下表入口 → 选择 **1**，按检测结果继续 |
-| 路由器已有运行时，只需项目脚本与文档 | [发行版源码包（source）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) | 选 `-source.zip` 或 `-source.tar.gz` 与 `SHA256SUMS` → 校验并解压 → 同样打开入口；该包不含运行时 |
+| 首次使用，或需要准备离线运行时（推荐） | [发行版离线包（offline）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) | 选对应系统的一个包与 `SHA256SUMS` → 校验 → 全部解压 → 打开下表入口 → 选择 **1**，按检测结果继续 |
+| 路由器已有运行时，只需项目脚本与文档 | [发行版源码包（source）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) | 选 `-source.zip` 或 `-source.tar.gz` 与 `SHA256SUMS` → 校验并解压 → 同样打开入口；该包不含运行时 |
 | 已有 Git，想保留本地仓库 | Git 克隆 | 按下方命令明确保存位置 → 打开克隆目录中的同一入口；无需再下载另一份项目包 |
 | 已有完整解压目录或克隆目录 | 复用现有目录 | 跳过获取，直接执行下方“打开并核实目录”；不同副本不要混用 |
 | 已创建本机桌面入口 | 复用桌面入口 | 打开 `Home Edge Bootstrap` → 入口核实登记目录；目录失效时重新选择并核实 → 选择 **1** 接续 |
@@ -33,9 +35,9 @@ Asuswrt-Merlin、ShellCrash/ShellClash 与 Mihomo 兼容运行时的华硕网关
 
 | 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
 |---|---|---|
-| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | 双击 `start.cmd` |
-| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | 双击 `start.command` |
-| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
+| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.zip) | 双击 `start.cmd` |
+| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | 双击 `start.command` |
+| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
 
 下载完在浏览器的下载记录中选择“在文件夹中显示”（Windows 常用 **Ctrl+J**），再**解压整个包**。可将解压文件夹保存在“文档”或自己的常用目录；不限定盘符、用户名或路径。不要在压缩包窗口内运行，也不要只取一个脚本。安装只需对应系统的一种包；校验文件和复制即用的校验步骤见 [发布说明](docs/zh-CN/RELEASE_NOTES.md)。
 
@@ -59,7 +61,7 @@ Windows PowerShell:
 $GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($GitCommand) {
   $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-  & $GitCommand.Source clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  & $GitCommand.Source clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
   if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") }
 } else {
   Write-Host "未找到 Git；请改用上方发行包下载方式。"
@@ -70,11 +72,11 @@ macOS / Linux:
 
 ```sh
 project_dir="$HOME/home-edge-bootstrap"
-git clone --branch v0.1.8 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+git clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
   sh "$project_dir/start.sh"
 ```
 
-克隆输出的目录就是项目位置；不需要先 `cd`。这里选择发行标签 `v0.1.8`，并非自动跟随开发分支；后续更新由你有意选择。电脑上已有项目不等于路由器已安装，实际安装状态仍由向导探测。
+克隆输出的目录就是项目位置；不需要先 `cd`。这里选择发行标签 `v0.1.9`，并非自动跟随开发分支；后续更新由你有意选择。电脑上已有项目不等于路由器已安装，实际安装状态仍由向导探测。
 
 ### 以后从固定入口进入
 

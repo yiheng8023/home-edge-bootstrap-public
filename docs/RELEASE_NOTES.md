@@ -2,6 +2,76 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.9 (2026-10-13)
+
+v0.1.9 corrects automatic self-heal authority: only the exact configured HEAL_GROUP may be written, and manual selector branches are excluded. Fresh graph/selection checks run before PUT; rollback is guarded against intervening changes. The controller has no atomic compare-and-swap (CAS), so these checks reduce the observed race window without eliminating all concurrent-change risk.
+
+Active service-helper provenance is included in project adoption. Merlin detection falls back to an available command locator instead of treating a missing command as a negative installation verdict. PowerShell 5/7 and POSIX deployment use short SSH argv with UTF-8/LF stdin and wrapped base64 transfer, with archive failure checked in its own scope; 16K fixture transport is covered. Source provenance keeps non-Git and missing-Git cases explicit, never borrows an ancestor repository, and deterministically selects the first usable Git. Windows clone failure does not launch an existing destination.
+
+The reference site separately accepted a project-only refresh of the execution source, preserved runtime/core, selectors and profiles, and observed a later natural cron with no selection change. This is bounded site evidence, not acceptance of every new archive, native GUI, provider, account or network outcome. This version/documentation commit is separate from that earlier site source receipt; documentation bytes need their own adoption reconciliation.
+
+The v0.1.8 tags, draft assets and original notes remain preserved and unpublished because later source gaps were found. v0.1.9 requires its own exact-source CI, concrete archives and publication checks. Mihomo v1.19.32, ShellCrash 1.9.4, GPL/source locks, nine public asset roles and broad-claim blocked scope remain unchanged.
+
+Choose one acquisition route: verify/extract a release package, Git clone, reuse a complete local folder/desktop entry, or transfer one complete package offline. Windows opens start.cmd; macOS opens start.command; Linux runs start.sh through sh, then choose 1 for observed-state guidance. No npm, pnpm or npx installation entry is provided.
+
+Public source packages/clones omit offline runtime payloads; use source with an existing runtime or choose offline when the target lacks one.
+
+Windows: download one complete ZIP, Extract All, then double-click start.cmd. macOS/Linux: choose tar.gz. Download SHA256SUMS to verify the selected package; complete-source audit assets are not extra installation parts.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.9-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.9-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.9-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.9-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.9-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.9-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.9-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.9-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+Choose one package for your system plus `SHA256SUMS`; verify only the file you downloaded. Manifest, SBOM (public release) and complete-source assets are audit/source-availability material, not extra installation parts. GitHub automatic Source code archives are not the contracted packages.
+
+Choose a source-only package only when the runtime is already present and you need scripts/documentation; choose an offline package for fresh offline runtime preparation.
+
+Save the chosen archive and `SHA256SUMS` in the same folder. Run the verification commands below in a terminal opened in that download folder: on Windows, open the folder in Explorer, type `powershell` in the address bar and press Enter; on macOS/Linux, open Terminal, type `cd ` (with the space), drag the download folder into it and press Enter. Extract only after verification succeeds; the project directory is not needed for this check.
+
+Windows PowerShell, checking only the offline ZIP you downloaded:
+
+```powershell
+$File = "home-edge-bootstrap-v0.1.9-offline.zip"
+$Expected = ((Get-Content .\SHA256SUMS | Where-Object { $_ -match "  $([regex]::Escape($File))$" }) -split '\s+')[0]
+if ((Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) {
+  throw "SHA256 mismatch: $File"
+}
+```
+
+macOS/Linux, checking only the offline `tar.gz` you downloaded:
+
+```sh
+file=home-edge-bootstrap-v0.1.9-offline.tar.gz
+line=$(awk -v f="$file" 'NF == 2 && length($1) == 64 && $2 == f { n++; hit=$0 }
+  END { if (n == 1) print hit; else exit 1 }' SHA256SUMS) || exit 1
+if command -v sha256sum >/dev/null 2>&1; then
+  printf '%s\n' "$line" | sha256sum -c -
+else
+  printf '%s\n' "$line" | shasum -a 256 -c -
+fi
+```
+
+
 ## v0.1.8 (2026-10-12)
 
 ### Acquisition and startup (release-page guidance revision)

@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.8`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.9`, they are:
 
-- `home-edge-bootstrap-v0.1.8-source.zip`
-- `home-edge-bootstrap-v0.1.8-source.tar.gz`
-- `home-edge-bootstrap-v0.1.8-offline.zip`
-- `home-edge-bootstrap-v0.1.8-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.9-source.zip`
+- `home-edge-bootstrap-v0.1.9-source.tar.gz`
+- `home-edge-bootstrap-v0.1.9-offline.zip`
+- `home-edge-bootstrap-v0.1.9-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -109,6 +109,14 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 `--version` selects the release tag against which repository links are validated. They are normally
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
+
+## v0.1.9 Limited Acceptance Contract
+
+Require the exact new source commit across Linux, macOS, Windows and subscription-behavior CI, then verify the concrete public nine-asset set and bilingual release links. Retain all prior host, installation ownership, twice-confirmed refresh, entry metadata, source-only parser, licensing and locked-runtime gates.
+
+Also verify exact HEAL_GROUP authority, manual/nested selector exclusion, fresh pre-PUT observations and guarded rollback; disclose the controller's lack of atomic CAS. Verify active service-helper provenance, missing-command detector fallback, short-argv UTF-8/LF deployment transport including native PowerShell 5/7 and 16K cases, archive failure scope, and non-Git/missing-Git/first-Git provenance boundaries. Preserve the user's current selectors, profiles and core during separately authorized project-only adoption.
+
+The v0.1.8 tags/drafts remain unpublished historical candidates. This new source/host/archive contract does not certify all devices, providers or GUI fields, does not upgrade broad blocked claims, and does not turn a version-only documentation commit into a new site/core deployment receipt. Preserve existing runtime/source locks and all older assets.
 
 ## v0.1.8 Limited Acceptance Contract
 

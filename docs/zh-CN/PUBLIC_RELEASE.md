@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.8` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.9` 对应：
 
-- `home-edge-bootstrap-v0.1.8-source.zip`
-- `home-edge-bootstrap-v0.1.8-source.tar.gz`
-- `home-edge-bootstrap-v0.1.8-offline.zip`
-- `home-edge-bootstrap-v0.1.8-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.9-source.zip`
+- `home-edge-bootstrap-v0.1.9-source.tar.gz`
+- `home-edge-bootstrap-v0.1.9-offline.zip`
+- `home-edge-bootstrap-v0.1.9-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -97,6 +97,14 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## v0.1.9 有限验收合同
+
+Linux、macOS、Windows 与 subscription-behavior CI 必须精确绑定新源码提交，再验证公开九资产具体交付和双语发行链接。保留既有宿主、安装所有权、两次确认刷新、入口元数据、仅源码 parser、许可及固定运行时门禁。
+
+追加精确 HEAL_GROUP 权限、人工／嵌套 Selector 排除、PUT 前新观测及回滚守卫核验，并披露 controller 缺少原子 CAS。核验 active service-helper 来源、缺 command 检测回退、短 argv UTF-8/LF 部署传输（含原生 PowerShell 5/7 和 16K）、归档失败作用域及非 Git／缺 Git／首个 Git 的来源边界。另行授权的仅项目采用须保留用户当前策略组选择、profiles 与 core。
+
+v0.1.8 标签／草稿保留为未发布历史候选。此源码／宿主／归档合同不认证全部设备、服务商或 GUI 现场，不升级广泛 blocked 声明，也不将仅版本文档提交当作新的现场／core 部署收据。保留运行时／源码锁及全部旧资产。
 
 ## v0.1.8 有限验收合同
 

@@ -21,6 +21,14 @@ data, third-party license materials, archive-content review, host-platform execu
 release-specific SBOM and manifest. Those checks apply to the concrete artifact, not to source-tree
 readiness alone.
 
+## v0.1.9 limited distribution contract
+
+Require the exact new source commit across Linux, macOS, Windows and subscription-behavior CI, then verify the concrete public nine-asset set and bilingual release links. Retain all prior host, installation ownership, twice-confirmed refresh, entry metadata, source-only parser, licensing and locked-runtime gates.
+
+Also verify exact HEAL_GROUP authority, manual/nested selector exclusion, fresh pre-PUT observations and guarded rollback; disclose the controller's lack of atomic CAS. Verify active service-helper provenance, missing-command detector fallback, short-argv UTF-8/LF deployment transport including native PowerShell 5/7 and 16K cases, archive failure scope, and non-Git/missing-Git/first-Git provenance boundaries. Preserve the user's current selectors, profiles and core during separately authorized project-only adoption.
+
+The v0.1.8 tags/drafts remain unpublished historical candidates. This new source/host/archive contract does not certify all devices, providers or GUI fields, does not upgrade broad blocked claims, and does not turn a version-only documentation commit into a new site/core deployment receipt. Preserve existing runtime/source locks and all older assets.
+
 ## Claim boundary
 
 For v0.1.8, also verify exact OpenAI keyword/dependency-group conflict rejection, explicit service-rule binding, the bounded empty historical-backup exception, native Windows SSH stdin framing, and the ordered menu's always-discoverable bilingual language entry. Persistent service rules and current runtime activation require separate observations; a provider [AI] label or ordinary latency probe is not a service-availability verdict.
