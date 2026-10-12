@@ -20,7 +20,9 @@ try {
   $KnownHostsDirectory = Split-Path -Parent $KnownHostsFile
   if ($KnownHostsDirectory) { New-Item -ItemType Directory -Force -Path $KnownHostsDirectory | Out-Null }
   $Library = Get-Content -LiteralPath (Join-Path $PSScriptRoot "../adapters/merlin/lib/installation-state.sh") -Raw
-  $Payload = ($Library + "`nHOME_EDGE_INSTALLATION_DIR='$RemoteDir'`nHOME_EDGE_INSTALLATION_ROUTER='$Router'`nHOME_EDGE_INSTALLATION_FIXTURE_ROOT=''`nhome_edge_inspect_installation`n").Replace("`r", "")
+  # Native Windows pipelines append CRLF. Exit before the trailing bare CR is
+  # interpreted by sh, preserving the observer's status and validation below.
+  $Payload = ($Library + "`nHOME_EDGE_INSTALLATION_DIR='$RemoteDir'`nHOME_EDGE_INSTALLATION_ROUTER='$Router'`nHOME_EDGE_INSTALLATION_FIXTURE_ROOT=''`nhome_edge_inspect_installation`nexit `$?`n").Replace("`r", "")
   $SshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ConnectionAttempts=1', '-o', 'StrictHostKeyChecking=accept-new', '-o', "UserKnownHostsFile=$KnownHostsFile", '--', $Router, 'sh -s')
   $global:LASTEXITCODE = 0
   $Lines = @($Payload | & $SshCommand @SshArgs 2>$null)

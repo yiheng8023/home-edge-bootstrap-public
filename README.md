@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.7) ·
+[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) ·
 [release contract](docs/PUBLIC_RELEASE.md).
 
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
@@ -31,9 +31,9 @@ and decommission contracts are defined and verified. No unimplemented adapter is
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
-| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.zip) | Double-click `start.cmd` |
-| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | Double-click `start.command` |
-| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
 
 Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
 
@@ -349,7 +349,9 @@ activation and limits. This source feature is not retroactively present in the
 already published v0.1.4 download archives. Site results and offline fixture results
 are distinct; they do not establish broad firmware/provider support.
 
-The v0.1.7 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
+The v0.1.8 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
 Node-only subscription automation still needs host compilation of yamlbridge through a trusted network
 or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
 group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).
+
+OpenAI routing requires a consistent service policy for login, chat and dependency domains. Generic latency tests and provider [AI] labels do not establish service availability. Review the [service routing procedure](docs/RUNBOOK.md#optional-service-dependency-profiles), preserve working manual choices, and verify both persistent and loaded rules before treating a repair as complete.

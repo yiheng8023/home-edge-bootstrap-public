@@ -137,10 +137,22 @@ grep -Fq '1. 开始或接续引导式配置' "$tmp/default.out" || fail "default
 grep -Fq '1. Start or resume guided bootstrap' "$tmp/en.out" || fail "English menu missing"
 grep -Fq '7. 审查项目退出' "$tmp/default.out" || fail "Chinese decommission menu missing"
 grep -Fq '7. Review project decommission' "$tmp/en.out" || fail "English decommission menu missing"
-for number in 1 2 3 4 5 6 7 8 0; do
+for number in 1 2 3 4 5 6 7 8 9 0; do
   grep -Eq "^$number\\. " "$tmp/default.out" || fail "default menu missing action $number"
   grep -Eq "^$number\\. " "$tmp/en.out" || fail "English menu missing action $number"
 done
+for menu_output in "$tmp/default.out" "$tmp/en.out"; do
+  menu_order=$(sed -n 's/^\([0-9]\)\. .*/\1/p' "$menu_output" | tr '\n' ' ')
+  [ "$menu_order" = '1 2 3 4 5 6 7 8 9 0 ' ] || fail "menu actions are not ordered 1-9 with exit last"
+  grep -Fq '9. Language / 语言 (English / 中文; current / 当前:' "$menu_output" || fail "language is not discoverable in both languages"
+  grep -Fq 'Select / 请选择 (0-9, L: Language / 语言, H: Help / 帮助, R): ' "$menu_output" || fail "selection prompt is not bilingual"
+  [ "$(grep -Ec '^6\. |^H /' "$menu_output")" -eq 1 ] || fail "help has duplicate visible menu rows"
+  grep -Fq '6.' "$menu_output" && grep -Fq '[H / ? / help]' "$menu_output" || fail "help aliases are absent from the numbered row"
+  grep -Fq 'Dangerous changes / 危险变更 (7 / R):' "$menu_output" || fail "dangerous actions are not grouped"
+  grep -Fq DECOMMISSION "$menu_output" && grep -Fq REPLACE "$menu_output" && grep -Fq APPLY "$menu_output" || fail "dangerous action confirmations are missing"
+done
+grep -Fq 'current / 当前: 中文' "$tmp/default.out" || fail "Chinese current language marker missing"
+grep -Fq 'current / 当前: English' "$tmp/en.out" || fail "English current language marker missing"
 grep -Fq 'usage:' "$tmp/help.out" || fail "help output missing usage"
 grep -Fxq 'home-edge-bootstrap development' "$tmp/version.out" || fail "development version output mismatch"
 
@@ -167,7 +179,7 @@ snapshot_project | LC_ALL=C sort >"$tmp/local-before.snapshot"
 for alias in H '?' help 6; do
   : >"$call_log"
   printf '%s\n0\n' "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/local-help.out"
-  for expected in 'Home Edge local help' "project_dir=$fake_repo" "doc=$fake_repo/docs/RUNBOOK.md" 'First installation:' 'Already installed:' APPLY ENABLE DECOMMISSION EOF 'H / ? / help. Local help' '9 / L / language.'; do
+  for expected in 'Home Edge local help' "project_dir=$fake_repo" "doc=$fake_repo/docs/RUNBOOK.md" 'First installation:' 'Already installed:' APPLY ENABLE DECOMMISSION EOF '[H / ? / help]' '9. Language / 语言' 'L / Language: English <-> 中文'; do
     grep -Fq "$expected" "$tmp/local-help.out" || fail "local help missing $expected ($alias)"
   done
   [ ! -s "$call_log" ] || fail "help dispatched a child: $alias"

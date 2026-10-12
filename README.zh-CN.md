@@ -5,7 +5,7 @@
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
 发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.7) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.8) ·
 [发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
 
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
@@ -29,9 +29,9 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 
 | 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
 |---|---|---|
-| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.zip) | 双击 `start.cmd` |
-| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | 双击 `start.command` |
-| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
+| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | 双击 `start.cmd` |
+| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | 双击 `start.command` |
+| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
 
 下载完在浏览器的下载记录中选择“在文件夹中显示”（Windows 常用 **Ctrl+J**），再**解压整个包**。可将解压文件夹保存在“文档”或自己的常用目录；不限定盘符、用户名或路径。不要在压缩包窗口内运行，也不要只取一个脚本。安装只需对应系统的一种包；校验文件和复制即用的校验步骤见 [发布说明](docs/zh-CN/RELEASE_NOTES.md)。
 
@@ -311,6 +311,8 @@ Yacd-meta 初始默认：延迟从小到大、隐藏不可用节点、关闭自�
 详见[订阅自动化](docs/SUBSCRIPTION_AUTOMATION.md)。已发布 v0.1.4 下载包不会追溯包含
 这个源码功能；本站点验证与离线夹具证据分开，不扩大为全部固件或供应方的支持声明。
 
-最新 v0.1.7 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
+最新 v0.1.8 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
 节点订阅自动更新仍需宿主编译 yamlbridge（可信网络或预备模块缓存），包内没有预编译 parser；
 HTTPS 订阅、controller key、本地组过滤和站点显式启用是独立前提。详见[发布说明](docs/zh-CN/RELEASE_NOTES.md)。
+
+OpenAI 的登录、会话与依赖域名需要一致的服务策略。普通延迟测试和服务商 [AI] 标签不能证明服务可用。请依照[服务规则步骤](docs/zh-CN/RUNBOOK.md)保留已验证的手动选择，分别核验持久规则与运行规则后再确认修复完成。

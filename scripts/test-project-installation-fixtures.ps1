@@ -5,6 +5,9 @@ $OldSsh = $env:HOME_EDGE_SSH_COMMAND
 $OldMode = $env:INSTALLATION_PROBE_MODE
 $OldState = $env:INSTALLATION_PROBE_STATE
 $OldCapture = $env:INSTALLATION_CAPTURE_FILE
+$NativeEnvironment = @{}
+$NativeNames = @('INSTALLATION_NATIVE_ROOT', 'INSTALLATION_NATIVE_CAPTURE', 'INSTALLATION_NATIVE_SHELL', 'INSTALLATION_NATIVE_MODE')
+foreach ($Name in $NativeNames) { $NativeEnvironment[$Name] = [Environment]::GetEnvironmentVariable($Name) }
 try {
   New-Item -ItemType Directory -Path $Fixture | Out-Null
   $Stub = Join-Path $Fixture 'ssh.ps1'
@@ -35,6 +38,64 @@ $global:LASTEXITCODE = 0
   $KnownHosts = Join-Path $Fixture 'known_hosts'
   $Observer = Join-Path $Repo 'scripts/check-project-installation.ps1'
   $Deploy = Join-Path $Repo 'scripts/deploy-merlin.ps1'
+  # A PowerShell script stub does not exercise native stdin framing. Windows
+  # PowerShell appends CRLF even when the supplied string already ends in LF.
+  # Git Bash tolerates the resulting bare CR; dash matches the router's sh.
+  $Sh = (Get-Command sh -CommandType Application -ErrorAction Stop).Source
+  $DashCandidates = @(
+    (Join-Path (Split-Path -Parent $Sh) 'dash.exe')
+    (Join-Path (Split-Path -Parent $Sh) '../usr/bin/dash.exe')
+  )
+  $Dash = $DashCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  if (-not $Dash) {
+    $Dash = Get-Command dash.exe -CommandType Application -ErrorAction SilentlyContinue |
+      ForEach-Object { $_.Source } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  }
+  if (-not $Dash) { throw 'Native framing regression requires the dash shipped with Git for Windows' }
+  $Dash = (Resolve-Path -LiteralPath $Dash).Path
+  $NativeScript = Join-Path $Fixture 'native-ssh.sh'
+  $NativeTransport = Join-Path $Fixture 'native-ssh.cmd'
+  $NativeRoot = Join-Path $Fixture 'native-router'
+  New-Item -ItemType Directory -Path (Join-Path $NativeRoot 'jffs') | Out-Null
+  $env:INSTALLATION_NATIVE_ROOT = '/' + $NativeRoot.Substring(0, 1).ToLowerInvariant() + $NativeRoot.Substring(2).Replace('\', '/')
+  $env:INSTALLATION_NATIVE_CAPTURE = (Join-Path $Fixture 'native-payload').Replace('\', '/')
+  $env:INSTALLATION_NATIVE_SHELL = $Dash.Replace('\', '/')
+  [IO.File]::WriteAllText($NativeScript, (@'
+#!/bin/sh
+cat > "$INSTALLATION_NATIVE_CAPTURE" || exit 1
+if [ "$INSTALLATION_NATIVE_MODE" = malformed ]; then
+  printf 'project_install_state=not_installed\n'
+  exit 0
+fi
+if [ "$INSTALLATION_NATIVE_MODE" = nonzero ]; then
+  suffix='; (exit 23)'
+else
+  suffix=''
+fi
+sed -b -e "s|^HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''$|HOME_EDGE_INSTALLATION_FIXTURE_ROOT='$INSTALLATION_NATIVE_ROOT'|" \
+    -e "s|^home_edge_inspect_installation$|home_edge_inspect_installation$suffix|" \
+    "$INSTALLATION_NATIVE_CAPTURE" | "$INSTALLATION_NATIVE_SHELL" -s
+exit $?
+'@).Replace("`r", "") + "`n", [Text.Encoding]::ASCII)
+  [IO.File]::WriteAllText($NativeTransport, ('@"' + $Dash + '" "%~dp0native-ssh.sh"' + "`r`n"), [Text.Encoding]::ASCII)
+  $NativeHosts = @((Get-Command powershell -CommandType Application -ErrorAction Stop).Source)
+  $Pwsh = Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue
+  if ($Pwsh) { $NativeHosts += $Pwsh.Source }
+  foreach ($NativeHost in $NativeHosts) {
+    foreach ($NativeMode in @('ready', 'malformed', 'nonzero', 'unknown')) {
+      $env:INSTALLATION_NATIVE_MODE = $NativeMode
+      if ($NativeMode -eq 'unknown') { New-Item -ItemType Directory -Path (Join-Path $NativeRoot 'jffs/home-edge-bootstrap') | Out-Null }
+      $Output = & $NativeHost -NoProfile -ExecutionPolicy Bypass -File $Observer -Router user@router -KnownHostsFile $KnownHosts -SshCommand $NativeTransport | Out-String
+      if ($NativeMode -eq 'ready') {
+        if ($LASTEXITCODE -ne 0 -or $Output -notmatch 'project_install_state=not_installed' -or $Output -notmatch 'project_install_replace_allowed=0') { throw "Native stdin framing failed: $NativeHost`n$Output" }
+      } else {
+        $Reason = if ($NativeMode -eq 'malformed') { 'malformed_observation' } elseif ($NativeMode -eq 'nonzero') { 'probe_failed' } else { 'foreign_project_directory' }
+        if ($LASTEXITCODE -eq 0 -or $Output -notmatch 'project_install_state=unknown' -or $Output -notmatch "project_install_reason=$Reason" -or $Output -notmatch 'project_install_replace_allowed=0') { throw "Native invalid observation was trusted: $NativeHost/$NativeMode`n$Output" }
+      }
+      if ($NativeMode -eq 'unknown') { Remove-Item -LiteralPath (Join-Path $NativeRoot 'jffs/home-edge-bootstrap') }
+    }
+    Write-Host "project_installation_native_framing=ok host=$NativeHost"
+  }
   foreach ($Mode in @('ready', 'fail', 'malformed', 'mismatch')) {
     $env:INSTALLATION_PROBE_MODE = $Mode
     $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Observer -Router user@router -KnownHostsFile $KnownHosts | Out-String
@@ -91,5 +152,6 @@ $global:LASTEXITCODE = 0
   $env:INSTALLATION_PROBE_MODE = $OldMode
   $env:INSTALLATION_PROBE_STATE = $OldState
   $env:INSTALLATION_CAPTURE_FILE = $OldCapture
+  foreach ($Name in $NativeNames) { [Environment]::SetEnvironmentVariable($Name, $NativeEnvironment[$Name]) }
   if (([IO.Path]::GetFullPath($Fixture)).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()), [StringComparison]::OrdinalIgnoreCase)) { Remove-Item -LiteralPath $Fixture -Recurse -Force }
 }

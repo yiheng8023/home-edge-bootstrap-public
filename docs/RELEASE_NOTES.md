@@ -2,6 +2,18 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.8 (2026-10-12)
+
+Fix OpenAI service-policy inference: exact `DOMAIN-KEYWORD,openai/chatgpt` anchors now participate alongside dependency-domain rules. Conflicting groups require an explicit `HOME_EDGE_SERVICE_GROUP` instead of silently choosing the media policy. Add the exact `frontend-apps-multi-region.workos.com` dependency from the current official network guidance.
+
+Installation observation preserves and excludes only an empty regular historical `home-edge-policy.local.bak.<14 digits>` from active-file ownership checks. Nonempty unknown backups, other names and links remain protected; a passive backup does not establish installation ownership or replacement permission.
+
+The bilingual runbook distinguishes ordinary latency probes and provider `[AI]` labels from actual service access, and persistent ShellCrash overlays from the currently loaded rules. User selections remain authoritative; no automatic AI-node switching or guarantee of future service availability is introduced.
+
+The guide menu is ordered 1 through 9 with exit last, combines help aliases into one entry, and keeps Language / 语言 plus English / 中文 discoverable in either current language. Windows installation probes also exit with the observer's status before a native pipeline's trailing CRLF can become a false SSH failure.
+
+Affected regression fixtures include keyword/dependency-group conflict, explicit service binding, preservation of unrelated/runtime configuration, rollback, and passive-backup boundaries. A reference site's rule-only hot application separately verified loaded rules and retained selectors/core process; this is not acceptance of every released package, router, OAuth failure or network condition. Runtime pins, licenses, source locks and broad-release `blocked` scope remain unchanged. Earlier release sections, tags and assets remain unchanged.
+
 ## v0.1.7 (2026-10-12)
 
 Add comprehensive local bilingual help (`H` / `?` / `help` / `6`) and a session-only language switch (`L` / `language` / `9`) that preserves the router target and selected session without network access or global setting writes.

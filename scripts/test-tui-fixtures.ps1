@@ -187,10 +187,24 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   if ($English.Status -ne 0 -or $English.Output -notmatch [regex]::Escape("1. Start or resume guided bootstrap")) { Fail "English menu missing" }
   if ($Default.Output -notmatch [regex]::Escape($ExpectedChineseDecommission)) { Fail "Chinese decommission menu missing" }
   if ($English.Output -notmatch [regex]::Escape("7. Review project decommission")) { Fail "English decommission menu missing" }
-  foreach ($Number in @(1, 2, 3, 4, 5, 6, 7, 8, 0)) {
+  foreach ($Number in @(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)) {
     if ($Default.Output -notmatch "(?m)^$Number\. ") { Fail "default menu missing action $Number" }
     if ($English.Output -notmatch "(?m)^$Number\. ") { Fail "English menu missing action $Number" }
   }
+  $BilingualLanguage = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("6K+t6KiA"))
+  $ChineseLanguageName = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("5Lit5paH"))
+  $CurrentLanguageLabel = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("5b2T5YmN"))
+  $BilingualPrompt = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("U2VsZWN0IC8g6K+36YCJ5oupICgwLTksIEw6IExhbmd1YWdlIC8g6K+t6KiALCBIOiBIZWxwIC8g5biu5YqpLCBSKTog"))
+  $DangerousGroup = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("RGFuZ2Vyb3VzIGNoYW5nZXMgLyDljbHpmanlj5jmm7QgKDcgLyBSKTo="))
+  foreach ($Menu in @($Default, $English)) {
+    $MenuOrder = @([regex]::Matches($Menu.Output, '(?m)^([0-9])\. ') | ForEach-Object { $_.Groups[1].Value }) -join ' '
+    if ($MenuOrder -ne '1 2 3 4 5 6 7 8 9 0') { Fail "menu actions are not ordered 1-9 with exit last" }
+    if (-not $Menu.Output.Contains("9. Language / $BilingualLanguage (English / $ChineseLanguageName; current / ${CurrentLanguageLabel}:")) { Fail "language is not discoverable in both languages" }
+    if (-not $Menu.Output.Contains($BilingualPrompt)) { Fail "selection prompt is not bilingual" }
+    if (([regex]::Matches($Menu.Output, '(?m)^6\. |^H /')).Count -ne 1 -or -not $Menu.Output.Contains('[H / ? / help]')) { Fail "help aliases are absent or have duplicate visible menu rows" }
+    if (-not $Menu.Output.Contains($DangerousGroup) -or $Menu.Output -notmatch 'DECOMMISSION' -or $Menu.Output -notmatch 'REPLACE' -or $Menu.Output -notmatch 'APPLY') { Fail "dangerous actions or confirmations are not grouped" }
+  }
+  if (-not $Default.Output.Contains("current / ${CurrentLanguageLabel}: $ChineseLanguageName") -or -not $English.Output.Contains("current / ${CurrentLanguageLabel}: English")) { Fail "current language marker missing" }
   if ($Help.Status -ne 0 -or $Help.Output -notmatch "usage:") { Fail "help output missing usage" }
   if ($Version.Status -ne 0 -or $Version.Output.Trim() -ne "home-edge-bootstrap development") { Fail "development version output mismatch" }
   if ($Invalid.Status -ne 2) { Fail "invalid language should exit 2" }
@@ -207,7 +221,7 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
     Set-Content -LiteralPath $CallLog -Value "" -NoNewline
     $LocalHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "$Alias`n0`n" -Environment $CommonEnvironment
     if ($LocalHelp.Status -ne 0 -or $LocalHelp.Output -notmatch "Home Edge local help") { Fail "local help alias failed: $Alias" }
-    foreach ($Expected in @("project_dir=$FakeRepo", "doc=$(Join-Path $FakeRepo 'docs\RUNBOOK.md')", "First installation:", "Already installed:", "APPLY", "ENABLE", "DECOMMISSION", "EOF", "H / ? / help. Local help", "9 / L / language.")) {
+    foreach ($Expected in @("project_dir=$FakeRepo", "doc=$(Join-Path $FakeRepo 'docs\RUNBOOK.md')", "First installation:", "Already installed:", "APPLY", "ENABLE", "DECOMMISSION", "EOF", "[H / ? / help]", "9. Language / $BilingualLanguage", "L / Language: English <-> $ChineseLanguageName")) {
       if ($LocalHelp.Output -notmatch [regex]::Escape($Expected)) { Fail "local help missing $Expected" }
     }
     if ((Read-CallLog $CallLog).Length -ne 0) { Fail "help dispatched a child: $Alias" }

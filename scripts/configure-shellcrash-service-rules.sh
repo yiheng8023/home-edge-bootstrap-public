@@ -22,6 +22,7 @@ END_MARKER="# END home-edge-bootstrap service-rules/$PROFILE/v1"
 case "$PROFILE" in
   openai)
     PROFILE_SOURCE="https://help.openai.com/en/articles/9247338-network-recommendations-for-chatgpt-errors-on-web-and-apps"
+    PROFILE_REVIEWED_ON="2026-10-12"
     ;;
   asus-global-account)
     PROFILE_SOURCE="https://account.asus.com/"
@@ -104,6 +105,7 @@ DOMAIN,cdn.openaimerge.com
 DOMAIN,cdn.workos.com
 DOMAIN,challenges.cloudflare.com
 DOMAIN,forwarder.workos.com
+DOMAIN,frontend-apps-multi-region.workos.com
 DOMAIN,humb.apple.com
 DOMAIN,images.workoscdn.com
 DOMAIN,js.stripe.com
@@ -192,10 +194,12 @@ discover_group() {
     }
     {
       kind=trim($1)
+      sub(/^-[[:space:]]*/, "", kind)
       domain=trim($2)
       group=trim($3)
       if (kind !~ /DOMAIN/ || group == "") next
-      if (domain == "chatgpt.com" || domain ~ /(^|\.)openai\.com$/ ||
+      if ((kind == "DOMAIN-KEYWORD" && (domain == "openai" || domain == "chatgpt")) ||
+          domain == "chatgpt.com" || domain ~ /(^|\.)openai\.com$/ ||
           domain ~ /(^|\.)oaistatic\.com$/ || domain ~ /(^|\.)oaiusercontent\.com$/ ||
           domain ~ /(^|\.)oaistatsig\.com$/) {
         if (!seen[group]++) print group

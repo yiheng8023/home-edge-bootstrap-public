@@ -149,6 +149,73 @@ if grep -Eq 'First Policy|Second Policy' "$tmp/ambiguous.out" "$tmp/ambiguous.er
   fail "ambiguous-group failure exposed policy names"
 fi
 
+cat >"$runtime" <<'EOF'
+rules:
+  -   DOMAIN-KEYWORD,openai,AI Policy
+  - DOMAIN-KEYWORD,chatgpt,AI Policy
+  - DOMAIN-SUFFIX,oaistatic.com,Media Policy
+  - DOMAIN-SUFFIX,oaiusercontent.com,Media Policy
+EOF
+mixed_runtime_hash=$(sha256sum "$runtime" | awk '{print $1}')
+if run_rules plan >"$tmp/mixed.out" 2>"$tmp/mixed.err"; then
+  fail "keyword AI and suffix media groups should fail closed"
+fi
+if grep -Eq 'AI Policy|Media Policy' "$tmp/mixed.out" "$tmp/mixed.err"; then
+  fail "mixed-group failure exposed policy names"
+fi
+[ "$(sha256sum "$rules" | awk '{print $1}')" = "$original_hash" ] ||
+  fail "mixed-group plan failure changed persistent rules"
+[ ! -e "$state/lifecycle/service-rules-openai.env" ] ||
+  fail "mixed-group plan failure created service-rules state"
+
+cat >"$rules" <<'EOF'
+  - DOMAIN-SUFFIX,oaistatic.com,Media Policy
+  - DOMAIN-SUFFIX,oaiusercontent.com,Media Policy
+  - DOMAIN-SUFFIX,example.com,DIRECT
+  - MATCH,DIRECT
+EOF
+mixed_rules_hash=$(sha256sum "$rules" | awk '{print $1}')
+explicit_apply=$(HOME_EDGE_SERVICE_GROUP='AI Policy' run_rules apply)
+printf '%s\n' "$explicit_apply" | grep -q '^runtime_reload_state=pending$' ||
+  fail "explicit service group apply crossed the reload boundary"
+for domain in oaistatic.com oaiusercontent.com; do
+  grep -Fqx "  - DOMAIN-SUFFIX,$domain,AI Policy" "$rules" ||
+    fail "explicit service group route missing for $domain"
+  grep -Fqx "  - DOMAIN-SUFFIX,$domain,Media Policy" "$rules" ||
+    fail "explicit service group apply changed an existing media rule"
+  ai_line=$(grep -Fn "  - DOMAIN-SUFFIX,$domain,AI Policy" "$rules" | cut -d: -f1)
+  media_line=$(grep -Fn "  - DOMAIN-SUFFIX,$domain,Media Policy" "$rules" | cut -d: -f1)
+  [ "$ai_line" -lt "$media_line" ] || fail "service route does not precede media fallback"
+done
+grep -Fqx '  - DOMAIN,frontend-apps-multi-region.workos.com,AI Policy' "$rules" ||
+  fail "WorkOS frontend route missing from applied profile"
+grep -Fqx '  - DOMAIN-SUFFIX,example.com,DIRECT' "$rules" ||
+  fail "explicit service group apply changed an unrelated rule"
+[ "$(sha256sum "$runtime" | awk '{print $1}')" = "$mixed_runtime_hash" ] ||
+  fail "service group apply changed the active runtime config"
+run_rules rollback >/dev/null
+[ "$(sha256sum "$rules" | awk '{print $1}')" = "$mixed_rules_hash" ] ||
+  fail "explicit service group rollback changed original rules"
+
+cat >"$runtime" <<'EOF'
+rules:
+  -   DOMAIN-KEYWORD,openai,AI Policy
+  - DOMAIN-KEYWORD,chatgpt,AI Policy
+EOF
+keyword_plan=$(run_rules plan)
+printf '%s\n' "$keyword_plan" | grep -q '^service_rules_state=planned$' ||
+  fail "matching keyword groups were not discovered"
+for unsupported in \
+  'DOMAIN-KEYWORD,openai-api' \
+  'DOMAIN-KEYWORD,chatgpt-extra' \
+  'DOMAIN-SUFFIX,openai' \
+  'DOMAIN,chatgpt'; do
+  printf 'rules:\n  - %s,Other Policy\n' "$unsupported" >"$runtime"
+  if run_rules plan >"$tmp/unsupported.out" 2>"$tmp/unsupported.err"; then
+    fail "group discovery widened the keyword anchor to $unsupported"
+  fi
+done
+
 source="$repo/scripts/configure-shellcrash-service-rules.sh"
 for expected in \
   'DOMAIN-SUFFIX,chatgpt.com' \

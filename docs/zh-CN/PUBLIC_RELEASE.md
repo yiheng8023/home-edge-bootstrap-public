@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.7` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.8` 对应：
 
-- `home-edge-bootstrap-v0.1.7-source.zip`
-- `home-edge-bootstrap-v0.1.7-source.tar.gz`
-- `home-edge-bootstrap-v0.1.7-offline.zip`
-- `home-edge-bootstrap-v0.1.7-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.8-source.zip`
+- `home-edge-bootstrap-v0.1.8-source.tar.gz`
+- `home-edge-bootstrap-v0.1.8-offline.zip`
+- `home-edge-bootstrap-v0.1.8-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -98,11 +98,11 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
 
-## v0.1.7 有限验收合同
+## v0.1.8 有限验收合同
 
-v0.1.7 在既有个人／可信分发的有限范围交付当前源码与不变的已审阅运行时。发布必须满足：
+v0.1.8 在既有个人／可信分发的有限范围交付当前源码与不变的已审阅运行时。发布必须满足：
 
-- 保留全部旧标签、资产及历史发布章节，新建九项已验证且精确标签正确的 v0.1.7 资产。
+- 保留全部旧标签、资产及历史发布章节，新建九项已验证且精确标签正确的 v0.1.8 资产。
 - 通过精确提交的 Linux、macOS、Windows 和 subscription-behavior 门禁，再核验匹配的具体归档及中英文渲染链接。
 - 验证本机帮助／会话语言切换、新的路由器／路径观测、已有项目诊断／复用、正面不存在才允许首装、拒绝未知／外来／链接、`REPLACE` 后再 `APPLY` 刷新及持锁所有权复核。
 - 验证相同目标／当前缓存／正确桌面指向的复用、自有更新两次确认、无所有权内容保护，以及事件边界的已知结构／目录／工具退化；帮助／语言／退出继续可用。

@@ -70,6 +70,7 @@ The paths below bind to this running project. Open/read them yourself; help does
   } else {
     Write-Host (Decode-Text "SG9tZSBFZGdlIOacrOWcsOW4ruWKqQrluK7liqnlkozor63oqIDliIfmjaLlj6rmlLnlj5jlvZPliY3nlYzpnaLvvJvkuI3kvJrogZTns7vot6/nlLHlmajjgIHogZTnvZHjgIHmiZPlvIDnqIvluo/miJblhpnlhaXpobnnm67jgIIKCuiPnOWNleivtOaYju+8mgoxLiDlvIDlp4vmiJbmjqXnu63vvJrpgInmi6nlt7LmnInkvJror53miJbovpPlhaUgdXNlckByb3V0ZXLjgILlhYjor4rmlq3lkozlrqHmn6XorqHliJLvvIzlho3noa7orqTkv67mlLnjgIIKICAg6aaW5qyh5a6J6KOF77ya5YWI5qC45a+55YW85a655oCn5LiO5YmN572u5p2h5Lu277yM5YaN5a6h5p+l6YOo572y6K6h5YiS44CC5bey57uP5a6J6KOF77ya5YWI5p+l55yL6K+K5pat5ZKM5Lya6K+d54q25oCB77yb5LiN6KaB6buY6K6k6ZyA6KaB6YeN6KOF5oiW6KaG55uW44CCCjIuIOWPquivu+iviuaWre+8mui/kOihjCBkb2N0b3LjgILlj6ror7vmo4Dmn6Xlj6/og73ogZTns7vlt7LphY3nva7ot6/nlLHlmajvvIzor7flrqHmn6Xlj5HnjrDnmoTpl67popjjgIIKMy4g5Lya6K+d54q25oCB77ya6K+75Y+W5pys5Zyw5L+d5a2Y55qE54q25oCB5ZKM5LiL5LiA5q2l5o+Q56S677yb6K6w5b2V5Lit55qE5ZG95Luk5LuF5L2c5Li65pWw5o2u5bGV56S677yM5q2k6YCJ6aG55LiN5Lya5omn6KGM5a6D5Lus44CCCjQuIOemu+e6vyBidW5kbGXvvJrpg6jnvbLliY3pqozor4Hov5DooYzml7bljIXkuI7lsLHnu6rmg4XlhrXjgIIKNS4g5pSv5oyB5YyF77ya5a+85Ye65pys5Zyw6ISx5pWP5pSv5oyB5YyF77yb5YiG5Lqr5YmN6K+35a6h5p+l5YaF5a6544CCCjYgLyBIIC8gPyAvIGhlbHDvvJrlnKjkuLvoj5zljZXpmo/ml7bmn6XnnIvmraTmnKzlnLDluK7liqnjgIIKNy4g6aG555uu6YCA5Ye677ya5YWI5pi+56S66aG555uu56e76Zmk6K6h5YiS77yM6L6T5YWlIERFQ09NTUlTU0lPTiDlkI7miY3kvJrmiafooYzjgIIKOC4g5qGM6Z2i5YWl5Y+j77ya5piO56Gu5Yib5bu65oiW5pu05paw5pys5py65ZCv5Yqo5YWl5Y+j77yM5Lya5YaZ5YWl5pys5py65ZCv5Yqo5paH5Lu244CCCjkgLyBMIC8gbGFuZ3VhZ2XvvJrnq4vljbPliIfmjaLmnKzmrKHkvJror53nmoTkuK3oi7HmlofvvIzkv53nlZnot6/nlLHlmajlkozmiYDpgInkvJror53jgIIKUi4g5piO56Gu5Yi35paw5bey56Gu6K6k5bGe5LqO5pys6aG555uu55qE6ISa5pys77ya5YWI5a6h5p+l5pyA5paw5a6J6KOF5o6i5rWL5LiO6K6h5YiS77yM5YaN5YWI6L6T5YWlIFJFUExBQ0Ug5ZCO6L6T5YWlIEFQUExZ44CC5L+d55WZ6L+Q6KGM5pe25ZKM5qC45b+D6LWE5Lqn77yb6aG555uu566h55CG55qE562W55Wl44CB6ZuG5oiQ5ZKM6YWN572u5Y+v6IO95oyJ6K6h5YiS5pu05paw77yb5b2T5YmN6aG555uu5qCR5aSH5Lu96IezIDzpobnnm67ot6/lvoQ+LnByZXbvvIzml6flpIfku73lj6/og73ooqvmm7/mjaLjgIIKMC4g6YCA5Ye644CC6L6T5YWl57uT5p2f77yIRU9G77yJ5Lya6YCA5Ye677yb56Gu6K6k5o+Q56S65aSE55qEIEVPRiDmiJblhbbku5bku6TniYzlj5bmtojor6Xmk43kvZzjgIJDdHJsK0Mg5Lit5pat44CCCgrlronlhajnuqbmnZ/vvJrnoa7orqTliY3lrqHmn6Xnsr7noa7lkb3ku6TjgIHnm67moIfjgIHpooTmnJ/lvbHlk43jgIHkvJror53lkozml6Xlv5fkvY3nva7ku6Xlj4rlm57pgIDot6/lvoTjgIIK6YOo572y5b+F6aG757K+56Gu6L6T5YWlIEFQUExZ77yb5Yi35paw5pys6aG555uu6L+Y5b+F6aG75YWI6L6T5YWlIFJFUExBQ0XvvJvnnJ/lrp7oh6rmhIjlv4Xpobvnsr7noa7ovpPlhaUgRU5BQkxF77yb6aG555uu56e76Zmk5b+F6aG757K+56Gu6L6T5YWlIERFQ09NTUlTU0lPTuOAggrku6TniYzljLrliIblpKflsI/lhpnkuJTkuI3mjqXlj5flpJrkvZnnqbrmoLzjgILluK7liqnjgIHliIfmjaLor63oqIDmiJblm57ovabpg73kuI3mjojmnYPov5nkupvmk43kvZzjgIIK5aaC5pON5L2c5bCa5LiN5Y+v55So77yM5Y+v57un57ut5p+l55yL5pys5Zyw5biu5Yqp77yM5bm25Zyo5re75Yqg6YCC6YWN5Zmo5YmN5qC45a+55YW85a655oCn44CCCgrpobnnm67nm67lvZXvvJror7fpgInmi6nlrozmlbTlhYvpmobmiJbop6PljovlkI7nmoTmlofku7blpLnvvIzlhbbkuK3lupTljIXlkKsgUFJPSkVDVOOAgVJFQURNRS5tZCDlkowgc2NyaXB0c++8m+S4jeimgemAieaLqSBaSVAg5oiW5Y2V5Liq6ISa5pys44CCCuS4i+mdoui3r+W+hOe7keWumuW9k+WJjei/kOihjOeahOmhueebruOAguivt+iHquihjOaJk+W8gOaIlumYheivu++8m+W4ruWKqeS4jeS8muaJk+W8gOeoi+W6j+OAggo=")
   }
+  Write-Host (Decode-Text "TCAvIExhbmd1YWdlOiBFbmdsaXNoIDwtPiDkuK3mlocgKHRoaXMgc2Vzc2lvbiAvIOS7heW9k+WJjeS8muivnSku")
   Write-Host "project_dir=$Repo"
   $DocsDir = if ($Language -eq "en") { Join-Path $Repo "docs" } else { Join-Path $Repo "docs\zh-CN" }
   Write-Host "readme=$(Join-Path $Repo $(if ($Language -eq 'en') { 'README.md' } else { 'README.zh-CN.md' }))"
@@ -152,10 +153,13 @@ $Zh = @{
   Session = Decode-Text "My4g5p+l55yL5b2T5YmNIGJvb3RzdHJhcCDkvJror53nirbmgIE="
   Bundle = Decode-Text "NC4g6aqM6K+B56a757q/6L+Q6KGM5pe2IGJ1bmRsZQ=="
   Support = Decode-Text "NS4g5a+85Ye66ISx5pWP5pSv5oyB5YyF"
-  Help = Decode-Text "Ni4g5p+l55yL5biu5Yqp5LiO5a6J5YWo6L6555WM"
-  Decommission = Decode-Text "Ny4g5a6h5p+l6aG555uu6YCA5Ye6"
+  Help = Decode-Text "Ni4g5p+l55yL5biu5Yqp5LiO5a6J5YWo6L6555WMIFtIIC8gPyAvIGhlbHBd"
+  Decommission = Decode-Text "Ny4g5a6h5p+l6aG555uu6YCA5Ye677yI56e76Zmk6aG555uu5Y+X566h5YaF5a6577yM6ZyAIERFQ09NTUlTU0lPTu+8iQ=="
   Exit = Decode-Text "MC4g5LiN5YGa5L+u5pS55bm26YCA5Ye6"
-  Prompt = Decode-Text "6K+36YCJ5oupOiA="
+  Prompt = Decode-Text "U2VsZWN0IC8g6K+36YCJ5oupICgwLTksIEw6IExhbmd1YWdlIC8g6K+t6KiALCBIOiBIZWxwIC8g5biu5YqpLCBSKTog"
+  Language = Decode-Text "6K+t6KiA"
+  Chinese = Decode-Text "5Lit5paH"
+  Current = Decode-Text "5b2T5YmN"
   Invalid = Decode-Text "5peg5pWI6YCJ5oup44CC"
   RouterPrompt = Decode-Text "6K+36L6T5YWl6Lev55Sx5ZmoIFNTSCDnm67moIfvvIh1c2VyQGlw77yJOiA="
   RouterInvalid = Decode-Text "6Lev55Sx5Zmo55uu5qCH5qC85byP5peg5pWI44CC"
@@ -174,21 +178,27 @@ function Show-Menu {
     Write-Host "3. View current bootstrap session state"
     Write-Host "4. Verify offline runtime bundle"
     Write-Host "5. Export a redacted support bundle"
-    Write-Host "6. Show help and safety boundaries"
-    Write-Host "7. Review project decommission"
+    Write-Host "6. Show help and safety boundaries [H / ? / help]"
+    Write-Host "7. Review project decommission (removes project-managed content; requires DECOMMISSION)"
     Write-Host "8. Create or refresh a local desktop launcher"
-    Write-Host "9 / L / language. Switch language (current: English)"
-    Write-Host "H / ? / help. Local help"
-    Write-Host "R. Reinstall / refresh this project only (requires REPLACE then APPLY)"
+  } else {
+    foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Decommission", "Desktop")) { Write-Host $Zh[$Key] }
+  }
+  $CurrentLanguage = if ($Language -eq "en") { "English" } else { $Zh.Chinese }
+  Write-Host ("9. Language / {0} (English / {1}; current / {2}: {3}) [L / language]" -f $Zh.Language, $Zh.Chinese, $Zh.Current, $CurrentLanguage)
+  Write-Host ""
+  Write-Host (Decode-Text "RGFuZ2Vyb3VzIGNoYW5nZXMgLyDljbHpmanlj5jmm7QgKDcgLyBSKTo=")
+  if ($Language -eq "en") {
+    Write-Host "  7 removes project-managed content; R can update policy, integration and configuration, and replace an older project backup."
+    Write-Host "R. Reinstall / refresh this project only (replaces project content; requires REPLACE then APPLY)"
     Write-Host "Local project located; router installation is checked only after choosing a target and an operation."
     Write-Host "0. Exit without changes"
-    return "Select: "
+  } else {
+    Write-Host (Decode-Text "ICA3IOaMieiuoeWIkuenu+mZpOmhueebruWPl+euoeWGheWuue+8m1Ig5Y+v5pu05paw562W55Wl44CB6ZuG5oiQ5LiO6YWN572u77yM5bm25pu/5o2i5pen55qE6aG555uu5aSH5Lu944CC")
+    Write-Host (Decode-Text "Ui4g6YeN5paw5a6J6KOFIC8g5Yi35paw5pys6aG555uu77yI5pu/5o2i6aG555uu5YaF5a6577yM6ZyAIFJFUExBQ0Ug5YaNIEFQUExZ77yJ")
+    Write-Host (Decode-Text "5bey5a6a5L2N5pys5Zyw6aG555uu77yb6Lev55Sx5Zmo5a6J6KOF54q25oCB6ZyA6YCJ5oup55uu5qCH5ZKM5pON5L2c5ZCO5omN5qOA5p+l44CC")
+    Write-Host $Zh.Exit
   }
-  foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Decommission", "Desktop", "Exit")) { Write-Host $Zh[$Key] }
-  Write-Host (Decode-Text "OSAvIEwgLyBsYW5ndWFnZS4g5YiH5o2i6K+t6KiA77yI5b2T5YmN77ya5Lit5paH77yJ")
-  Write-Host (Decode-Text "SCAvID8gLyBoZWxwLiDmnKzlnLDluK7liqk=")
-  Write-Host (Decode-Text "Ui4g6YeN5paw5a6J6KOFIC8g5Yi35paw5pys6aG555uu77yI6ZyA5YWIIFJFUExBQ0Ug5YaNIEFQUExZ77yJ")
-  Write-Host (Decode-Text "5bey5a6a5L2N5pys5Zyw6aG555uu77yb6Lev55Sx5Zmo5a6J6KOF54q25oCB6ZyA6YCJ5oup55uu5qCH5ZKM5pON5L2c5ZCO5omN5qOA5p+l44CC")
   return $Zh.Prompt
 }
 

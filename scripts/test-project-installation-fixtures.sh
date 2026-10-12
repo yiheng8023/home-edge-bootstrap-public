@@ -41,6 +41,59 @@ cp "$repo/scripts/subscription-tools.sh" "$installed/jffs/scripts/home-edge-subs
 cp "$repo/scripts/subscription-merge.jq" "$installed/jffs/scripts/home-edge-subscription-merge.jq"
 before=$(sha256sum "$installed/jffs/scripts/home-edge-self-heal.sh")
 observe "$installed" installed
+
+# A historical empty policy backup is preserved, but is not an active script or
+# evidence of project ownership. Only the exact timestamped filename is exempt.
+policy_backup="$installed/jffs/scripts/home-edge-policy.local.bak.20260630102243"
+: >"$policy_backup"
+backup_before=$(sha256sum "$policy_backup")
+observe "$installed" installed
+[ -f "$policy_backup" ] && [ ! -s "$policy_backup" ] || fail 'empty historical backup was changed'
+[ "$backup_before" = "$(sha256sum "$policy_backup")" ] || fail 'empty historical backup bytes changed'
+if home_edge_require_project_replacement 0 '' 2>/dev/null; then fail 'empty backup bypassed installed replacement guard'; fi
+
+printf 'operator-policy-backup\n' >"$policy_backup"
+backup_before=$(sha256sum "$policy_backup")
+observe "$installed" unknown
+grep -Fxq 'project_install_reason=foreign_active_artifact' "$tmp/observation" || fail 'nonempty unidentified backup was exempted'
+if home_edge_require_project_replacement 1 REPLACE 2>/dev/null; then fail 'nonempty unidentified backup was overridden'; fi
+[ "$backup_before" = "$(sha256sum "$policy_backup")" ] || fail 'nonempty historical backup bytes changed'
+rm "$policy_backup"
+
+for backup_name in \
+  home-edge-policy.local.bak.2026063010224 \
+  home-edge-policy.local.bak.202606301022430 \
+  home-edge-policy.local.bak.20260630102243.extra \
+  home-edge-policy.local.bak.abcdefghijklmn \
+  home-edge-policy.local; do
+  wrong_backup="$installed/jffs/scripts/$backup_name"
+  : >"$wrong_backup"
+  backup_before=$(sha256sum "$wrong_backup")
+  observe "$installed" unknown
+  if home_edge_require_project_replacement 1 REPLACE 2>/dev/null; then fail 'unrecognized empty backup was overridden'; fi
+  [ -f "$wrong_backup" ] && [ "$backup_before" = "$(sha256sum "$wrong_backup")" ] || fail 'unrecognized empty backup changed'
+  rm "$wrong_backup"
+done
+
+empty_target="$tmp/empty-policy-backup-target"
+: >"$empty_target"
+backup_before=$(sha256sum "$empty_target")
+MSYS=winsymlinks:nativestrict ln -s "$empty_target" "$policy_backup"
+backup_link_before=$(readlink "$policy_backup")
+observe "$installed" unknown
+grep -Fxq 'project_install_reason=symlink_path' "$tmp/observation" || fail 'historical backup symlink was exempted'
+if home_edge_require_project_replacement 1 REPLACE 2>/dev/null; then fail 'historical backup symlink was overridden'; fi
+[ -L "$policy_backup" ] && [ "$backup_link_before" = "$(readlink "$policy_backup")" ] || fail 'historical backup symlink changed'
+[ "$backup_before" = "$(sha256sum "$empty_target")" ] || fail 'historical backup symlink target bytes changed'
+rm "$policy_backup"
+
+backup_only="$tmp/backup-only"; mkdir -p "$backup_only/jffs/scripts"
+: >"$backup_only/jffs/scripts/home-edge-policy.local.bak.20260630102243"
+observe "$backup_only" partial
+grep -Fxq 'project_install_replace_allowed=0' "$tmp/observation" || fail 'empty backup established project ownership'
+if home_edge_require_project_replacement 1 REPLACE 2>/dev/null; then fail 'empty backup authorized replacing unowned residue'; fi
+observe "$installed" installed
+
 if home_edge_require_project_replacement 0 '' 2>"$tmp/guard"; then fail 'installed default allows writing'; fi
 [ "$before" = "$(sha256sum "$installed/jffs/scripts/home-edge-self-heal.sh")" ] || fail 'observation changed active bytes'
 for confirmation in '' replace 'REPLACE ' yes; do

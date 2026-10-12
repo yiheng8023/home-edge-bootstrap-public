@@ -23,9 +23,11 @@ readiness alone.
 
 ## Claim boundary
 
-For v0.1.7, exact-commit host/fixture and concrete archive verification must additionally cover bilingual local help/session language switching, fresh target-bound project observation, default diagnosis/reuse, project-only refresh with `REPLACE` then `APPLY`, lock-time ownership rechecks, safe desktop reuse/update and event-driven directory/tool degradation. Project-only scope preserves runtime/core assets but may update managed integration/configuration. These gates do not establish exhaustive fault detection or complete runtime rollback.
+For v0.1.8, also verify exact OpenAI keyword/dependency-group conflict rejection, explicit service-rule binding, the bounded empty historical-backup exception, native Windows SSH stdin framing, and the ordered menu's always-discoverable bilingual language entry. Persistent service rules and current runtime activation require separate observations; a provider [AI] label or ordinary latency probe is not a service-availability verdict.
 
-For v0.1.7, limited source/host/archive distribution additionally requires three-host guide entries,
+For v0.1.8, exact-commit host/fixture and concrete archive verification must additionally cover bilingual local help/session language switching, fresh target-bound project observation, default diagnosis/reuse, project-only refresh with `REPLACE` then `APPLY`, lock-time ownership rechecks, safe desktop reuse/update and event-driven directory/tool degradation. Project-only scope preserves runtime/core assets but may update managed integration/configuration. These gates do not establish exhaustive fault detection or complete runtime rollback.
+
+For v0.1.8, limited source/host/archive distribution additionally requires three-host guide entries,
 validated local location recovery and the concrete ZIP/tar entry metadata. The v0.1.5 exact-commit
 subscription-behavior gate and source-only yamlbridge preparation/activation prerequisites remain.
 Mihomo v1.19.32 and ShellCrash 1.9.4 are unchanged. Broad claims stay `blocked`; no new device,

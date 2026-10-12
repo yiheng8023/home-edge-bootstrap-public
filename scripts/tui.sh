@@ -94,6 +94,7 @@ R. 明确刷新本项目管理的内容：先审查最新安装探测与计划�
 EOF
     docs_dir="$repo/docs/zh-CN"; readme="$repo/README.zh-CN.md"
   fi
+  printf 'L / Language: English <-> 中文 (this session / 仅当前会话).\n'
   printf 'project_dir=%s\nreadme=%s\n' "$repo" "$readme"
   for name in LAUNCHER.md COMPATIBILITY.md RUNBOOK.md NO_WALL_BOOTSTRAP.md; do
     printf 'doc=%s/%s\n' "$docs_dir" "$name"
@@ -216,16 +217,17 @@ show_menu() {
 3. View current bootstrap session state
 4. Verify offline runtime bundle
 5. Export a redacted support bundle
-6. Show help and safety boundaries
-7. Review project decommission
+6. Show help and safety boundaries [H / ? / help]
+7. Review project decommission (removes project-managed content; requires DECOMMISSION)
 8. Create or refresh a local desktop launcher
-9 / L / language. Switch language (current: English)
-H / ? / help. Local help
-R. Reinstall / refresh this project only (requires REPLACE then APPLY)
+9. Language / 语言 (English / 中文; current / 当前: English) [L / language]
+
+Dangerous changes / 危险变更 (7 / R):
+  7 removes project-managed content; R can update policy, integration and configuration, and replace an older project backup.
+R. Reinstall / refresh this project only (replaces project content; requires REPLACE then APPLY)
 Local project located; router installation is checked only after choosing a target and an operation.
 0. Exit without changes
 EOF
-    printf 'Select: '
   else
     while IFS= read -r menu_line || [ -n "$menu_line" ]; do printf '%s\n' "$menu_line"; done <<'EOF'
 # Home Edge 引导器
@@ -234,17 +236,19 @@ EOF
 3. 查看当前 bootstrap 会话状态
 4. 验证离线运行时 bundle
 5. 导出脱敏支持包
-6. 查看帮助与安全边界
-7. 审查项目退出
+6. 查看帮助与安全边界 [H / ? / help]
+7. 审查项目退出（移除项目受管内容，需 DECOMMISSION）
 8. 创建或更新本机桌面启动入口
-9 / L / language. 切换语言（当前：中文）
-H / ? / help. 本地帮助
-R. 重新安装 / 刷新本项目（需先 REPLACE 再 APPLY）
+9. Language / 语言 (English / 中文; current / 当前: 中文) [L / language]
+
+Dangerous changes / 危险变更 (7 / R):
+  7 按计划移除项目受管内容；R 可更新策略、集成与配置，并替换旧的项目备份。
+R. 重新安装 / 刷新本项目（替换项目内容，需 REPLACE 再 APPLY）
 已定位本地项目；路由器安装状态需选择目标和操作后才检查。
 0. 不做修改并退出
 EOF
-    printf '请选择: '
   fi
+  printf 'Select / 请选择 (0-9, L: Language / 语言, H: Help / 帮助, R): '
 }
 
 state_value_env() {

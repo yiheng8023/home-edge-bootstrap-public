@@ -94,6 +94,13 @@ home_edge_inspect_installation() {
     if [ ! -f "$home_edge_install_file" ] || [ ! -r "$home_edge_install_file" ]; then
       home_edge_install_unknown unreadable_artifact; home_edge_install_emit; return 0
     fi
+    # Keep exact empty historical policy backups as unowned residue. They are
+    # neither active configuration nor proof of installation ownership.
+    case "${home_edge_install_file##*/}" in
+      home-edge-policy.local.bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
+        [ -s "$home_edge_install_file" ] || continue
+        ;;
+    esac
     # A familiar filename alone does not establish project ownership.
     case "${home_edge_install_file##*/}" in
       home-edge-policy.env) home_edge_install_signature='HEAL_GROUP|HEAL_DRY_RUN' ;;

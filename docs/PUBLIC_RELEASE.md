@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.7`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.8`, they are:
 
-- `home-edge-bootstrap-v0.1.7-source.zip`
-- `home-edge-bootstrap-v0.1.7-source.tar.gz`
-- `home-edge-bootstrap-v0.1.7-offline.zip`
-- `home-edge-bootstrap-v0.1.7-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.8-source.zip`
+- `home-edge-bootstrap-v0.1.8-source.tar.gz`
+- `home-edge-bootstrap-v0.1.8-offline.zip`
+- `home-edge-bootstrap-v0.1.8-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -110,11 +110,11 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
 
-## v0.1.7 Limited Acceptance Contract
+## v0.1.8 Limited Acceptance Contract
 
-v0.1.7 carries the current source and unchanged reviewed runtime within the existing limited personal/trusted-distribution scope. Publication requires:
+v0.1.8 carries the current source and unchanged reviewed runtime within the existing limited personal/trusted-distribution scope. Publication requires:
 
-- Preserve every older tag, asset and historical release section; create nine newly verified and exactly labeled v0.1.7 assets.
+- Preserve every older tag, asset and historical release section; create nine newly verified and exactly labeled v0.1.8 assets.
 - Pass exact-commit Linux, macOS, Windows and subscription-behavior gates, then verify the matching concrete archives and bilingual rendered links.
 - Verify local help/session language switching, fresh router/path observation, existing-project diagnosis/reuse, positive-absence first-install gating, unknown/foreign/link refusal, `REPLACE` then `APPLY` refresh and writer-lock ownership rechecks.
 - Verify same-target/current-cache/correct-pointer desktop reuse, two-confirmation owned updates, unowned-content protection and known structure/directory/tool degradation at event boundaries; help/language/exit remain available.
