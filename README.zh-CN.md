@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-本指南指向 v0.1.9；下载链接需要该发行版已发布，克隆命令需要对应标签已建立。v0.1.8 保留为未发布候选，不能当作已发布版本。
+本指南指向 v0.1.10；下载链接需要该发行版已发布，克隆命令需要对应标签已建立。v0.1.8 保留为未发布候选，不能当作已发布版本。
 
 ## 首次进入：取得文件、打开向导、保存入口
 
@@ -10,8 +10,8 @@
 
 | 你的情况 | 选择的方式 | 完整流程 |
 |---|---|---|
-| 首次使用，或需要准备离线运行时（推荐） | [发行版离线包（offline）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) | 选对应系统的一个包与 `SHA256SUMS` → 校验 → 全部解压 → 打开下表入口 → 选择 **1**，按检测结果继续 |
-| 路由器已有运行时，只需项目脚本与文档 | [发行版源码包（source）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) | 选 `-source.zip` 或 `-source.tar.gz` 与 `SHA256SUMS` → 校验并解压 → 同样打开入口；该包不含运行时 |
+| 首次使用，或需要准备离线运行时（推荐） | [发行版离线包（offline）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | 选对应系统的一个包与 `SHA256SUMS` → 校验 → 全部解压 → 打开下表入口 → 选择 **1**，按检测结果继续 |
+| 路由器已有运行时，只需项目脚本与文档 | [发行版源码包（source）](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | 选 `-source.zip` 或 `-source.tar.gz` 与 `SHA256SUMS` → 校验并解压 → 同样打开入口；该包不含运行时 |
 | 已有 Git，想保留本地仓库 | Git 克隆 | 按下方命令明确保存位置 → 打开克隆目录中的同一入口；无需再下载另一份项目包 |
 | 已有完整解压目录或克隆目录 | 复用现有目录 | 跳过获取，直接执行下方“打开并核实目录”；不同副本不要混用 |
 | 已创建本机桌面入口 | 复用桌面入口 | 打开 `Home Edge Bootstrap` → 入口核实登记目录；目录失效时重新选择并核实 → 选择 **1** 接续 |
@@ -27,9 +27,9 @@
 
 | 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
 |---|---|---|
-| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.zip) | 双击 `start.cmd` |
-| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | 双击 `start.command` |
-| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
+| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.zip) | 双击 `start.cmd` |
+| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | 双击 `start.command` |
+| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
 
 下载完在浏览器的下载记录中选择“在文件夹中显示”（Windows 常用 **Ctrl+J**），再**解压整个包**。可将解压文件夹保存在“文档”或自己的常用目录；不限定盘符、用户名或路径。不要在压缩包窗口内运行，也不要只取一个脚本。安装只需对应系统的一种包；校验文件和复制即用的校验步骤见 [发布说明](docs/zh-CN/RELEASE_NOTES.md)。
 
@@ -41,7 +41,7 @@
 
 macOS 若系统要求确认来源，核对下载来源后按系统提供的“打开”流程处理；如果执行权限没有保留，可通过终端运行。Linux 不同桌面的脚本关联不同：没有“在终端运行”时，打开终端，输入 `sh `（末尾保留空格），把 `start.sh` 拖进去，再按回车。macOS 也支持这个替代入口，均无需先 `cd`。
 
-菜单默认中文；菜单内输入 **L**、**language** 或 **9** 即可切换英文。需要非交互参数时，可使用完整路径，例如 Windows 的 `& "D:\实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
+初始语言按显式参数、有效的 HOME_EDGE_LANGUAGE 和系统界面语言选择；无信息时使用中文。每层输入 **L**、**language** 或 **9** 可切换中英文并留在当前页，详见 [语言规则](docs/zh-CN/LAUNCHER.md)。需要非交互参数时，可使用完整路径，例如 Windows 的 `& "D:\实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
 
 ### Git 克隆：保存在哪里，如何启动
 
@@ -53,7 +53,7 @@ Windows PowerShell:
 $GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($GitCommand) {
   $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-  & $GitCommand.Source clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  & $GitCommand.Source clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
   if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") }
 } else {
   Write-Host "未找到 Git；请改用上方发行包下载方式。"
@@ -64,11 +64,11 @@ macOS / Linux:
 
 ```sh
 project_dir="$HOME/home-edge-bootstrap"
-git clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+git clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
   sh "$project_dir/start.sh"
 ```
 
-克隆输出的目录就是项目位置；不需要先 `cd`。这里选择发行标签 `v0.1.9`，并非自动跟随开发分支；后续更新由你有意选择。电脑上已有项目不等于路由器已安装，实际安装状态仍由向导探测。
+克隆输出的目录就是项目位置；不需要先 `cd`。这里选择发行标签 `v0.1.10`，并非自动跟随开发分支；后续更新由你有意选择。电脑上已有项目不等于路由器已安装，实际安装状态仍由向导探测。
 
 ### 以后从固定入口进入
 
@@ -82,18 +82,18 @@ git clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edg
 
 ### 帮助、语言与已有安装
 
-在主菜单输入 **H**、**?**、**help** 或 **6** 查看本机帮助：菜单动作、前置条件、确认、恢复与文档路径。输入 **L**、**language** 或 **9** 即时切换中英文。切换保留路由器目标与所选会话，只在本次 TUI 会话有效，不联网、不写全局设置。**0** 退出。
+菜单按 **1–9** 显示：1–3 常用操作，4–6 工具与帮助，7 维护，8 本机入口，9 语言。**6 / H / ? / help** 进入帮助子菜单；**0** 在主菜单退出，在子菜单返回。帮助、切换语言和导航不联网、不写项目，切换保留路由器和会话；EOF 退出整个向导。完整菜单和实际文档说明见 [启动契约](docs/zh-CN/LAUNCHER.md)。
 
-选择 **1** 开始或接续。系统对所选路由器和项目路径进行新的只读探测，区分 `installed`、`partial`、`not_installed` 和 `unknown`。发现已有项目内容时，默认诊断并复用保存的会话。`installed` 只表示可识别的项目自有内容存在，不代表运行时健康或网络／生命周期完整验收；单独安装 ShellCrash/Mihomo 不等于安装本项目。只有正面确认项目不存在才允许首次安装；所有权未知、外来内容、链接或探测失败／格式异常时，停止部署并要求审查。
+选择 **1** 开始或接续，先读取所选路由器和路径的当前证据；已有项目默认诊断并复用会话。项目存在不等于健康验收；只有正面确认不存在才允许首次部署，未知所有权、外来内容、链接或异常探测会阻断。
 
-需要刷新项目自有内容时，主动选择 **R**，审阅目标、计划和 `<项目路径>.prev` 备份，再精确输入 **REPLACE**，随后输入 **APPLY**。旧 `.prev` 备份可能被替换。此操作使用仅项目部署范围，阻止运行时／core 载荷替换，但可能更新项目受管集成与配置，不是完整运行时回滚。实际写者在取得锁后重新检查所有权。运行时替换与 core 替换仍须分别显式选择；仅替换运行时会保留已有 core，除非另行指定 `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1`。
+**7 → 1** 刷新本项目，旧快捷键 **R** 仍直接进入刷新计划；审查目标、计划与可能替换旧备份的 `<项目路径>.prev` 后，精确输入 **REPLACE**、**APPLY**。刷新保留运行时／core 载荷，但可能改变受管集成和配置。**7 → 2** 审查项目退出，执行需 **DECOMMISSION**。
 
-向导在菜单／动作切换及重要工作前后重新检查当前项目结构、目录实例和所需工具可用性。已知条件退化会阻断受影响动作并提供恢复指引，**H**、**L** 与 **0** 仍可用。这是事件触发的检查，不是后台守护，也不声称识别全部未知故障。支持的恢复路径见启动契约。
+向导发现项目／目录／工具退化时阻断受影响动作，保留帮助、语言和退出；按报告恢复后再重试。详细边界见 [启动契约](docs/zh-CN/LAUNCHER.md)。
 
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
 发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) ·
 [发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
 
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
@@ -364,7 +364,7 @@ Yacd-meta 初始默认：延迟从小到大、隐藏不可用节点、关闭自�
 详见[订阅自动化](docs/SUBSCRIPTION_AUTOMATION.md)。已发布 v0.1.4 下载包不会追溯包含
 这个源码功能；本站点验证与离线夹具证据分开，不扩大为全部固件或供应方的支持声明。
 
-v0.1.9 包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
+v0.1.10 包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
 节点订阅自动更新仍需宿主编译 yamlbridge（可信网络或预备模块缓存），包内没有预编译 parser；
 HTTPS 订阅、controller key、本地组过滤和站点显式启用是独立前提。详见[发布说明](docs/zh-CN/RELEASE_NOTES.md)。
 

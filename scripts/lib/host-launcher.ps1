@@ -54,7 +54,7 @@ function Assert-HomeEdgeRegistrationLeaf([string]$Path) {
 }
 
 function Assert-HomeEdgeRegistrationPaths([string]$Directory) {
-  foreach ($Relative in @("", "lib", ".home-edge-launcher-owned", "target.txt", "home-edge.cmd", "launch-tui.ps1", "lib\project-location.ps1", "lib\host-launcher.ps1")) {
+  foreach ($Relative in @("", "lib", ".home-edge-launcher-owned", "target.txt", "home-edge.cmd", "launch-tui.ps1", "lib\project-location.ps1", "lib\host-launcher.ps1", "lib\ui-language.ps1")) {
     $Path = if ($Relative) { Join-Path $Directory $Relative } else { $Directory }
     $Item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     if ($null -ne $Item) {

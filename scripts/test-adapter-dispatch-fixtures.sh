@@ -1,5 +1,7 @@
 #!/bin/sh
 set -eu
+HOME_EDGE_LANGUAGE=en
+export HOME_EDGE_LANGUAGE
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-adapter-dispatch.XXXXXX")
 trap 'rm -rf "$tmp"' 0 HUP INT TERM
@@ -7,6 +9,8 @@ tmp_physical=$(CDPATH= cd "$tmp" && pwd -P) || exit 1
 tmp=$tmp_physical
 fail() { echo "adapter_dispatch_fixture_tests=failed: $*" >&2; exit 1; }
 cp "$repo/bootstrap.sh" "$tmp/bootstrap.sh"
+mkdir -p "$tmp/scripts/lib"
+cp "$repo/scripts/lib/ui-language.sh" "$tmp/scripts/lib/"
 mkdir -p "$tmp/adapters/reference-a"
 printf '#!/bin/sh\nexit 0\n' >"$tmp/adapters/reference-a/detect.sh"
 printf '#!/bin/sh\nprintf "fixture_adapter=a argument=%%s\\n" "$1"\n' >"$tmp/adapters/reference-a/bootstrap.sh"

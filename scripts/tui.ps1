@@ -1,5 +1,5 @@
-param(
-  [string]$Language = "zh-CN",
+﻿param(
+  [string]$Language = "",
   [string]$Router = "",
   [switch]$NoColor,
   [switch]$Help,
@@ -52,12 +52,12 @@ Menu guide:
 3. Session: read saved local state and next-action hints. Saved commands are displayed as data, never executed by this choice.
 4. Offline bundle: verify the runtime bundle and readiness before deployment.
 5. Support: export a redacted local support bundle; review its contents before sharing.
-6 / H / ? / help: show this local help at any time from the main menu.
-7. Decommission: show the project removal plan, then require DECOMMISSION before applying it.
+6 / H / ? / help: open the local help menu; choose 5 there for full help.
+7. Project maintenance: open refresh/removal choices. Removal requires DECOMMISSION; refresh requires REPLACE then APPLY.
 8. Desktop: explicitly create or refresh a local launcher; this writes local launcher files.
 9 / L / language: toggle Chinese and English immediately for this session, keeping the router and selected session.
 R. Explicitly refresh owned project content: review a fresh installation probe and plan, then type REPLACE followed by APPLY. Runtime/core assets are preserved; project-managed policy, integration and configuration may change per plan. The current tree is backed up to <project-path>.prev; an older backup may be replaced.
-0. Exit. End of input (EOF) exits; at a confirmation prompt, EOF or any other token cancels that operation. Ctrl+C interrupts.
+0. Back from a submenu; exit from the main menu. End of input (EOF) exits; at a confirmation prompt, EOF or any other token cancels that operation. Ctrl+C interrupts.
 
 Safety: review the exact command, target, expected effect, session/log destinations and rollback path before confirming.
 Deployment requires exact APPLY; project refresh additionally requires REPLACE first; live self-heal requires exact ENABLE; project removal requires exact DECOMMISSION.
@@ -68,16 +68,24 @@ Project location: use the complete cloned or extracted folder containing PROJECT
 The paths below bind to this running project. Open/read them yourself; help does not open programs.
 '@
   } else {
-    Write-Host (Decode-Text "SG9tZSBFZGdlIOacrOWcsOW4ruWKqQrluK7liqnlkozor63oqIDliIfmjaLlj6rmlLnlj5jlvZPliY3nlYzpnaLvvJvkuI3kvJrogZTns7vot6/nlLHlmajjgIHogZTnvZHjgIHmiZPlvIDnqIvluo/miJblhpnlhaXpobnnm67jgIIKCuiPnOWNleivtOaYju+8mgoxLiDlvIDlp4vmiJbmjqXnu63vvJrpgInmi6nlt7LmnInkvJror53miJbovpPlhaUgdXNlckByb3V0ZXLjgILlhYjor4rmlq3lkozlrqHmn6XorqHliJLvvIzlho3noa7orqTkv67mlLnjgIIKICAg6aaW5qyh5a6J6KOF77ya5YWI5qC45a+55YW85a655oCn5LiO5YmN572u5p2h5Lu277yM5YaN5a6h5p+l6YOo572y6K6h5YiS44CC5bey57uP5a6J6KOF77ya5YWI5p+l55yL6K+K5pat5ZKM5Lya6K+d54q25oCB77yb5LiN6KaB6buY6K6k6ZyA6KaB6YeN6KOF5oiW6KaG55uW44CCCjIuIOWPquivu+iviuaWre+8mui/kOihjCBkb2N0b3LjgILlj6ror7vmo4Dmn6Xlj6/og73ogZTns7vlt7LphY3nva7ot6/nlLHlmajvvIzor7flrqHmn6Xlj5HnjrDnmoTpl67popjjgIIKMy4g5Lya6K+d54q25oCB77ya6K+75Y+W5pys5Zyw5L+d5a2Y55qE54q25oCB5ZKM5LiL5LiA5q2l5o+Q56S677yb6K6w5b2V5Lit55qE5ZG95Luk5LuF5L2c5Li65pWw5o2u5bGV56S677yM5q2k6YCJ6aG55LiN5Lya5omn6KGM5a6D5Lus44CCCjQuIOemu+e6vyBidW5kbGXvvJrpg6jnvbLliY3pqozor4Hov5DooYzml7bljIXkuI7lsLHnu6rmg4XlhrXjgIIKNS4g5pSv5oyB5YyF77ya5a+85Ye65pys5Zyw6ISx5pWP5pSv5oyB5YyF77yb5YiG5Lqr5YmN6K+35a6h5p+l5YaF5a6544CCCjYgLyBIIC8gPyAvIGhlbHDvvJrlnKjkuLvoj5zljZXpmo/ml7bmn6XnnIvmraTmnKzlnLDluK7liqnjgIIKNy4g6aG555uu6YCA5Ye677ya5YWI5pi+56S66aG555uu56e76Zmk6K6h5YiS77yM6L6T5YWlIERFQ09NTUlTU0lPTiDlkI7miY3kvJrmiafooYzjgIIKOC4g5qGM6Z2i5YWl5Y+j77ya5piO56Gu5Yib5bu65oiW5pu05paw5pys5py65ZCv5Yqo5YWl5Y+j77yM5Lya5YaZ5YWl5pys5py65ZCv5Yqo5paH5Lu244CCCjkgLyBMIC8gbGFuZ3VhZ2XvvJrnq4vljbPliIfmjaLmnKzmrKHkvJror53nmoTkuK3oi7HmlofvvIzkv53nlZnot6/nlLHlmajlkozmiYDpgInkvJror53jgIIKUi4g5piO56Gu5Yi35paw5bey56Gu6K6k5bGe5LqO5pys6aG555uu55qE6ISa5pys77ya5YWI5a6h5p+l5pyA5paw5a6J6KOF5o6i5rWL5LiO6K6h5YiS77yM5YaN5YWI6L6T5YWlIFJFUExBQ0Ug5ZCO6L6T5YWlIEFQUExZ44CC5L+d55WZ6L+Q6KGM5pe25ZKM5qC45b+D6LWE5Lqn77yb6aG555uu566h55CG55qE562W55Wl44CB6ZuG5oiQ5ZKM6YWN572u5Y+v6IO95oyJ6K6h5YiS5pu05paw77yb5b2T5YmN6aG555uu5qCR5aSH5Lu96IezIDzpobnnm67ot6/lvoQ+LnByZXbvvIzml6flpIfku73lj6/og73ooqvmm7/mjaLjgIIKMC4g6YCA5Ye644CC6L6T5YWl57uT5p2f77yIRU9G77yJ5Lya6YCA5Ye677yb56Gu6K6k5o+Q56S65aSE55qEIEVPRiDmiJblhbbku5bku6TniYzlj5bmtojor6Xmk43kvZzjgIJDdHJsK0Mg5Lit5pat44CCCgrlronlhajnuqbmnZ/vvJrnoa7orqTliY3lrqHmn6Xnsr7noa7lkb3ku6TjgIHnm67moIfjgIHpooTmnJ/lvbHlk43jgIHkvJror53lkozml6Xlv5fkvY3nva7ku6Xlj4rlm57pgIDot6/lvoTjgIIK6YOo572y5b+F6aG757K+56Gu6L6T5YWlIEFQUExZ77yb5Yi35paw5pys6aG555uu6L+Y5b+F6aG75YWI6L6T5YWlIFJFUExBQ0XvvJvnnJ/lrp7oh6rmhIjlv4Xpobvnsr7noa7ovpPlhaUgRU5BQkxF77yb6aG555uu56e76Zmk5b+F6aG757K+56Gu6L6T5YWlIERFQ09NTUlTU0lPTuOAggrku6TniYzljLrliIblpKflsI/lhpnkuJTkuI3mjqXlj5flpJrkvZnnqbrmoLzjgILluK7liqnjgIHliIfmjaLor63oqIDmiJblm57ovabpg73kuI3mjojmnYPov5nkupvmk43kvZzjgIIK5aaC5pON5L2c5bCa5LiN5Y+v55So77yM5Y+v57un57ut5p+l55yL5pys5Zyw5biu5Yqp77yM5bm25Zyo5re75Yqg6YCC6YWN5Zmo5YmN5qC45a+55YW85a655oCn44CCCgrpobnnm67nm67lvZXvvJror7fpgInmi6nlrozmlbTlhYvpmobmiJbop6PljovlkI7nmoTmlofku7blpLnvvIzlhbbkuK3lupTljIXlkKsgUFJPSkVDVOOAgVJFQURNRS5tZCDlkowgc2NyaXB0c++8m+S4jeimgemAieaLqSBaSVAg5oiW5Y2V5Liq6ISa5pys44CCCuS4i+mdoui3r+W+hOe7keWumuW9k+WJjei/kOihjOeahOmhueebruOAguivt+iHquihjOaJk+W8gOaIlumYheivu++8m+W4ruWKqeS4jeS8muaJk+W8gOeoi+W6j+OAggo=")
+    Write-Host (Decode-Text "SG9tZSBFZGdlIOacrOWcsOW4ruWKqQrluK7liqnlkozor63oqIDliIfmjaLlj6rmlLnlj5jlvZPliY3nlYzpnaLvvJvkuI3kvJrogZTns7vot6/nlLHlmajjgIHogZTnvZHjgIHmiZPlvIDnqIvluo/miJblhpnlhaXpobnnm67jgIIKCuiPnOWNleivtOaYju+8mgoxLiDlvIDlp4vmiJbmjqXnu63vvJrpgInmi6nlt7LmnInkvJror53miJbovpPlhaUgdXNlckByb3V0ZXLjgILlhYjor4rmlq3lkozlrqHmn6XorqHliJLvvIzlho3noa7orqTkv67mlLnjgIIKICAg6aaW5qyh5a6J6KOF77ya5YWI5qC45a+55YW85a655oCn5LiO5YmN572u5p2h5Lu277yM5YaN5a6h5p+l6YOo572y6K6h5YiS44CC5bey57uP5a6J6KOF77ya5YWI5p+l55yL6K+K5pat5ZKM5Lya6K+d54q25oCB77yb5LiN6KaB6buY6K6k6ZyA6KaB6YeN6KOF5oiW6KaG55uW44CCCjIuIOWPquivu+iviuaWre+8mui/kOihjCBkb2N0b3LjgILlj6ror7vmo4Dmn6Xlj6/og73ogZTns7vlt7LphY3nva7ot6/nlLHlmajvvIzor7flrqHmn6Xlj5HnjrDnmoTpl67popjjgIIKMy4g5Lya6K+d54q25oCB77ya6K+75Y+W5pys5Zyw5L+d5a2Y55qE54q25oCB5ZKM5LiL5LiA5q2l5o+Q56S677yb6K6w5b2V5Lit55qE5ZG95Luk5LuF5L2c5Li65pWw5o2u5bGV56S677yM5q2k6YCJ6aG55LiN5Lya5omn6KGM5a6D5Lus44CCCjQuIOemu+e6vyBidW5kbGXvvJrpg6jnvbLliY3pqozor4Hov5DooYzml7bljIXkuI7lsLHnu6rmg4XlhrXjgIIKNS4g5pSv5oyB5YyF77ya5a+85Ye65pys5Zyw6ISx5pWP5pSv5oyB5YyF77yb5YiG5Lqr5YmN6K+35a6h5p+l5YaF5a6544CCCjYgLyBIIC8gPyAvIGhlbHDvvJrov5vlhaXmnKzlnLDluK7liqnoj5zljZXvvIzpgInmi6kgNSDmn6XnnIvlrozmlbTluK7liqnjgIIKNy4g6aG555uu57u05oqk77ya6L+b5YWl5Yi35paw5oiW6YCA5Ye65a2Q6I+c5Y2V44CC6YCA5Ye66ZyAIERFQ09NTUlTU0lPTu+8m+WIt+aWsOmcgCBSRVBMQUNFIOWGjSBBUFBMWeOAggo4LiDmoYzpnaLlhaXlj6PvvJrmmI7noa7liJvlu7rmiJbmm7TmlrDmnKzmnLrlkK/liqjlhaXlj6PvvIzkvJrlhpnlhaXmnKzmnLrlkK/liqjmlofku7bjgIIKOSAvIEwgLyBsYW5ndWFnZe+8mueri+WNs+WIh+aNouacrOasoeS8muivneeahOS4reiLseaWh++8jOS/neeVmei3r+eUseWZqOWSjOaJgOmAieS8muivneOAggpSLiDmmI7noa7liLfmlrDlt7Lnoa7orqTlsZ7kuo7mnKzpobnnm67nmoTohJrmnKzvvJrlhYjlrqHmn6XmnIDmlrDlronoo4XmjqLmtYvkuI7orqHliJLvvIzlho3lhYjovpPlhaUgUkVQTEFDRSDlkI7ovpPlhaUgQVBQTFnjgILkv53nlZnov5DooYzml7blkozmoLjlv4PotYTkuqfvvJvpobnnm67nrqHnkIbnmoTnrZbnlaXjgIHpm4bmiJDlkozphY3nva7lj6/og73mjInorqHliJLmm7TmlrDvvJvlvZPliY3pobnnm67moJHlpIfku73oh7MgPOmhueebrui3r+W+hD4ucHJldu+8jOaXp+Wkh+S7veWPr+iDveiiq+abv+aNouOAggowLiDlrZDoj5zljZXov5Tlm57vvIzkuLvoj5zljZXpgIDlh7rjgILovpPlhaXnu5PmnZ/vvIhFT0bvvInkvJrpgIDlh7rvvJvnoa7orqTmj5DnpLrlpITnmoQgRU9GIOaIluWFtuS7luS7pOeJjOWPlua2iOivpeaTjeS9nOOAgkN0cmwrQyDkuK3mlq3jgIIKCuWuieWFqOe6puadn++8muehruiupOWJjeWuoeafpeeyvuehruWRveS7pOOAgeebruagh+OAgemihOacn+W9seWTjeOAgeS8muivneWSjOaXpeW/l+S9jee9ruS7peWPiuWbnumAgOi3r+W+hOOAggrpg6jnvbLlv4Xpobvnsr7noa7ovpPlhaUgQVBQTFnvvJvliLfmlrDmnKzpobnnm67ov5jlv4XpobvlhYjovpPlhaUgUkVQTEFDRe+8m+ecn+WunuiHquaEiOW/hemhu+eyvuehrui+k+WFpSBFTkFCTEXvvJvpobnnm67np7vpmaTlv4Xpobvnsr7noa7ovpPlhaUgREVDT01NSVNTSU9O44CCCuS7pOeJjOWMuuWIhuWkp+Wwj+WGmeS4lOS4jeaOpeWPl+WkmuS9meepuuagvOOAguW4ruWKqeOAgeWIh+aNouivreiogOaIluWbnui9pumDveS4jeaOiOadg+i/meS6m+aTjeS9nOOAggrlpoLmk43kvZzlsJrkuI3lj6/nlKjvvIzlj6/nu6fnu63mn6XnnIvmnKzlnLDluK7liqnvvIzlubblnKjmt7vliqDpgILphY3lmajliY3moLjlr7nlhbzlrrnmgKfjgIIKCumhueebruebruW9le+8muivt+mAieaLqeWujOaVtOWFi+mahuaIluino+WOi+WQjueahOaWh+S7tuWkue+8jOWFtuS4reW6lOWMheWQqyBQUk9KRUNU44CBUkVBRE1FLm1kIOWSjCBzY3JpcHRz77yb5LiN6KaB6YCJ5oupIFpJUCDmiJbljZXkuKrohJrmnKzjgIIK5LiL6Z2i6Lev5b6E57uR5a6a5b2T5YmN6L+Q6KGM55qE6aG555uu44CC6K+36Ieq6KGM5omT5byA5oiW6ZiF6K+777yb5biu5Yqp5LiN5Lya5omT5byA56iL5bqP44CCCg==")
   }
   Write-Host (Decode-Text "TCAvIExhbmd1YWdlOiBFbmdsaXNoIDwtPiDkuK3mlocgKHRoaXMgc2Vzc2lvbiAvIOS7heW9k+WJjeS8muivnSku")
+  Show-Documents
+}
+function Show-Documents {
   Write-Host "project_dir=$Repo"
   $DocsDir = if ($Language -eq "en") { Join-Path $Repo "docs" } else { Join-Path $Repo "docs\zh-CN" }
-  Write-Host "readme=$(Join-Path $Repo $(if ($Language -eq 'en') { 'README.md' } else { 'README.zh-CN.md' }))"
+  $Readme = Join-Path $Repo $(if ($Language -eq 'en') { 'README.md' } else { 'README.zh-CN.md' })
+  if (Test-Path -LiteralPath $Readme -PathType Leaf) { Write-Host "readme=$Readme" }
+  $Quickstart = Join-Path $Repo $(if ($Language -eq 'en') { 'QUICKSTART.md' } else { 'QUICKSTART.zh-CN.md' })
+  if (Test-Path -LiteralPath $Quickstart -PathType Leaf) { Write-Host "doc=$Quickstart" }
   foreach ($Name in @("LAUNCHER.md", "COMPATIBILITY.md", "RUNBOOK.md", "NO_WALL_BOOTSTRAP.md")) {
-    Write-Host "doc=$(Join-Path $DocsDir $Name)"
+    $Document = Join-Path $DocsDir $Name
+    if (Test-Path -LiteralPath $Document -PathType Leaf) { Write-Host "doc=$Document" }
   }
 }
+
 function Switch-Language {
   $script:Language = if ($Language -eq "en") { "zh-CN" } else { "en" }
   Write-Host "language=$Language"
@@ -97,19 +105,35 @@ function Test-RouterTarget([string]$Target) {
   return -not ($HostPart.StartsWith('.') -or $HostPart.EndsWith('.') -or $HostPart.Contains('..'))
 }
 
-if ($Language -notin @("zh-CN", "en")) { [Console]::Error.WriteLine("unsupported language: $Language"); exit 2 }
+$script:LanguageReady = $true
+$LanguageHelper = Join-Path $PSScriptRoot "lib\ui-language.ps1"
+if ($PSBoundParameters.ContainsKey('Language') -and -not $Language) { [Console]::Error.WriteLine('unsupported language: empty'); exit 2 }
+if (Test-Path -LiteralPath $LanguageHelper -PathType Leaf) {
+  try { . $LanguageHelper; $Language = Resolve-HomeEdgeUiLanguage -ExplicitLanguage $Language }
+  catch { [Console]::Error.WriteLine($_.Exception.Message); exit 2 }
+} else {
+  $script:LanguageReady = $false
+  if (-not $Language) { $Language = 'zh-CN' }
+  if ($Language -cnotin @('zh-CN','en')) { [Console]::Error.WriteLine("unsupported language: $Language"); exit 2 }
+  Write-Host 'missing_component=scripts/lib/ui-language.ps1'
+  Write-Host 'Restore the complete project folder / 请恢复完整项目目录。'
+  function Get-HomeEdgeUiText([string]$Language, [string]$Chinese, [string]$English) { if ($Language -eq 'en') { $English } else { $Chinese } }
+}
+function Write-UiText([string]$Chinese, [string]$English) { Write-Host (Get-HomeEdgeUiText -Language $Language -Chinese $Chinese -English $English) }
 if ($Router -and -not (Test-RouterTarget $Router)) { [Console]::Error.WriteLine("invalid router target: $Router"); exit 2 }
 if ($Help) { Show-Usage; exit 0 }
 if ($Version) { Show-Version; exit 0 }
 
+$script:StartupReady = $script:LanguageReady
 try {
   . (Join-Path $PSScriptRoot "lib\project-location.ps1")
   . (Join-Path $PSScriptRoot "lib\host-launcher.ps1")
 } catch {
   Write-Host "startup_state=failed"
   Write-Host "project_location_state=invalid"
-  Write-Host $_.Exception.Message
-  exit 2
+  Write-Host "startup_detail=$($_.Exception.Message)"
+  Write-UiText "repair_hint=请恢复完整项目目录后重新启动；本地帮助、语言和退出仍可使用。" "repair_hint=Restore the complete project folder and restart. Local help, language and exit remain available."
+  $script:StartupReady = $false
 }
 
 function Test-Startup {
@@ -119,7 +143,8 @@ function Test-Startup {
   } catch {
     Write-Host "startup_state=failed"
     Write-Host "project_location_state=invalid"
-    Write-Host $_.Exception.Message
+    Write-Host "startup_detail=$($_.Exception.Message)"
+    Write-UiText "repair_hint=请恢复完整项目目录与所需本地工具后重新启动。" "repair_hint=Restore the complete project folder and required local tools, then restart."
     return $false
   }
   if (-not (Get-Command $script:PowerShellExecutable -ErrorAction SilentlyContinue)) {
@@ -129,9 +154,11 @@ function Test-Startup {
   }
   return $true
 }
-if (-not (Test-Startup)) { exit 2 }
+if ($script:StartupReady) { $script:StartupReady = Test-Startup }
+if (-not $script:StartupReady) { $script:LastActionStatus = 2; Write-UiText "repair_hint=请恢复完整项目目录及所需本地工具后重新启动；本地帮助、语言和退出仍可使用。" "repair_hint=Restore the complete project folder and required local tools, then restart. Local help, language and exit remain available." }
 
 function Test-CurrentProject {
+  if (-not $script:StartupReady) { $script:LastActionStatus = 2; return $false }
   try {
     if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot "lib\host-launcher.ps1") -PathType Leaf)) { throw "Missing scripts/lib/host-launcher.ps1." }
     [void](Resolve-HomeEdgeProject $Repo)
@@ -140,66 +167,69 @@ function Test-CurrentProject {
   } catch {
     $script:LastActionStatus = 2
     Write-Host "condition_state=project_degraded"
-    Write-Host $_.Exception.Message
-    Write-Host "repair_hint=Restore the complete original project folder and restart this guide from that folder."
+    Write-Host "condition_detail=$($_.Exception.Message)"
+    Write-UiText "repair_hint=项目目录或所需本地工具已变化；请恢复完整的原项目目录并从该目录重新启动。" "repair_hint=The project folder or required local tools changed; restore the complete original folder and restart from it."
     return $false
   }
 }
 
 $Zh = @{
-  Title = Decode-Text "IyBIb21lIEVkZ2Ug5byV5a+85Zmo"
-  Start = Decode-Text "MS4g5byA5aeL5oiW5o6l57ut5byV5a+85byP6YWN572u"
-  Doctor = Decode-Text "Mi4g6L+Q6KGM5Y+q6K+76K+K5pat"
-  Session = Decode-Text "My4g5p+l55yL5b2T5YmNIGJvb3RzdHJhcCDkvJror53nirbmgIE="
-  Bundle = Decode-Text "NC4g6aqM6K+B56a757q/6L+Q6KGM5pe2IGJ1bmRsZQ=="
-  Support = Decode-Text "NS4g5a+85Ye66ISx5pWP5pSv5oyB5YyF"
-  Help = Decode-Text "Ni4g5p+l55yL5biu5Yqp5LiO5a6J5YWo6L6555WMIFtIIC8gPyAvIGhlbHBd"
-  Decommission = Decode-Text "Ny4g5a6h5p+l6aG555uu6YCA5Ye677yI56e76Zmk6aG555uu5Y+X566h5YaF5a6577yM6ZyAIERFQ09NTUlTU0lPTu+8iQ=="
-  Exit = Decode-Text "MC4g5LiN5YGa5L+u5pS55bm26YCA5Ye6"
   Prompt = Decode-Text "U2VsZWN0IC8g6K+36YCJ5oupICgwLTksIEw6IExhbmd1YWdlIC8g6K+t6KiALCBIOiBIZWxwIC8g5biu5YqpLCBSKTog"
-  Language = Decode-Text "6K+t6KiA"
-  Chinese = Decode-Text "5Lit5paH"
-  Current = Decode-Text "5b2T5YmN"
-  Invalid = Decode-Text "5peg5pWI6YCJ5oup44CC"
   RouterPrompt = Decode-Text "6K+36L6T5YWl6Lev55Sx5ZmoIFNTSCDnm67moIfvvIh1c2VyQGlw77yJOiA="
   RouterInvalid = Decode-Text "6Lev55Sx5Zmo55uu5qCH5qC85byP5peg5pWI44CC"
   ApplyPrompt = Decode-Text "5Y2z5bCG5omn6KGM6YOo572y44CC6L6T5YWlIEFQUExZIOehruiupO+8jOWFtuS7lui+k+WFpeWPlua2iDog"
   EnablePrompt = Decode-Text "5Y2z5bCG5byA5ZCv55yf5a6e6Ieq5oSI44CC6L6T5YWlIEVOQUJMRSDnoa7orqTvvIzlhbbku5bovpPlhaXlj5bmtog6IA=="
   Cancelled = Decode-Text "5pON5L2c5bey5Y+W5raI44CC"
-  Safety = Decode-Text "5biu5Yqp5LiO5a6J5YWo6L6555WM77ya5Y+q6K+75pON5L2c5Y+v55u05o6l6L+Q6KGM77yb6YOo572y5ZKM55yf5a6e6Ieq5oSI5b+F6aG76L6T5YWl56Gu6K6k5Luk54mM44CC"
 }
 
-$Zh.Desktop = Decode-Text "OC4g5Yib5bu65oiW5pu05paw5pys5py65qGM6Z2i5ZCv5Yqo5YWl5Y+j"
 function Show-Menu {
-  if ($Language -eq "en") {
-    Write-Host "# Home Edge Guide"
-    Write-Host "1. Start or resume guided bootstrap"
-    Write-Host "2. Run read-only diagnosis"
-    Write-Host "3. View current bootstrap session state"
-    Write-Host "4. Verify offline runtime bundle"
-    Write-Host "5. Export a redacted support bundle"
-    Write-Host "6. Show help and safety boundaries [H / ? / help]"
-    Write-Host "7. Review project decommission (removes project-managed content; requires DECOMMISSION)"
-    Write-Host "8. Create or refresh a local desktop launcher"
+  if ($script:MenuPage -eq "help") {
+    Write-UiText "Home Edge 本地帮助 / 帮助菜单" "Home Edge local help / Help menu"
+    Write-UiText "1. 入门：首次安装 / 已安装" "1. Getting started: first installation / already installed"
+    Write-UiText "2. 安全与确认令牌" "2. Safety and confirmation tokens"
+    Write-UiText "3. 故障与恢复" "3. Troubleshooting and recovery"
+    Write-UiText "4. 当前项目文档路径" "4. Current project documentation paths"
+    Write-UiText "5. 完整帮助" "5. Full help"
+  } elseif ($script:MenuPage -eq "maintenance") {
+    Write-UiText "Home Edge / 项目维护" "Home Edge / Project maintenance"
+    Write-UiText "1. 刷新本项目 [R]：需 REPLACE 再 APPLY，可能更新策略、集成与配置及替换旧备份" "1. Refresh this project [R]: REPLACE then APPLY; may change policy, integration, configuration and replace an older backup"
+    Write-UiText "2. 项目退出：需 DECOMMISSION，按计划移除项目受管内容" "2. Decommission: DECOMMISSION removes project-managed content per plan"
   } else {
-    foreach ($Key in @("Title", "Start", "Doctor", "Session", "Bundle", "Support", "Help", "Decommission", "Desktop")) { Write-Host $Zh[$Key] }
+    Write-UiText "# Home Edge 引导器" "# Home Edge Guide"
+    Write-Host ""
+    Write-UiText "常用操作" "Common actions"
+    Write-UiText "1. 开始或接续引导式配置" "1. Start or resume guided bootstrap"
+    Write-UiText "2. 运行只读诊断" "2. Run read-only diagnosis"
+    Write-UiText "3. 查看当前 bootstrap 会话状态" "3. View current bootstrap session state"
+    Write-Host ""
+    Write-UiText "工具与帮助" "Tools and help"
+    Write-UiText "4. 验证离线运行时 bundle" "4. Verify offline runtime bundle"
+    Write-UiText "5. 导出脱敏支持包" "5. Export a redacted support bundle"
+    Write-UiText "6. 帮助 > [H / ? / help]" "6. Help > [H / ? / help]"
+    Write-Host ""
+    Write-UiText "维护与偏好" "Maintenance and preferences"
+    Write-UiText "7. 项目维护 >" "7. Project maintenance >"
+    Write-UiText "8. 创建或更新本机桌面启动入口" "8. Create or refresh a local desktop launcher"
   }
-  $CurrentLanguage = if ($Language -eq "en") { "English" } else { $Zh.Chinese }
-  Write-Host ("9. Language / {0} (English / {1}; current / {2}: {3}) [L / language]" -f $Zh.Language, $Zh.Chinese, $Zh.Current, $CurrentLanguage)
-  Write-Host ""
-  Write-Host (Decode-Text "RGFuZ2Vyb3VzIGNoYW5nZXMgLyDljbHpmanlj5jmm7QgKDcgLyBSKTo=")
-  if ($Language -eq "en") {
-    Write-Host "  7 removes project-managed content; R can update policy, integration and configuration, and replace an older project backup."
-    Write-Host "R. Reinstall / refresh this project only (replaces project content; requires REPLACE then APPLY)"
-    Write-Host "Local project located; router installation is checked only after choosing a target and an operation."
-    Write-Host "0. Exit without changes"
-  } else {
-    Write-Host (Decode-Text "ICA3IOaMieiuoeWIkuenu+mZpOmhueebruWPl+euoeWGheWuue+8m1Ig5Y+v5pu05paw562W55Wl44CB6ZuG5oiQ5LiO6YWN572u77yM5bm25pu/5o2i5pen55qE6aG555uu5aSH5Lu944CC")
-    Write-Host (Decode-Text "Ui4g6YeN5paw5a6J6KOFIC8g5Yi35paw5pys6aG555uu77yI5pu/5o2i6aG555uu5YaF5a6577yM6ZyAIFJFUExBQ0Ug5YaNIEFQUExZ77yJ")
-    Write-Host (Decode-Text "5bey5a6a5L2N5pys5Zyw6aG555uu77yb6Lev55Sx5Zmo5a6J6KOF54q25oCB6ZyA6YCJ5oup55uu5qCH5ZKM5pON5L2c5ZCO5omN5qOA5p+l44CC")
-    Write-Host $Zh.Exit
+  $CurrentLanguage = if ($Language -eq "en") { "English" } else { "中文" }
+  Write-Host "9. Language / 语言 (English / 中文; current / 当前: $CurrentLanguage) [L / language]"
+  if ($script:MenuPage -eq "main") { Write-UiText "0. 不做修改并退出" "0. Exit without changes" }
+  else { Write-UiText "0. 返回上一层" "0. Back" }
+  if ($script:MenuPage -eq "main") {
+    Write-UiText "R: 刷新本项目快捷键（确认及影响见项目维护）" "R: Project refresh shortcut (confirmations and effects in maintenance)"
+    return $Zh.Prompt
   }
-  return $Zh.Prompt
+  if ($script:MenuPage -eq "help") { return "Select / 请选择 (0-5/9, L: Language / 语言, H: Help / 帮助): " }
+  return "Select / 请选择 (0-2/9, L: Language / 语言, H: Help / 帮助, R): "
+}
+function Show-HelpTopic([string]$Choice) {
+  switch ($Choice) {
+    "1" { Write-UiText "首次安装：先阅读兼容性与前置条件，再选择主菜单 1，审查诊断和部署计划。已经安装：先查看诊断或会话状态，不要默认重装。" "First installation: read compatibility and prerequisites, then choose main menu 1 and review diagnosis and the deployment plan. Already installed: inspect diagnosis or session state before considering reinstall." }
+    "2" { Write-UiText "部署需 APPLY；刷新需 REPLACE 再 APPLY；真实自愈需 ENABLE；项目退出需 DECOMMISSION。令牌区分大小写且不接受多余空格。先审查命令、目标、影响与回退路径。帮助、语言或回车不授权写入。" "Deployment requires APPLY; refresh requires REPLACE then APPLY; live self-heal requires ENABLE; removal requires DECOMMISSION. Tokens are case-sensitive with no extra spaces. Review command, target, effects and rollback. Help, language and Enter do not authorize writes." }
+    "3" { Write-UiText "保留错误、会话和日志，先核对完整项目目录与所需本地工具。不要盲目重放写入；先核实实际状态。EOF 退出引导器；确认处 EOF 取消操作。本地帮助、语言和退出保持可用。" "Keep the error, session and logs; check the complete project folder and required local tools. Verify actual state before retrying a write. EOF exits the guide; EOF at confirmation cancels the action. Local help, language and exit remain available." }
+    "4" { Show-Documents }
+    "5" { Show-Usage }
+  }
 }
 
 function Read-StateFile([string]$Path) {
@@ -284,14 +314,14 @@ function Test-OperationAvailable([string]$Script) {
     $script:LastActionStatus = 2
     Write-Host "capability_state=unavailable"
     Write-Host "missing_prerequisite=powershell"
-    Write-Host "Restore the PowerShell executable, then retry."
+    Write-UiText "repair_hint=请恢复 PowerShell 可执行文件后重试。" "repair_hint=Restore the PowerShell executable, then retry."
     return $false
   }
   if (-not (Test-Path -LiteralPath $Script -PathType Leaf)) {
     $script:LastActionStatus = 2
     Write-Host "capability_state=unavailable"
     Write-Host "missing_component=$([IO.Path]::GetFileName($Script))"
-    Write-Host "Restore or update the complete project folder, then restart this guide. Local help, language switching and exit remain available."
+    Write-UiText "repair_hint=请恢复或更新完整项目目录后重新启动。本地帮助、语言切换和退出仍可使用。" "repair_hint=Restore or update the complete project folder, then restart this guide. Local help, language switching and exit remain available."
     return $false
   }
   return $true
@@ -318,6 +348,7 @@ function Invoke-ChildScript {
   if ($Status -ne 0) {
     Write-Host "failed_action=$Action"
     Write-Host "child_exit_code=$Status"
+    Write-UiText "repair_hint=请保留错误与日志，核实实际状态后再决定是否重试；可在帮助菜单查看故障恢复。" "repair_hint=Keep the error and logs, verify actual state before retrying; see recovery in Help."
     Write-Host "safe_resume_command=$SafeResumeCommand"
     if ($WriteStarted) { Write-Host "write_action_started=true" }
   }
@@ -393,7 +424,7 @@ function Confirm-ProjectRefresh([string]$RemotePath) {
   $Confirmation = [Console]::In.ReadLine()
   if ($Confirmation -cne "REPLACE") { if ($Language -eq "en") { Write-Host "Action cancelled." } else { Write-Host $Zh.Cancelled }; return $false }
   if ($Language -eq "en") { [Console]::Write("Type APPLY to apply the reviewed project refresh; anything else cancels: ") }
-  else { [Console]::Write($Zh.ApplyPrompt) }
+  else { [Console]::Write("即将执行已审查的项目刷新。输入 APPLY 确认，其他输入取消: ") }
   $Confirmation = [Console]::In.ReadLine()
   if ($Confirmation -cne "APPLY") { if ($Language -eq "en") { Write-Host "Action cancelled." } else { Write-Host $Zh.Cancelled }; return $false }
   return $true
@@ -498,7 +529,6 @@ function Export-SupportBundle {
   if ($script:Router) { $Arguments += @("-Router", $script:Router) }
   [void](Invoke-ChildScript -Action "export_support_bundle" -WriteStarted $false -Script (Join-Path $PSScriptRoot "export-support-bundle.ps1") -Arguments $Arguments)
 }
-function Show-SafetyHelp { Show-Usage }
 function Review-Decommission {
   $script:LastActionStatus = 0
   $Wrapper = Join-Path $PSScriptRoot "decommission-merlin.ps1"
@@ -529,26 +559,44 @@ try {
 }
 catch { }
 
+$script:MenuPage = "main"
+$script:HelpParentPage = "main"
 while ($true) {
   if ($script:Interrupted) { exit 130 }
-  $ProjectReady = Test-CurrentProject
   $Prompt = Show-Menu
   [Console]::Write($Prompt)
   $Choice = [Console]::In.ReadLine()
-  if ($null -eq $Choice -or $Choice -eq "0") { exit $script:LastActionStatus }
-  if ($Choice -notin @("6", "H", "?", "help", "9", "L", "language") -and (-not $ProjectReady -or -not (Test-CurrentProject))) { continue }
-  switch ($Choice) {
-    "1" { Start-OrResume }
-    "R" { Refresh-Project }
-    "2" { [void](Invoke-Doctor) }
-    "3" { Show-SessionState }
-    "4" { Verify-OfflineBundle }
-    "5" { Export-SupportBundle }
-    { $_ -in @("6", "H", "?", "help") } { Show-SafetyHelp }
-    { $_ -in @("9", "L", "language") } { Switch-Language }
-    "7" { Review-Decommission }
-    "8" { [void](Invoke-ChildScript -Action "create_local_launcher" -WriteStarted $true -Script (Join-Path $PSScriptRoot "create-desktop-shortcut.ps1")) }
-    default { if ($Language -eq "en") { Write-Host "Invalid selection." } else { Write-Host $Zh.Invalid } }
+  if ($null -eq $Choice) { exit $script:LastActionStatus }
+  if ($Choice -eq "") { continue }
+  if ($Choice -eq "0") {
+    if ($script:MenuPage -eq "main") { exit $script:LastActionStatus }
+    $script:MenuPage = if ($script:MenuPage -eq "help") { $script:HelpParentPage } else { "main" }; continue
+  }
+  if ($Choice -in @("9", "L", "language")) { Switch-Language; continue }
+  if ($Choice -in @("H", "?", "help")) { if ($script:MenuPage -ne "help") { $script:HelpParentPage = $script:MenuPage }; $script:MenuPage = "help"; continue }
+  if ($script:MenuPage -eq "help") {
+    if ($Choice -in @("1","2","3","4","5")) { Show-HelpTopic $Choice }
+    else { Write-UiText "无效选择。" "Invalid selection." }
+    continue
+  }
+  if ($script:MenuPage -eq "main") {
+    if ($Choice -eq "6") { $script:HelpParentPage = "main"; $script:MenuPage = "help"; continue }
+    if ($Choice -eq "7") { $script:MenuPage = "maintenance"; continue }
+    if ($Choice -notin @("1","2","3","4","5","8","R")) { Write-UiText "无效选择。" "Invalid selection."; continue }
+  } elseif ($Choice -notin @("1","2","R")) { Write-UiText "无效选择。" "Invalid selection."; continue }
+  if (-not (Test-CurrentProject)) { continue }
+  if ($script:MenuPage -eq "maintenance") {
+    if ($Choice -in @("1","R")) { Refresh-Project } else { Review-Decommission }
+  } else {
+    switch ($Choice) {
+      "1" { Start-OrResume }
+      "R" { Refresh-Project }
+      "2" { [void](Invoke-Doctor) }
+      "3" { Show-SessionState }
+      "4" { Verify-OfflineBundle }
+      "5" { Export-SupportBundle }
+      "8" { [void](Invoke-ChildScript -Action "create_local_launcher" -WriteStarted $true -Script (Join-Path $PSScriptRoot "create-desktop-shortcut.ps1")) }
+    }
   }
   if ($script:Interrupted) { exit 130 }
   Write-Host ""

@@ -1,5 +1,8 @@
 #!/bin/sh
 set -eu
+# Existing message assertions are English, independent of the test host locale.
+HOME_EDGE_LANGUAGE=en
+export HOME_EDGE_LANGUAGE
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-launcher-test.XXXXXX")
 trap 'rm -rf "$tmp"' 0 HUP INT TERM
@@ -8,6 +11,39 @@ trap 'rm -rf "$tmp"' 0 HUP INT TERM
 tmp_physical=$(CDPATH= cd "$tmp" && pwd -P) || exit 1
 tmp=$tmp_physical
 fail() { echo "launcher_fixture_tests=failed: $*" >&2; exit 1; }
+# Isolated damaged registrations must reject before locks, target repair or guide execution.
+guarded="$tmp/missing-component-entry"
+mkdir -p "$guarded/lib"
+cp "$repo/scripts/launch-tui.sh" "$guarded/"
+printf 'home-edge-bootstrap/registered-launcher/v1\n' >"$guarded/.home-edge-launcher-owned"
+printf 'fixture-original-target\n' >"$guarded/target.txt"
+for missing in project-location.sh ui-language.sh host-launcher.sh; do
+  cp "$repo/scripts/lib/project-location.sh" "$repo/scripts/lib/ui-language.sh" "$repo/scripts/lib/host-launcher.sh" "$guarded/lib/"
+  rm "$guarded/lib/$missing"
+  find "$guarded" -print | sort >"$tmp/guarded-paths-before"
+  find "$guarded" -type f -exec cksum {} \; | sort >"$tmp/guarded-bytes-before"
+  if sh "$guarded/launch-tui.sh" --version </dev/null >"$tmp/missing-$missing" 2>&1; then fail 'damaged registration started'; else guard_status=$?; fi
+  [ "$guard_status" = 2 ] || fail 'damaged registration lost exit 2'
+  grep -Fq 'startup_state=failed' "$tmp/missing-$missing" || fail 'damaged registration omitted startup state'
+  grep -Fq "missing_component=lib/$missing" "$tmp/missing-$missing" || fail 'damaged registration omitted exact component'
+  grep -Fq '请恢复完整项目' "$tmp/missing-$missing" || fail 'damaged registration omitted Chinese repair hint'
+  grep -Fq 'Restore the complete project' "$tmp/missing-$missing" || fail 'damaged registration omitted English repair hint'
+  if grep -Fq 'project_location_state=' "$tmp/missing-$missing"; then fail 'damaged registration reached project execution or selection'; fi
+  find "$guarded" -print | sort >"$tmp/guarded-paths-after"
+  find "$guarded" -type f -exec cksum {} \; | sort >"$tmp/guarded-bytes-after"
+  cmp -s "$tmp/guarded-paths-before" "$tmp/guarded-paths-after" && cmp -s "$tmp/guarded-bytes-before" "$tmp/guarded-bytes-after" || fail 'damaged registration wrote files'
+done
+missing_dispatch="$tmp/missing-component-dispatch"
+mkdir -p "$missing_dispatch/adapters/fixture"
+cp "$repo/bootstrap.sh" "$missing_dispatch/"
+printf '#!/bin/sh\nprintf adapter-must-not-run >"%s"\n' "$missing_dispatch/executed" >"$missing_dispatch/adapters/fixture/bootstrap.sh"
+if BOOTSTRAP_ADAPTER=fixture sh "$missing_dispatch/bootstrap.sh" --lang en </dev/null >"$tmp/missing-dispatch" 2>&1; then fail 'bootstrap without language helper executed'; else guard_status=$?; fi
+[ "$guard_status" = 2 ] || fail 'bootstrap missing component lost exit 2'
+grep -Fq 'startup_state=failed' "$tmp/missing-dispatch" && grep -Fq 'missing_component=scripts/lib/ui-language.sh' "$tmp/missing-dispatch" || fail 'bootstrap omitted exact missing component'
+grep -Fq '请恢复完整项目' "$tmp/missing-dispatch" && grep -Fq 'Restore the complete project' "$tmp/missing-dispatch" || fail 'bootstrap omitted bilingual recovery'
+[ ! -e "$missing_dispatch/executed" ] || fail 'bootstrap missing component executed adapter'
+echo launcher_missing_component_fixtures=ready
+if [ "${HOME_EDGE_LAUNCHER_FIXTURE_SCOPE:-}" = missing_components ]; then exit 0; fi
 project="$tmp/portable copy & 中文"
 desktop="$tmp/fixture desktop"
 installed="$tmp/registered entry % with spaces"
@@ -18,10 +54,41 @@ cp "$repo/start.sh" "$repo/start.command" "$project/"
 cp "$repo/scripts/launch-tui.sh" "$repo/scripts/create-desktop-shortcut.sh" "$repo/scripts/tui.sh" "$project/scripts/"
 cp "$repo/scripts/lib/project-location.sh" "$project/scripts/lib/"
 cp "$repo/scripts/lib/host-launcher.sh" "$project/scripts/lib/"
+cp "$repo/scripts/lib/ui-language.sh" "$project/scripts/lib/"
 for file in doctor.sh run-bootstrap.sh check-no-wall-readiness.sh export-support-bundle.sh decommission-merlin.sh; do
   printf '#!/bin/sh\necho forbidden-operation >&2; exit 99\n' >"$project/scripts/$file"
 done
 echo vfixture >"$project/VERSION"
+. "$repo/scripts/lib/ui-language.sh"
+[ "$(HOME_EDGE_LANGUAGE=zh-CN LANG=en_US.UTF-8 heb_detect_ui_language en)" = en ] || fail 'explicit language did not override environment'
+[ "$(HOME_EDGE_LANGUAGE=en LC_ALL=zh_CN.UTF-8 heb_detect_ui_language '')" = en ] || fail 'language environment did not override locale'
+[ "$(HOME_EDGE_LANGUAGE=invalid LC_ALL=zh_TW.UTF-8 heb_detect_ui_language '')" = zh-CN ] || fail 'Chinese locale was not selected'
+[ "$(HOME_EDGE_LANGUAGE='' LC_ALL='' LC_MESSAGES=fr_FR.UTF-8 LANG=zh_CN.UTF-8 heb_detect_ui_language '')" = en ] || fail 'LC_MESSAGES priority was lost'
+[ "$(HOME_EDGE_LANGUAGE='' LC_ALL='' LC_MESSAGES='' LANG='' heb_detect_ui_language '')" = zh-CN ] || fail 'empty locale did not default to Chinese'
+if heb_detect_ui_language invalid >"$tmp/invalid-helper"; then fail 'invalid explicit language accepted'; fi
+[ ! -s "$tmp/invalid-helper" ] || fail 'invalid explicit language emitted a valid-looking result'
+HOME_EDGE_LANGUAGE=zh-CN sh "$project/start.sh" --lang en --help --router forbidden >"$tmp/en-help"
+grep -Fq 'Language priority:' "$tmp/en-help" || fail 'explicit English help did not override environment'
+HOME_EDGE_LANGUAGE=en sh "$project/start.sh" --lang zh-CN --help >"$tmp/zh-help"
+grep -Fq '语言顺序：' "$tmp/zh-help" || fail 'explicit Chinese help did not override environment'
+if sh "$project/scripts/launch-tui.sh" --repo "$tmp/absent" --lang invalid </dev/null >"$tmp/invalid-language" 2>&1; then fail 'invalid language accepted'; fi
+if grep -Fq 'needs_selection' "$tmp/invalid-language"; then fail 'invalid language reached project selection'; fi
+if HOME_EDGE_LANGUAGE=zh-CN sh "$project/scripts/launch-tui.sh" --repo "$tmp/absent" --version </dev/null >"$tmp/zh-selection" 2>&1; then fail 'EOF started an invalid project'; fi
+grep -Fq '输入结束，启动已取消' "$tmp/zh-selection" || fail 'Chinese directory selection EOF is not localized'
+# Test only a synthetic adapter: --lang must never reach device dispatch.
+dispatch="$tmp/dispatch"
+mkdir -p "$dispatch/scripts/lib" "$dispatch/adapters/fixture"
+cp "$repo/bootstrap.sh" "$dispatch/"
+cp "$repo/scripts/lib/ui-language.sh" "$dispatch/scripts/lib/"
+printf '#!/bin/sh\nprintf "argument=%%s\\n" "$@"\n' >"$dispatch/adapters/fixture/bootstrap.sh"
+BOOTSTRAP_ADAPTER=fixture sh "$dispatch/bootstrap.sh" --dry-run --lang en '--opaque value' >"$tmp/dispatch-result"
+grep -Fq 'argument=--dry-run' "$tmp/dispatch-result" || fail 'bootstrap lost a device argument'
+grep -Fq 'argument=--opaque value' "$tmp/dispatch-result" || fail 'bootstrap split an argument'
+if grep -Fq 'argument=--lang' "$tmp/dispatch-result" || grep -Fq 'argument=en' "$tmp/dispatch-result"; then fail 'bootstrap leaked UI language to the adapter'; fi
+if BOOTSTRAP_ADAPTER=auto sh "$dispatch/bootstrap.sh" --lang zh-CN >"$tmp/dispatch-refusal" 2>&1; then fail 'auto dispatch without a detection match succeeded'; fi
+grep -Fq '自动探测未找到唯一候选' "$tmp/dispatch-refusal" || fail 'adapter refusal is not localized'
+if BOOTSTRAP_ADAPTER=fixture sh "$dispatch/bootstrap.sh" --lang invalid >"$tmp/dispatch-invalid" 2>&1; then fail 'invalid bootstrap language accepted'; fi
+if grep -Fq 'adapter_candidate=' "$tmp/dispatch-invalid"; then fail 'invalid bootstrap language reached dispatch'; fi
 (
   cd "$tmp"
   sh "$project/start.sh" --version >"$tmp/local-version"
@@ -31,8 +98,16 @@ grep -Fq 'home-edge-bootstrap vfixture' "$tmp/local-version" || fail 'local entr
 grep -Fq '8. Create or refresh a local desktop launcher' "$tmp/local-menu" || fail 'menu omits local launcher setup'
 case "$(uname -s)" in Linux|Darwin) ;; *) echo 'native_desktop_fixture=not_applicable_use_windows_fixture'; echo 'launcher_fixture_tests=ready'; exit 0 ;; esac
 sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/setup"
+[ -f "$installed/lib/ui-language.sh" ] || fail 'registered launcher omitted the language helper'
 sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" </dev/null >"$tmp/reused"
 grep -Fq 'shortcut_state=reused' "$tmp/reused" || fail 'same target was not reused'
+# A cached registration needs explicit refresh even when its target is unchanged.
+rm "$installed/lib/ui-language.sh"
+sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" </dev/null >"$tmp/helper-upgrade-cancel"
+grep -Fq 'shortcut_state=cancelled' "$tmp/helper-upgrade-cancel" || fail 'missing helper was reported reused or refreshed without permission'
+[ ! -e "$installed/lib/ui-language.sh" ] || fail 'cancelled helper refresh wrote a file'
+printf 'REPLACE\nAPPLY\n' | sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/helper-upgrade"
+cmp -s "$project/scripts/lib/ui-language.sh" "$installed/lib/ui-language.sh" || fail 'old registration did not recover a missing language helper'
 cp "$installed/target.txt" "$tmp/original-target"
 second_copy="$tmp/another project copy"
 cp -R "$project" "$second_copy"

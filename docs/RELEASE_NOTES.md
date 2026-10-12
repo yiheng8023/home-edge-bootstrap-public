@@ -2,6 +2,75 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.10 (2026-10-13)
+
+v0.1.10 improves the bilingual guide without adding a terminal framework. The main menu groups common tasks, tools and preferences; local help and project maintenance have focused submenus. Main choice 7 now opens maintenance; choose 1 there to refresh project content or 2 to review decommission. The historical R refresh shortcut remains. Navigation and language switching preserve the selected router/session; 0 returns from a submenu and EOF exits the guide. Exact APPLY, REPLACE, ENABLE and DECOMMISSION confirmations retain their existing contracts.
+
+Help lists only documents present in the running copy, including source-only public packages. Human-readable startup, directory-selection and repair guidance follows the chosen language; protocol keys, enums, commands and confirmation tokens stay unchanged. Language priority is an explicit argument, a valid HOME_EDGE_LANGUAGE preference, host locale, then the documented Chinese fallback when no locale is available. The preference is session-local and writes no global setting. Chinese project-refresh confirmation now says refresh instead of deployment.
+
+Registered launcher caches include the language helper. Missing or changed cached files still require explicit REPLACE then APPLY before an owned registration is refreshed. Targeted fixtures cover submenu navigation, locale priority, actual documentation paths, Chinese confirmation/cancellation/failure and launcher recovery. Native host CI and concrete archive checks remain required; these source/host checks do not certify every terminal, native GUI or router.
+
+Mihomo v1.19.32, ShellCrash 1.9.4, source/license locks and distribution asset roles are unchanged. This guide update does not replace the router runtime or change provider rules, current selectors or service policy. Earlier tags and released assets remain unchanged; v0.1.8 stays unpublished. Broad support/security claims remain blocked under the existing limited distribution contract.
+
+Choose one acquisition route: verify/extract a release package, Git clone, reuse a complete local folder/desktop entry, or transfer one complete package offline. Windows opens start.cmd; macOS opens start.command; Linux runs start.sh through sh, then choose 1 for observed-state guidance. No npm, pnpm or npx installation entry is provided.
+
+Public source packages/clones omit offline runtime payloads; use source with an existing runtime or choose offline when the target lacks one.
+
+Windows: download one complete ZIP, Extract All, then double-click start.cmd. macOS/Linux: choose tar.gz. Download SHA256SUMS to verify the selected package; complete-source audit assets are not extra installation parts.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.10-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.10-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.10-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.10-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.10-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.10-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.10-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.10-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+Choose one package for your system plus `SHA256SUMS`; verify only the file you downloaded. Manifest, SBOM (public release) and complete-source assets are audit/source-availability material, not extra installation parts. GitHub automatic Source code archives are not the contracted packages.
+
+Choose a source-only package only when the runtime is already present and you need scripts/documentation; choose an offline package for fresh offline runtime preparation.
+
+Save the chosen archive and `SHA256SUMS` in the same folder. Run the verification commands below in a terminal opened in that download folder: on Windows, open the folder in Explorer, type `powershell` in the address bar and press Enter; on macOS/Linux, open Terminal, type `cd ` (with the space), drag the download folder into it and press Enter. Extract only after verification succeeds; the project directory is not needed for this check.
+
+Windows PowerShell, checking only the offline ZIP you downloaded:
+
+```powershell
+$File = "home-edge-bootstrap-v0.1.10-offline.zip"
+$Expected = ((Get-Content .\SHA256SUMS | Where-Object { $_ -match "  $([regex]::Escape($File))$" }) -split '\s+')[0]
+if ((Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) {
+  throw "SHA256 mismatch: $File"
+}
+```
+
+macOS/Linux, checking only the offline `tar.gz` you downloaded:
+
+```sh
+file=home-edge-bootstrap-v0.1.10-offline.tar.gz
+line=$(awk -v f="$file" 'NF == 2 && length($1) == 64 && $2 == f { n++; hit=$0 }
+  END { if (n == 1) print hit; else exit 1 }' SHA256SUMS) || exit 1
+if command -v sha256sum >/dev/null 2>&1; then
+  printf '%s\n' "$line" | sha256sum -c -
+else
+  printf '%s\n' "$line" | shasum -a 256 -c -
+fi
+```
+
 ## v0.1.9 (2026-10-13)
 
 v0.1.9 corrects self-heal authority: a configured HEAL_GROUP must exactly match a writable selector, and automatic main-group discovery excludes manual names. Explicitly naming a manual group authorizes its automation; nested and role switching retain their separate opt-in controls. Fresh graph/selection checks run before PUT; rollback is guarded against intervening changes. The controller has no atomic compare-and-swap (CAS), so these checks reduce the observed race window without eliminating all concurrent-change risk.

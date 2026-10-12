@@ -1,4 +1,4 @@
-param([string]$Repo = "")
+﻿param([string]$Repo = "")
 
 $ErrorActionPreference = "Stop"
 if (-not $Repo) { $Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path }
@@ -41,6 +41,7 @@ function Invoke-TuiProcess {
   $StartInfo.StandardOutputEncoding = [Text.Encoding]::UTF8
   $StartInfo.StandardErrorEncoding = [Text.Encoding]::UTF8
   $StartInfo.UseShellExecute = $false
+  $StartInfo.EnvironmentVariables["HOME_EDGE_LANGUAGE"] = "zh-CN"
   foreach ($Key in $Environment.Keys) { $StartInfo.EnvironmentVariables[$Key] = [string]$Environment[$Key] }
   $Process = [Diagnostics.Process]::Start($StartInfo)
   if ($InputText) { $Process.StandardInput.Write($InputText) }
@@ -65,6 +66,14 @@ try {
   Set-Content -LiteralPath (Join-Path $FakeRepo "README.md") -Value "fixture" -Encoding ASCII
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\project-location.ps1") -Destination (Join-Path $FakeScripts "lib")
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\host-launcher.ps1") -Destination (Join-Path $FakeScripts "lib")
+  Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\ui-language.ps1") -Destination (Join-Path $FakeScripts "lib")
+  New-Item -ItemType Directory -Path (Join-Path $FakeRepo "docs\zh-CN") -Force | Out-Null
+  Set-Content -LiteralPath (Join-Path $FakeRepo "README.zh-CN.md") -Value "fixture" -Encoding ASCII
+  foreach ($Name in @("QUICKSTART.md", "QUICKSTART.zh-CN.md")) { Set-Content -LiteralPath (Join-Path $FakeRepo $Name) -Value "fixture" -Encoding ASCII }
+  foreach ($Name in @("LAUNCHER.md", "COMPATIBILITY.md", "NO_WALL_BOOTSTRAP.md")) {
+    Set-Content -LiteralPath (Join-Path $FakeRepo "docs\$Name") -Value "fixture" -Encoding ASCII
+    Set-Content -LiteralPath (Join-Path $FakeRepo "docs\zh-CN\$Name") -Value "fixture" -Encoding ASCII
+  }
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\launch-tui.ps1") -Destination $FakeScripts
   foreach ($Relative in @("bootstrap.sh","config\policy.env","adapters\merlin\bootstrap.sh")) { Set-Content -LiteralPath (Join-Path $FakeRepo $Relative) -Value "fixture" -Encoding ASCII }
   Set-Content -LiteralPath (Join-Path $FakeScripts "create-desktop-shortcut.ps1") -Value 'Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value "desktop-shortcut"' -Encoding ASCII
@@ -159,6 +168,7 @@ Write-Host ("deploy_state=" + $(if ($Apply) { "applied" } else { "plan" }))
 Write-Host ("router=" + $Router)
 Write-Host ("remote_dir=" + $RemoteDir)
 if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'integration_effect=project_managed_configuration_may_change' }
+if ($Apply -and $env:DEPLOY_STUB_WRITE_EXIT) { exit [int]$env:DEPLOY_STUB_WRITE_EXIT }
 '@ | Set-Content -LiteralPath (Join-Path $FakeScripts "deploy-merlin.ps1") -Encoding ASCII
 
   $SupportStub = Join-Path $FakeScripts "export-support-bundle.ps1"
@@ -182,11 +192,11 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   $Invalid = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "invalid")
 
   $ExpectedChinese = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("MS4g5byA5aeL5oiW5o6l57ut5byV5a+85byP6YWN572u"))
-  $ExpectedChineseDecommission = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("Ny4g5a6h5p+l6aG555uu6YCA5Ye6"))
+  $ExpectedChineseDecommission = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("Ny4g6aG555uu57u05oqkID4="))
   if ($Default.Status -ne 0 -or $Default.Output -notmatch [regex]::Escape($ExpectedChinese)) { Fail "default menu is not Chinese" }
   if ($English.Status -ne 0 -or $English.Output -notmatch [regex]::Escape("1. Start or resume guided bootstrap")) { Fail "English menu missing" }
   if ($Default.Output -notmatch [regex]::Escape($ExpectedChineseDecommission)) { Fail "Chinese decommission menu missing" }
-  if ($English.Output -notmatch [regex]::Escape("7. Review project decommission")) { Fail "English decommission menu missing" }
+  if ($English.Output -notmatch [regex]::Escape("7. Project maintenance >")) { Fail "English decommission menu missing" }
   foreach ($Number in @(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)) {
     if ($Default.Output -notmatch "(?m)^$Number\. ") { Fail "default menu missing action $Number" }
     if ($English.Output -notmatch "(?m)^$Number\. ") { Fail "English menu missing action $Number" }
@@ -202,7 +212,7 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
     if (-not $Menu.Output.Contains("9. Language / $BilingualLanguage (English / $ChineseLanguageName; current / ${CurrentLanguageLabel}:")) { Fail "language is not discoverable in both languages" }
     if (-not $Menu.Output.Contains($BilingualPrompt)) { Fail "selection prompt is not bilingual" }
     if (([regex]::Matches($Menu.Output, '(?m)^6\. |^H /')).Count -ne 1 -or -not $Menu.Output.Contains('[H / ? / help]')) { Fail "help aliases are absent or have duplicate visible menu rows" }
-    if (-not $Menu.Output.Contains($DangerousGroup) -or $Menu.Output -notmatch 'DECOMMISSION' -or $Menu.Output -notmatch 'REPLACE' -or $Menu.Output -notmatch 'APPLY') { Fail "dangerous actions or confirmations are not grouped" }
+    if (-not $Menu.Output.Contains('R: ') -or $Menu.Output.IndexOf('R: Project refresh') -ge 0 -and $Menu.Output.IndexOf('R: Project refresh') -lt $Menu.Output.IndexOf('0. Exit')) { Fail 'refresh shortcut missing or not in footer' }
   }
   if (-not $Default.Output.Contains("current / ${CurrentLanguageLabel}: $ChineseLanguageName") -or -not $English.Output.Contains("current / ${CurrentLanguageLabel}: English")) { Fail "current language marker missing" }
   if ($Help.Status -ne 0 -or $Help.Output -notmatch "usage:") { Fail "help output missing usage" }
@@ -219,9 +229,9 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   $Snapshot = Get-FixtureSnapshot $FakeRepo
   foreach ($Alias in @("H", "?", "help", "6")) {
     Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-    $LocalHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "$Alias`n0`n" -Environment $CommonEnvironment
+    $LocalHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "$Alias`n5`n0`n0`n" -Environment $CommonEnvironment
     if ($LocalHelp.Status -ne 0 -or $LocalHelp.Output -notmatch "Home Edge local help") { Fail "local help alias failed: $Alias" }
-    foreach ($Expected in @("project_dir=$FakeRepo", "doc=$(Join-Path $FakeRepo 'docs\RUNBOOK.md')", "First installation:", "Already installed:", "APPLY", "ENABLE", "DECOMMISSION", "EOF", "[H / ? / help]", "9. Language / $BilingualLanguage", "L / Language: English <-> $ChineseLanguageName")) {
+    foreach ($Expected in @("project_dir=$FakeRepo", "doc=$(Join-Path $FakeRepo 'QUICKSTART.md')", "First installation:", "Already installed:", "APPLY", "ENABLE", "DECOMMISSION", "EOF", "[H / ? / help]", "9. Language / $BilingualLanguage", "L / Language: English <-> $ChineseLanguageName")) {
       if ($LocalHelp.Output -notmatch [regex]::Escape($Expected)) { Fail "local help missing $Expected" }
     }
     if ((Read-CallLog $CallLog).Length -ne 0) { Fail "help dispatched a child: $Alias" }
@@ -234,7 +244,7 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   if (-not $Help.Output.Contains($ChineseAssetScope) -or -not $Help.Output.Contains($ChineseConfigScope) -or $Help.Output.Contains($OverbroadScope)) { Fail "Chinese help conceals project-managed configuration effects" }
   foreach ($Alias in @("L", "language", "9")) {
     Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-    $LanguageToggle = Invoke-TuiProcess -Script $FakeTui -Arguments @("-NoColor") -InputText "$Alias`nH`n$Alias`n?`n0`n" -Environment $CommonEnvironment
+    $LanguageToggle = Invoke-TuiProcess -Script $FakeTui -Arguments @("-NoColor") -InputText "$Alias`nH`n5`n$Alias`n5`n0`n0`n" -Environment $CommonEnvironment
     if ($LanguageToggle.Status -ne 0 -or $LanguageToggle.Output -notmatch "language=en" -or $LanguageToggle.Output -notmatch "language=zh-CN" -or $LanguageToggle.Output -notmatch "Home Edge local help" -or $LanguageToggle.Output -notmatch [regex]::Escape($ChineseHelp) -or $LanguageToggle.Output -notmatch "1. Start or resume guided bootstrap") { Fail "language toggle did not immediately localize menu/help: $Alias" }
     if ((Read-CallLog $CallLog).Length -ne 0) { Fail "language/help dispatched a child: $Alias" }
   }
@@ -258,19 +268,19 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   if (([string](Read-CallLog $CallLog)).Trim() -ne "support-bundle") { Fail "support bundle dispatch mismatch" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-  $DecommissionCancel = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`nWRONG`n0`n" -Environment $CommonEnvironment
+  $DecommissionCancel = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`n2`nWRONG`n0`n0`n" -Environment $CommonEnvironment
   $DecommissionCancelCalls = Get-Content -LiteralPath $CallLog
   if ($DecommissionCancelCalls -notcontains "decommission-merlin -NoPause -Router user@192.168.50.1") { Fail "PowerShell TUI omitted read-only decommission plan" }
   if ($DecommissionCancelCalls -match "-Apply") { Fail "PowerShell wrong token enabled decommission" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-  $DecommissionApply = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`nDECOMMISSION`n0`n" -Environment $CommonEnvironment
+  $DecommissionApply = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`n2`nDECOMMISSION`n0`n0`n" -Environment $CommonEnvironment
   $DecommissionApplyCalls = Get-Content -LiteralPath $CallLog
   if ($DecommissionApplyCalls -notcontains "decommission-merlin -NoPause -Router user@192.168.50.1") { Fail "PowerShell TUI omitted decommission plan before apply" }
   if ($DecommissionApplyCalls -notcontains "decommission-merlin -NoPause -Apply -Confirmation DECOMMISSION -Router user@192.168.50.1") { Fail "PowerShell exact token did not enable decommission" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-  $DecommissionEof = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`n" -Environment $CommonEnvironment
+  $DecommissionEof = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "7`n2`n" -Environment $CommonEnvironment
   $DecommissionEofCalls = Get-Content -LiteralPath $CallLog
   if ($DecommissionEofCalls -notcontains "decommission-merlin -NoPause -Router user@192.168.50.1") { Fail "PowerShell decommission EOF omitted read-only plan" }
   if ($DecommissionEofCalls -match "-Apply") { Fail "PowerShell EOF enabled decommission" }
@@ -285,7 +295,7 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   if ($ApplyCancelCalls -notcontains "run-bootstrap -NoPause user@192.168.50.1") { Fail "bootstrap read-only pass missing" }
   if ($ApplyCancelCalls -match "ApplyDeploy") { Fail "wrong token enabled deploy" }
 
-  foreach ($WrongToken in @("apply", "APPLY ", "yes")) {
+  foreach ($WrongToken in @("apply", "APPLY ", "yes", "H", "L", "9")) {
     Set-Content -LiteralPath $CallLog -Value "" -NoNewline
     [void](Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "1`n$WrongToken`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" }))
     if ((Read-CallLog $CallLog) -match "ApplyDeploy") { Fail "non-exact token enabled deploy: $WrongToken" }
@@ -349,14 +359,14 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $Snapshot = Get-FixtureSnapshot $FakeRepo
-  $SwitchSession = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n2`nL`nH`n3`n9`nhelp`n3`n0`n" -Environment $CommonEnvironment
+  $SwitchSession = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n2`nH`nL`n0`n3`n7`n9`n0`nhelp`n0`n3`n0`n" -Environment $CommonEnvironment
   if ($SwitchSession.Status -ne 0 -or ([regex]::Matches($SwitchSession.Output, "next_action_command=json-resume-command")).Count -ne 3 -or ([regex]::Matches($SwitchSession.Output, "existing_session=2")).Count -ne 1) { Fail "language/help lost selected session or router" }
   if ((Read-CallLog $CallLog).Length -ne 0 -or (Get-FixtureSnapshot $FakeRepo) -cne $Snapshot) { Fail "language/help/session display changed the fixture project" }
-  $RouterToggle = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "L`nH`n9`n2`n0`n" -Environment $CommonEnvironment
+  $RouterToggle = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "L`nH`n9`n0`n2`n0`n" -Environment $CommonEnvironment
   if ((Read-CallLog $CallLog).Trim() -ne "doctor -Json user@192.168.50.1") { Fail "language/help lost CLI router" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-  $SelectedResume = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n2`nL`nH`n9`n1`nWRONG`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
+  $SelectedResume = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n2`nL`nH`n9`n0`n1`nWRONG`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
   $SelectedCalls = Read-CallLog $CallLog
   if ($SelectedCalls -notmatch "run-bootstrap -NoPause -SessionDir .*02-json json-user@192.168.50.3") { Fail "selected session did not infer router and preserve session directory" }
   $ExpectedSelectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' -NoPause -ApplyDeploy -SessionDir '" + $SessionJson + "' -Router 'json-user@192.168.50.3'"
@@ -384,7 +394,7 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   $Existing = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "1`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE="installed"; BOOTSTRAP_STUB_ACTION="deploy_plan" }
   if ($Existing.Status -ne 0 -or $Existing.Output -notmatch "explicitly choose R" -or (Read-CallLog $CallLog) -match "ApplyDeploy|deploy-merlin") { Fail "already installed default silently redeployed" }
   foreach ($State in @("installed", "partial")) {
-    foreach ($Inputs in @("R`nWRONG`n0`n", "R`nreplace`n0`n", "R`nREPLACE `n0`n", "R`nREPLACE`nWRONG`n0`n", "R`nREPLACE`napply`n0`n", "R`nREPLACE`nAPPLY `n0`n", "R`n", "R`nREPLACE`n")) {
+    foreach ($Inputs in @("R`nWRONG`n0`n", "R`nreplace`n0`n", "R`nREPLACE `n0`n", "R`nREPLACE`nWRONG`n0`n", "R`nREPLACE`napply`n0`n", "R`nREPLACE`nAPPLY `n0`n", "R`nH`n0`n", "R`nREPLACE`nL`n0`n", "R`n", "R`nREPLACE`n")) {
       Set-Content -LiteralPath $CallLog -Value "" -NoNewline
       $CancelRefresh = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText $Inputs -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE=$State }
       if ($CancelRefresh.Status -ne 0 -or (Read-CallLog $CallLog) -match "-Apply|-ReplaceProject") { Fail "project refresh cancellation/EOF allowed a write ($State)" }
@@ -443,7 +453,7 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $RemovedProject = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "2`n1`nH`nL`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; DOCTOR_STUB_REMOVE_PROJECT="1" }
-  if ($RemovedProject.Output -notmatch "condition_state=project_degraded" -or $RemovedProject.Output -notmatch "Home Edge local help" -or $RemovedProject.Output -notmatch "language=zh-CN" -or (Read-CallLog $CallLog) -match "run-bootstrap ") { Fail "removed PROJECT did not stop dependent work while retaining local UI" }
+  if ($RemovedProject.Output -notmatch "condition_detail=" -or $RemovedProject.Output -notmatch "condition_state=project_degraded" -or $RemovedProject.Output -notmatch "Home Edge local help" -or $RemovedProject.Output -notmatch "language=zh-CN" -or (Read-CallLog $CallLog) -match "run-bootstrap ") { Fail "removed PROJECT did not stop dependent work while retaining local UI" }
   Copy-Item -LiteralPath (Join-Path $Repo "PROJECT") -Destination $FakeRepo
 
   $BootstrapFile = Join-Path $FakeScripts "run-bootstrap.ps1"
@@ -453,6 +463,59 @@ if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'inte
   if ($RemovedOperation.Output -notmatch "capability_state=unavailable" -or $RemovedOperation.Output -notmatch "Home Edge local help" -or (Read-CallLog $CallLog) -match "run-bootstrap ") { Fail "removed operation was invoked or blocked local UI" }
   Move-Item -LiteralPath "$BootstrapFile.saved" -Destination $BootstrapFile
   Write-Host "tui_fixture_installation_guard_tests=ok"
+
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $NavSnapshot = Get-FixtureSnapshot $FakeRepo
+  $Navigation = Invoke-TuiProcess -Script $FakeTui -Arguments @('-Language','en') -InputText "7`n`ninvalid`nL`n0`n6`n1`n2`n3`n4`nL`n4`n0`n0`n" -Environment $CommonEnvironment
+  if ($Navigation.Status -ne 0 -or (Read-CallLog $CallLog).Length -ne 0) { Fail 'submenu navigation dispatched a child or failed' }
+  if (([regex]::Matches($Navigation.Output, '# Home Edge')).Count -ne 3 -or -not $Navigation.Output.Contains('1. 刷新本项目') -or -not $Navigation.Output.Contains('1. Getting started:')) { Fail 'language/empty/invalid choice left its submenu' }
+  $HelpReturn = Invoke-TuiProcess -Script $FakeTui -Arguments @('-Language','en') -InputText "7`nH`nL`nH`n0`n0`n0`n" -Environment $CommonEnvironment
+  if (([regex]::Matches($HelpReturn.Output, '# Home Edge')).Count -ne 2 -or -not $HelpReturn.Output.Contains('Home Edge / 项目维护')) { Fail 'help did not return to caller maintenance page after language/repeated H' }
+  if (-not $HelpReturn.Output.Contains('0-2/9') -or -not $HelpReturn.Output.Contains('0-5/9') -or (Read-CallLog $CallLog).Length -ne 0) { Fail 'submenu ranges incorrect or navigation dispatched a child' }
+  foreach ($Lang in @('en','zh-CN')) {
+    $PathsHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @('-Language',$Lang,'-Help')
+    if ($PathsHelp.Status -ne 0 -or $PathsHelp.Output.Contains('RUNBOOK.md') -or -not $PathsHelp.Output.Contains($(if ($Lang -eq 'en') { 'QUICKSTART.md' } else { 'QUICKSTART.zh-CN.md' }))) { Fail 'optional RUNBOOK missing breaks help or emits dangling path' }
+    foreach ($Line in ($PathsHelp.Output -split "`r?`n")) { if ($Line -match '^(doc|readme)=(.*)$') { if (-not (Test-Path -LiteralPath $Matches[2] -PathType Leaf)) { Fail "help references missing document: $Line" } } }
+    if (($Lang -eq 'zh-CN' -and -not $PathsHelp.Output.Contains('docs\zh-CN\')) -or ($Lang -eq 'en' -and $PathsHelp.Output.Contains('docs\zh-CN\'))) { Fail 'document paths do not match selected language' }
+  }
+  foreach ($Page in @('6','7')) {
+    $SubmenuEof = Invoke-TuiProcess -Script $FakeTui -Arguments @('-Language','en') -InputText "2`n$Page`nL`n" -Environment @{TUI_FIXTURE_CALL_LOG=$CallLog;DOCTOR_STUB_EXIT='17'}
+    if ($SubmenuEof.Status -ne 17) { Fail 'submenu EOF lost previous action status' }
+  }
+  if ((Get-FixtureSnapshot $FakeRepo) -cne $NavSnapshot) { Fail 'local submenu navigation changed project' }
+  foreach ($Operation in @('deploy','refresh')) {
+    foreach ($Mode in @('success','cancel','eof','fault')) {
+      Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+      $State = if ($Operation -eq 'refresh') { 'installed' } else { 'not_installed' }
+      $Code = if ($Mode -eq 'fault') { 19 } else { 0 }
+      if ($Operation -eq 'refresh') {
+        $Inputs = if ($Mode -in @('success','fault')) { "7`n1`nREPLACE`nAPPLY`n0`n0`n" } elseif ($Mode -eq 'cancel') { "7`n1`nREPLACE`nWRONG`n0`n0`n" } else { "7`nR`nREPLACE`n" }
+      } else {
+        $Inputs = if ($Mode -in @('success','fault')) { "1`nAPPLY`n0`n" } elseif ($Mode -eq 'cancel') { "1`nWRONG`n0`n" } else { "1`n" }
+      }
+      $ChineseAction = Invoke-TuiProcess -Script $FakeTui -Arguments @('-Language','zh-CN','-Router','user@192.168.50.1') -InputText $Inputs -Environment @{TUI_FIXTURE_CALL_LOG=$CallLog;PROJECT_STUB_STATE=$State;BOOTSTRAP_STUB_ACTION='deploy_plan';BOOTSTRAP_STUB_WRITE_EXIT="$Code";DEPLOY_STUB_WRITE_EXIT="$Code"}
+      if ($ChineseAction.Status -ne $Code) { Fail "Chinese $Operation/$Mode exit status changed" }
+      if ($Operation -eq 'refresh') {
+        if (-not $ChineseAction.Output.Contains('即将执行已审查的项目刷新。输入 APPLY') -or $ChineseAction.Output.Contains('即将执行部署。')) { Fail 'Chinese refresh prompt calls it deployment' }
+      } elseif (-not $ChineseAction.Output.Contains('即将执行部署。输入 APPLY')) { Fail 'Chinese deployment prompt missing' }
+      if ($Mode -in @('cancel','eof') -and (Read-CallLog $CallLog) -match '-Apply|-ReplaceProject') { Fail 'Chinese cancellation/EOF allowed write' }
+      if ($Mode -eq 'success' -and (Read-CallLog $CallLog) -notmatch '-Apply') { Fail 'Chinese confirmation did not dispatch write' }
+      if ($Mode -eq 'fault' -and -not $ChineseAction.Output.Contains('repair_hint=请保留错误与日志')) { Fail 'Chinese child repair hint missing' }
+    }
+  }
+  foreach ($Component in @('host-launcher','project-location','ui-language')) {
+    $Helper = Join-Path $FakeScripts "lib\$Component.ps1"
+    Move-Item -LiteralPath $Helper -Destination "$Helper.missing"
+    if ((Invoke-TuiProcess -Script $FakeTui -Arguments @('-Help')).Status -ne 0 -or (Invoke-TuiProcess -Script $FakeTui -Arguments @('-Version')).Status -ne 0) { Fail "missing $Component blocked CLI help/version" }
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $MissingHelper = Invoke-TuiProcess -Script $FakeTui -Arguments @('-Language','zh-CN') -InputText "8`n7`n0`nH`nL`n" -Environment $CommonEnvironment
+    if ($MissingHelper.Status -ne 2 -or (Read-CallLog $CallLog).Length -ne 0 -or -not $MissingHelper.Output.Contains('Home Edge local help')) { Fail "missing $Component allowed a child or blocked local UI" }
+    if ($Component -ne 'ui-language' -and -not $MissingHelper.Output.Contains('startup_detail=')) { Fail 'startup loader error detail lost' }
+    if (-not $MissingHelper.Output.Contains('repair_hint=请恢复')) { Fail 'Chinese startup hint missing' }
+    Move-Item -LiteralPath "$Helper.missing" -Destination $Helper
+  }
+  Write-Host 'tui_fixture_submenu_and_localization_tests=ok'
 
   Write-Host "tui_fixture_tests=ok"
 }

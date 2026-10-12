@@ -129,7 +129,8 @@ esac
 if [ "$registration_state" = same_target ] && [ "$replace_registration" = 0 ] && [ -z "$registration_confirmation" ] && [ "$entry_ready" = 1 ] && [ -f "$launcher/home-edge.command" ] &&
     cmp -s "$repo/scripts/launch-tui.sh" "$launcher/launch-tui.sh" &&
     cmp -s "$repo/scripts/lib/project-location.sh" "$launcher/lib/project-location.sh" &&
-    cmp -s "$repo/scripts/lib/host-launcher.sh" "$launcher/lib/host-launcher.sh"; then
+    cmp -s "$repo/scripts/lib/host-launcher.sh" "$launcher/lib/host-launcher.sh" &&
+    cmp -s "$repo/scripts/lib/ui-language.sh" "$launcher/lib/ui-language.sh"; then
   echo 'shortcut_state=reused'
   echo 'Existing launcher already uses this project; no registration files were replaced.'
   exit 0
@@ -154,11 +155,16 @@ if [ "$current_source" != "$repo" ] || [ "$current_source_identity" != "$directo
   echo 'The selected project directory changed during confirmation. Restart setup from the intended complete folder.' >&2
   exit 2
 fi
+[ -f "$repo/scripts/lib/ui-language.sh" ] && [ -r "$repo/scripts/lib/ui-language.sh" ] || {
+  echo 'Missing scripts/lib/ui-language.sh; restore the complete project before creating its launcher.' >&2
+  exit 2
+}
 mkdir -p "$launcher/lib"
 printf 'home-edge-bootstrap/registered-launcher/v1\n' | home_edge_write_registration "$launcher/.home-edge-launcher-owned"
 home_edge_write_registration "$launcher/launch-tui.sh" 700 <"$repo/scripts/launch-tui.sh"
 home_edge_write_registration "$launcher/lib/project-location.sh" <"$repo/scripts/lib/project-location.sh"
 home_edge_write_registration "$launcher/lib/host-launcher.sh" <"$repo/scripts/lib/host-launcher.sh"
+home_edge_write_registration "$launcher/lib/ui-language.sh" <"$repo/scripts/lib/ui-language.sh"
 printf 'home-edge-bootstrap/target/v2\n%s\n%s\n' "$repo" "$directory_identity" | home_edge_write_registration "$launcher/target.txt"
 home_edge_write_registration "$launcher/home-edge.command" 700 <<'EOF'
 #!/bin/sh

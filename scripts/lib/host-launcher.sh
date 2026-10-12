@@ -22,7 +22,7 @@ home_edge_registration_leaf() {
 
 home_edge_registration_paths() {
   registration=$1
-  for relative in '' lib .home-edge-launcher-owned target.txt home-edge.command launch-tui.sh lib/project-location.sh lib/host-launcher.sh; do
+  for relative in '' lib .home-edge-launcher-owned target.txt home-edge.command launch-tui.sh lib/project-location.sh lib/host-launcher.sh lib/ui-language.sh; do
     path=$registration${relative:+/}$relative
     [ ! -L "$path" ] || { echo "Registration link was not overwritten: $path" >&2; return 2; }
     if [ -e "$path" ]; then

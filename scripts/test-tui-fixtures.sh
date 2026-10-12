@@ -1,6 +1,7 @@
 #!/bin/sh
 # Offline contract tests for the POSIX guided TUI.
 set -eu
+export HOME_EDGE_LANGUAGE=zh-CN
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 find_cmd=$(command -v find) || exit 1
@@ -34,6 +35,15 @@ cp "$repo/PROJECT" "$fake_repo/PROJECT"
 echo fixture >"$fake_repo/README.md"
 cp "$repo/scripts/lib/project-location.sh" "$fake_repo/scripts/lib/"
 cp "$repo/scripts/lib/host-launcher.sh" "$fake_repo/scripts/lib/"
+cp "$repo/scripts/lib/ui-language.sh" "$fake_repo/scripts/lib/"
+mkdir -p "$fake_repo/docs/zh-CN"
+echo fixture >"$fake_repo/README.zh-CN.md"
+echo fixture >"$fake_repo/QUICKSTART.md"
+echo fixture >"$fake_repo/QUICKSTART.zh-CN.md"
+for name in LAUNCHER.md COMPATIBILITY.md NO_WALL_BOOTSTRAP.md; do
+  echo fixture >"$fake_repo/docs/$name"
+  echo fixture >"$fake_repo/docs/zh-CN/$name"
+done
 cp "$repo/scripts/launch-tui.sh" "$fake_repo/scripts/"
 touch "$fake_repo/bootstrap.sh" "$fake_repo/config/policy.env" "$fake_repo/adapters/merlin/bootstrap.sh"
 cat >"$fake_repo/scripts/create-desktop-shortcut.sh" <<'EOF'
@@ -102,6 +112,7 @@ printf 'deploy-scope runtime=%s replace_runtime=%s replace_core=%s include_bundl
 if [ "$APPLY" = 1 ]; then echo deploy_state=applied; else echo deploy_state=plan; fi
 printf 'router=%s\nremote_dir=%s\n' "$1" "$REMOTE_DIR"
 if [ "$APPLY" != 1 ]; then echo 'runtime_assets_effect=preserve'; echo 'integration_effect=project_managed_configuration_may_change'; fi
+if [ "$APPLY" = 1 ]; then exit "${DEPLOY_STUB_WRITE_EXIT:-0}"; fi
 EOF
 chmod +x "$fake_repo/scripts/"*.sh
 
@@ -135,8 +146,8 @@ sh "$fake_repo/scripts/tui.sh" --version >"$tmp/version.out"
 
 grep -Fq '1. 开始或接续引导式配置' "$tmp/default.out" || fail "default menu is not Chinese"
 grep -Fq '1. Start or resume guided bootstrap' "$tmp/en.out" || fail "English menu missing"
-grep -Fq '7. 审查项目退出' "$tmp/default.out" || fail "Chinese decommission menu missing"
-grep -Fq '7. Review project decommission' "$tmp/en.out" || fail "English decommission menu missing"
+grep -Fq '7. 项目维护 >' "$tmp/default.out" || fail "Chinese decommission menu missing"
+grep -Fq '7. Project maintenance >' "$tmp/en.out" || fail "English decommission menu missing"
 for number in 1 2 3 4 5 6 7 8 9 0; do
   grep -Eq "^$number\\. " "$tmp/default.out" || fail "default menu missing action $number"
   grep -Eq "^$number\\. " "$tmp/en.out" || fail "English menu missing action $number"
@@ -148,8 +159,8 @@ for menu_output in "$tmp/default.out" "$tmp/en.out"; do
   grep -Fq 'Select / 请选择 (0-9, L: Language / 语言, H: Help / 帮助, R): ' "$menu_output" || fail "selection prompt is not bilingual"
   [ "$(grep -Ec '^6\. |^H /' "$menu_output")" -eq 1 ] || fail "help has duplicate visible menu rows"
   grep -Fq '6.' "$menu_output" && grep -Fq '[H / ? / help]' "$menu_output" || fail "help aliases are absent from the numbered row"
-  grep -Fq 'Dangerous changes / 危险变更 (7 / R):' "$menu_output" || fail "dangerous actions are not grouped"
-  grep -Fq DECOMMISSION "$menu_output" && grep -Fq REPLACE "$menu_output" && grep -Fq APPLY "$menu_output" || fail "dangerous action confirmations are missing"
+  grep -Fq '7.' "$menu_output" || fail "maintenance entry missing"
+  grep -Fq 'R: ' "$menu_output" || fail "refresh shortcut is missing"
 done
 grep -Fq 'current / 当前: 中文' "$tmp/default.out" || fail "Chinese current language marker missing"
 grep -Fq 'current / 当前: English' "$tmp/en.out" || fail "English current language marker missing"
@@ -178,8 +189,8 @@ call_log="$tmp/calls.log"
 snapshot_project | LC_ALL=C sort >"$tmp/local-before.snapshot"
 for alias in H '?' help 6; do
   : >"$call_log"
-  printf '%s\n0\n' "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/local-help.out"
-  for expected in 'Home Edge local help' "project_dir=$fake_repo" "doc=$fake_repo/docs/RUNBOOK.md" 'First installation:' 'Already installed:' APPLY ENABLE DECOMMISSION EOF '[H / ? / help]' '9. Language / 语言' 'L / Language: English <-> 中文'; do
+  printf '%s\n5\n0\n0\n' "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/local-help.out"
+  for expected in 'Home Edge local help' "project_dir=$fake_repo" "doc=$fake_repo/QUICKSTART.md" 'First installation:' 'Already installed:' APPLY ENABLE DECOMMISSION EOF '[H / ? / help]' '9. Language / 语言' 'L / Language: English <-> 中文'; do
     grep -Fq "$expected" "$tmp/local-help.out" || fail "local help missing $expected ($alias)"
   done
   [ ! -s "$call_log" ] || fail "help dispatched a child: $alias"
@@ -189,7 +200,7 @@ grep -Fq 'Home Edge local help' "$tmp/cli-en-help.out" || fail "CLI English help
 grep -Fq 'Home Edge 本地帮助' "$tmp/help.out" || fail "CLI Chinese help missing"
 for alias in L language 9; do
   : >"$call_log"
-  printf '%s\nH\n%s\n?\n0\n' "$alias" "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --no-color >"$tmp/language-toggle.out"
+  printf '%s\nH\n5\n%s\n5\n0\n0\n' "$alias" "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --no-color >"$tmp/language-toggle.out"
   for expected in 'language=en' 'language=zh-CN' 'Home Edge local help' 'Home Edge 本地帮助' '1. Start or resume guided bootstrap' '1. 开始或接续引导式配置'; do
     grep -Fq "$expected" "$tmp/language-toggle.out" || fail "toggle did not localize menu/help: $alias ($expected)"
   done
@@ -218,17 +229,17 @@ printf '5\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tu
 grep -Fxq 'support-bundle ' "$call_log" || fail "support bundle dispatch mismatch"
 
 : >"$call_log"
-printf '7\nWRONG\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-cancel.out"
+printf '7\n2\nWRONG\n0\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-cancel.out"
 grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "TUI omitted read-only decommission plan"
 if grep -q -- '--apply' "$call_log"; then fail "wrong token enabled decommission"; fi
 
 : >"$call_log"
-printf '7\nDECOMMISSION\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-apply.out"
+printf '7\n2\nDECOMMISSION\n0\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-apply.out"
 grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "TUI omitted decommission plan before apply"
 grep -Eq '^decommission-merlin --apply --confirm DECOMMISSION user@192\.168\.50\.1$' "$call_log" || fail "exact token did not enable decommission"
 
 : >"$call_log"
-printf '7\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-eof.out"
+printf '7\n2\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/decommission-eof.out"
 grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "decommission EOF omitted read-only plan"
 if grep -q -- '--apply' "$call_log"; then fail "EOF enabled decommission"; fi
 
@@ -249,7 +260,7 @@ printf '1\nWRONG\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACT
 grep -Eq '^run-bootstrap --no-pause user@192\.168\.50\.1$' "$call_log" || fail "bootstrap read-only pass missing"
 if grep -q -- '--apply-deploy' "$call_log"; then fail "wrong token enabled deploy"; fi
 
-for wrong_token in apply 'APPLY ' yes; do
+for wrong_token in apply 'APPLY ' yes H L 9; do
   : >"$call_log"
   printf '1\n%s\n0\n' "$wrong_token" | env TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/apply-semantic-cancel.out"
   if grep -q -- '--apply-deploy' "$call_log"; then fail "non-exact token enabled deploy: $wrong_token"; fi
@@ -351,19 +362,19 @@ grep -Fq 'next_action_command=json-resume-command' "$tmp/session-json.out" || fa
 
 snapshot_project | LC_ALL=C sort >"$tmp/session-before.snapshot"
 : >"$call_log"
-printf '3\n2\nL\nH\n3\n9\nhelp\n3\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/switch-session.out"
+printf '3\n2\nH\nL\n0\n3\n7\n9\n0\nhelp\n0\n3\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/switch-session.out"
 [ "$(grep -c 'next_action_command=json-resume-command' "$tmp/switch-session.out")" -eq 3 ] || fail "language/help lost selected state"
 [ "$(grep -c 'existing_session=2' "$tmp/switch-session.out")" -eq 1 ] || fail "language/help lost selected router/session"
 [ ! -s "$call_log" ] || fail "language/help/session display dispatched a child"
 snapshot_project | LC_ALL=C sort >"$tmp/session-after.snapshot"
 cmp -s "$tmp/session-before.snapshot" "$tmp/session-after.snapshot" || fail "language/help/session changed fixture project"
-printf 'L\nH\n9\n2\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/router-toggle.out"
+printf 'L\nH\n9\n0\n2\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/router-toggle.out"
 grep -Fxq 'doctor --json user@192.168.50.1' "$call_log" || fail "language/help lost CLI router"
 
 : >"$call_log"
 runtime_tmp="$tmp/runtime-tmp"
 mkdir -p "$runtime_tmp"
-printf '3\n2\nL\nH\n9\n1\nWRONG\n0\n' | env TMPDIR="$runtime_tmp" TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/session-resume.out"
+printf '3\n2\nL\nH\n9\n0\n1\nWRONG\n0\n' | env TMPDIR="$runtime_tmp" TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/session-resume.out"
 grep -Eq 'run-bootstrap --no-pause --session-dir .*/02-json json-user@192\.168\.50\.3' "$call_log" || fail "selected session did not infer router and preserve session directory"
 grep -Fq "'sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' '--apply-deploy' '--session-dir' '$session_json' 'json-user@192.168.50.3'" "$tmp/session-resume.out" || fail "selected-session command did not bind its project, session and router"
 if "$find_cmd" "$runtime_tmp" -type f -name 'home-edge-tui-*' | grep -q .; then fail "TUI temporary capture files were not cleaned"; fi
@@ -407,7 +418,7 @@ printf '1\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE=instal
 grep -Fq 'explicitly choose R' "$tmp/existing.out" || fail "existing default did not explain continuation"
 if grep -Eq -- '--apply-deploy|deploy-merlin' "$call_log"; then fail "already installed default silently redeployed"; fi
 for state in installed partial; do
-  for inputs in 'R|WRONG|0' 'R|replace|0' 'R|REPLACE |0' 'R|REPLACE|WRONG|0' 'R|REPLACE|apply|0' 'R|REPLACE|APPLY |0' 'R' 'R|REPLACE'; do
+  for inputs in 'R|WRONG|0' 'R|replace|0' 'R|REPLACE |0' 'R|REPLACE|WRONG|0' 'R|REPLACE|apply|0' 'R|REPLACE|APPLY |0' 'R|H|0' 'R|REPLACE|L|0' 'R' 'R|REPLACE'; do
     : >"$call_log"
     printf '%s\n' "$inputs" | tr '|' '\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE="$state" sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/refresh-cancel.out"
     if grep -Fq 'deploy-merlin apply=1' "$call_log"; then fail "refresh cancellation/EOF allowed a write ($state)"; fi
@@ -518,5 +529,85 @@ case "$(uname -s)" in
     ;;
 esac
 echo "tui_fixture_installation_guard_tests=ok"
+
+
+# Local navigation is inert; switching language stays on the current page.
+: >"$call_log"
+snapshot_project | LC_ALL=C sort >"$tmp/nav-before.snapshot"
+printf '7\n\ninvalid\nL\n0\n6\n1\n2\n3\n4\nL\n4\n0\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en >"$tmp/navigation.out"
+[ ! -s "$call_log" ] || fail "submenu navigation dispatched a child"
+[ "$(grep -o '# Home Edge' "$tmp/navigation.out" | wc -l | tr -d ' ')" -eq 3 ] || fail "language/empty/invalid selection left its submenu"
+grep -Fq '1. 刷新本项目' "$tmp/navigation.out" || fail "maintenance language did not switch in place"
+grep -Fq '1. Getting started:' "$tmp/navigation.out" || fail "help language did not switch in place"
+printf '7\nH\nL\nH\n0\n0\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en >"$tmp/help-return.out"
+[ "$(grep -o '# Home Edge' "$tmp/help-return.out" | wc -l | tr -d ' ')" -eq 2 ] || fail "help did not return to caller maintenance page"
+grep -Fq 'Home Edge / 项目维护' "$tmp/help-return.out" || fail "help lost maintenance language/parent"
+grep -Fq '0-2/9' "$tmp/help-return.out" && grep -Fq '0-5/9' "$tmp/help-return.out" || fail "submenu prompt ranges incorrect"
+[ ! -s "$call_log" ] || fail "help parent navigation dispatched child"
+for lang in en zh-CN; do
+  sh "$fake_repo/scripts/tui.sh" --lang "$lang" --help >"$tmp/paths-$lang.out"
+  if grep -Fq 'RUNBOOK.md' "$tmp/paths-$lang.out"; then fail "missing optional RUNBOOK emitted a dangling path"; fi
+  sed -n 's/^doc=//p; s/^readme=//p' "$tmp/paths-$lang.out" | while IFS= read -r doc; do [ -f "$doc" ] || fail "help points at missing document: $doc"; done
+  quickstart_name=QUICKSTART.md; [ "$lang" != zh-CN ] || quickstart_name=QUICKSTART.zh-CN.md
+  grep -Fq "doc=$fake_repo/$quickstart_name" "$tmp/paths-$lang.out" || fail "existing QUICKSTART omitted"
+  case "$lang" in zh-CN) grep -Fq '/docs/zh-CN/' "$tmp/paths-$lang.out" || fail "Chinese docs omitted" ;; en) if grep -Fq '/docs/zh-CN/' "$tmp/paths-$lang.out"; then fail "English help listed Chinese docs"; fi ;; esac
+ done
+for page in 6 7; do
+  set +e
+  printf '2\n%s\nL\n' "$page" | env TUI_FIXTURE_CALL_LOG="$call_log" DOCTOR_STUB_EXIT=17 sh "$fake_repo/scripts/tui.sh" --lang en >"$tmp/submenu-eof.out"
+  submenu_status=$?
+  set -e
+  [ "$submenu_status" -eq 17 ] || fail "submenu EOF lost previous action status"
+done
+snapshot_project | LC_ALL=C sort >"$tmp/nav-after.snapshot"
+cmp -s "$tmp/nav-before.snapshot" "$tmp/nav-after.snapshot" || fail "local submenu navigation changed project"
+
+# Chinese deployment/refresh prompts exercise success, cancellation, EOF and child failure.
+for operation in deploy refresh; do
+  for mode in success cancel eof fault; do
+    : >"$call_log"
+    case "$operation:$mode" in
+      deploy:success|deploy:fault) inputs='1|APPLY|0' ;;
+      deploy:cancel) inputs='1|WRONG|0' ;; deploy:eof) inputs='1' ;;
+      refresh:success|refresh:fault) inputs='7|1|REPLACE|APPLY|0|0' ;;
+      refresh:cancel) inputs='7|1|REPLACE|WRONG|0|0' ;; refresh:eof) inputs='7|R|REPLACE' ;;
+    esac
+    state=not_installed; [ "$operation" != refresh ] || state=installed
+    code=0; [ "$mode" != fault ] || code=19
+    set +e
+    printf '%s\n' "$inputs" | tr '|' '\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE="$state" BOOTSTRAP_STUB_ACTION=deploy_plan BOOTSTRAP_STUB_WRITE_EXIT="$code" DEPLOY_STUB_WRITE_EXIT="$code" sh "$fake_repo/scripts/tui.sh" --lang zh-CN --router user@192.168.50.1 >"$tmp/chinese-action.out"
+    result=$?
+    set -e
+    [ "$result" -eq "$code" ] || fail "Chinese $operation/$mode exit status changed"
+    if [ "$operation" = refresh ]; then
+      grep -Fq '即将执行已审查的项目刷新。输入 APPLY' "$tmp/chinese-action.out" || fail "Chinese refresh prompt calls it deployment"
+      if grep -Fq '即将执行部署。' "$tmp/chinese-action.out"; then fail "refresh displayed deployment prompt"; fi
+    else grep -Fq '即将执行部署。输入 APPLY' "$tmp/chinese-action.out" || fail "Chinese deployment prompt missing"; fi
+    case "$mode" in
+      cancel|eof) if grep -Eq 'deploy-merlin apply=1|run-bootstrap .*--apply-deploy' "$call_log"; then fail "Chinese cancellation/EOF allowed write"; fi ;;
+      success) grep -Eq 'deploy-merlin apply=1|run-bootstrap .*--apply-deploy' "$call_log" || fail "Chinese confirmation did not dispatch write" ;;
+      fault) grep -Fq 'repair_hint=请保留错误与日志' "$tmp/chinese-action.out" || fail "Chinese child failure repair hint not localized" ;;
+    esac
+  done
+done
+
+# Missing startup helpers retain local UI but cannot dispatch writes.
+for component in host-launcher project-location ui-language; do
+  helper="$fake_repo/scripts/lib/$component.sh"
+  mv "$helper" "$helper.missing"
+  sh "$fake_repo/scripts/tui.sh" --help >"$tmp/helper-help.out" 2>&1 || fail "missing $component blocked CLI help"
+  sh "$fake_repo/scripts/tui.sh" --version >"$tmp/helper-version.out" 2>&1 || fail "missing $component blocked CLI version"
+  : >"$call_log"
+  set +e
+  printf '8\n7\n0\nH\nL\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang zh-CN >"$tmp/helper-local.out" 2>&1
+  result=$?
+  set -e
+  [ "$result" -eq 2 ] || fail "missing $component did not preserve degraded status"
+  [ ! -s "$call_log" ] || fail "missing $component allowed a child"
+  grep -Fq 'Home Edge local help' "$tmp/helper-local.out" || fail "missing $component blocked language/help"
+  grep -Fq 'repair_hint=请恢复' "$tmp/helper-local.out" || fail "Chinese startup repair hint missing"
+  mv "$helper.missing" "$helper"
+done
+echo 'tui_fixture_submenu_and_localization_tests=ok'
 
 echo "tui_fixture_tests=ok"

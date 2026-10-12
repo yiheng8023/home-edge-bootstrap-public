@@ -2,6 +2,75 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.10（2026-10-13）
+
+v0.1.10 改进双语引导器，不增加终端框架。主菜单按常用任务、工具和偏好分组；本机帮助与项目维护使用有重点的二级菜单。主菜单 7 现在打开维护菜单，其中 1 刷新项目内容、2 审查项目退出；旧 R 刷新快捷键保留。导航和语言切换保留已选路由器／会话；子菜单的 0 返回，输入结束（EOF）退出向导。APPLY、REPLACE、ENABLE、DECOMMISSION 的精确确认合同保持。
+
+帮助只列出当前副本实际存在的文档，包含公仓纯源码包。启动、目录选择与故障修复的人读提示跟随所选语言；协议键、枚举、命令和确认令牌不翻译。语言优先级为显式参数、有效 HOME_EDGE_LANGUAGE 偏好、宿主语言环境，缺少语言信息时使用已说明的中文兜底。偏好仅作用于当前会话，不写全局设置。中文项目刷新确认现在准确写“刷新”，不再写“部署”。
+
+独立启动入口的缓存包含语言 helper。已拥有的登记缺少文件或缓存版本变化时，仍须明确 REPLACE 后再 APPLY 才刷新。针对性 fixture 覆盖二级菜单导航、语言优先级、真实文档路径、中文确认／取消／失败和入口恢复。原生宿主 CI 与具体归档检查仍是发布前置；这些源码／宿主检查不认证所有终端、原生 GUI 或路由器。
+
+Mihomo v1.19.32、ShellCrash 1.9.4、源码／许可证锁和分发资产角色不变。本次引导器更新不替换路由器运行时，不调整服务商规则、当前节点选择或服务策略。旧标签与已发布资产保持，v0.1.8 继续未发布；原有限分发合同中的广泛支持／安全声明仍保持 blocked。
+
+获取路径任选其一：发行包校验解压、Git 克隆、复用完整本地目录／桌面入口，或离线转移一个完整包。Windows 打开 start.cmd，macOS 打开 start.command，Linux 通过 sh 打开 start.sh，随后选择 1 按实际状态继续。不提供 npm、pnpm 或 npx 安装入口。
+
+公仓 source 包／克隆不含离线运行时；已有运行时时可选 source 包，目标缺运行时时选择 offline 包。
+
+Windows 下载完整 ZIP、全部解压后双击 start.cmd；macOS/Linux 选择 tar.gz。只选适合系统的一个包并下载 SHA256SUMS 校验；源码审计材料不是额外安装部件。
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.10-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.10-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.10-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.10-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.10-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.10-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.10-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.10-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+选择对应系统的一种包和 `SHA256SUMS`；只校验你下载的文件。manifest、SBOM（公开发行）和完整对应源码是审计／源码可用性资料，不是额外安装部件。GitHub 自动生成的 Source code 不是契约发行包。
+
+只有已有运行时且只需要脚本／文档时才选 source 包；全新离线运行时准备选择 offline 包。
+
+先将选中的发行包与 `SHA256SUMS` 放在同一文件夹。下面的校验命令在该文件夹的终端执行：Windows 可在资源管理器中打开该文件夹，在地址栏输入 `powershell` 并回车；macOS/Linux 可打开终端，输入 `cd `（保留空格），拖入下载文件夹后按回车。校验成功后再解压；无需回到项目目录。
+
+Windows PowerShell 只校验已下载的离线 ZIP：
+
+```powershell
+$File = "home-edge-bootstrap-v0.1.10-offline.zip"
+$Expected = ((Get-Content .\SHA256SUMS | Where-Object { $_ -match "  $([regex]::Escape($File))$" }) -split '\s+')[0]
+if ((Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) {
+  throw "SHA256 mismatch: $File"
+}
+```
+
+macOS/Linux 只校验已下载的离线 `tar.gz`：
+
+```sh
+file=home-edge-bootstrap-v0.1.10-offline.tar.gz
+line=$(awk -v f="$file" 'NF == 2 && length($1) == 64 && $2 == f { n++; hit=$0 }
+  END { if (n == 1) print hit; else exit 1 }' SHA256SUMS) || exit 1
+if command -v sha256sum >/dev/null 2>&1; then
+  printf '%s\n' "$line" | sha256sum -c -
+else
+  printf '%s\n' "$line" | shasum -a 256 -c -
+fi
+```
+
 ## v0.1.9（2026-10-13）
 
 v0.1.9 修正自愈的写入权限：配置的 HEAL_GROUP 必须精确匹配可写 Selector，自动主组发现排除手动名称。显式指定手动组会授权其自动管理；嵌套与角色切换保留各自的主动启用控制。PUT 前重新核验图与选择值；回滚也受介入变化守卫约束。controller 没有原子 compare-and-swap（CAS），这些检查缩小已观测竞态窗口，但不能消除全部并发变化风险。

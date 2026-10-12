@@ -72,7 +72,7 @@ try {
   if ($ExistingProject) { Write-Host "registered_project=$ExistingProject" }
   if ($RegistrationState -eq "same_target" -and -not $ReplaceRegistration -and -not $RegistrationConfirmation -and (Test-Path -LiteralPath $ShortcutPath)) {
     $CacheMatches = $true
-    foreach ($Relative in @("launch-tui.ps1", "lib\project-location.ps1", "lib\host-launcher.ps1")) {
+    foreach ($Relative in @("launch-tui.ps1", "lib\project-location.ps1", "lib\host-launcher.ps1", "lib\ui-language.ps1")) {
       $CachedPath = Join-Path $LauncherDirectory $Relative
       if (-not (Test-Path -LiteralPath $CachedPath -PathType Leaf) -or
           (Get-FileHash -LiteralPath $CachedPath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $Relative) -Algorithm SHA256).Hash) { $CacheMatches = $false; break }
@@ -102,11 +102,15 @@ try {
   if ((Get-HomeEdgeDirectoryIdentity $Repo) -cne $DirectoryIdentity) {
     throw "The selected project directory changed during confirmation. Restart setup from the intended complete folder."
   }
+  if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot "lib\ui-language.ps1") -PathType Leaf)) {
+    throw "Missing scripts/lib/ui-language.ps1; restore the complete project before creating its launcher."
+  }
   New-Item -ItemType Directory -Path (Join-Path $LauncherDirectory "lib") -Force | Out-Null
   Write-HomeEdgeRegistrationText $Marker "home-edge-bootstrap/registered-launcher/v1`n" ([Text.UTF8Encoding]::new($false))
   Copy-HomeEdgeRegistrationFile (Join-Path $PSScriptRoot "launch-tui.ps1") (Join-Path $LauncherDirectory "launch-tui.ps1")
   Copy-HomeEdgeRegistrationFile (Join-Path $PSScriptRoot "lib\project-location.ps1") (Join-Path $LauncherDirectory "lib\project-location.ps1")
   Copy-HomeEdgeRegistrationFile (Join-Path $PSScriptRoot "lib\host-launcher.ps1") (Join-Path $LauncherDirectory "lib\host-launcher.ps1")
+  Copy-HomeEdgeRegistrationFile (Join-Path $PSScriptRoot "lib\ui-language.ps1") (Join-Path $LauncherDirectory "lib\ui-language.ps1")
   Write-HomeEdgeRegistrationText (Join-Path $LauncherDirectory "target.txt") "home-edge-bootstrap/target/v2`n$Repo`n$DirectoryIdentity`n" ([Text.UTF8Encoding]::new($false))
   $RegisteredEntry = Join-Path $LauncherDirectory "home-edge.cmd"
   $EntryText = @'

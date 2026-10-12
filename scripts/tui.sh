@@ -3,7 +3,7 @@
 set -u
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-language=zh-CN
+language=""
 router=""
 selected_session_dir=""
 selected_state_file=""
@@ -49,12 +49,12 @@ Menu guide:
 3. Session: read saved local state and next-action hints. Saved commands are displayed as data, never executed by this choice.
 4. Offline bundle: verify the runtime bundle and readiness before deployment.
 5. Support: export a redacted local support bundle; review its contents before sharing.
-6 / H / ? / help: show this local help at any time from the main menu.
-7. Decommission: show the project removal plan, then require DECOMMISSION before applying it.
+6 / H / ? / help: open the local help menu; choose 5 there for full help.
+7. Project maintenance: open refresh/removal choices. Removal requires DECOMMISSION; refresh requires REPLACE then APPLY.
 8. Desktop: explicitly create or refresh a local launcher; this writes local launcher files.
 9 / L / language: toggle Chinese and English immediately for this session, keeping the router and selected session.
 R. Explicitly refresh owned project content: review a fresh installation probe and plan, then type REPLACE followed by APPLY. Runtime/core assets are preserved; project-managed policy, integration and configuration may change per plan. The current tree is backed up to <project-path>.prev; an older backup may be replaced.
-0. Exit. End of input (EOF) exits; at a confirmation prompt, EOF or any other token cancels that operation. Ctrl+C interrupts.
+0. Back from a submenu; exit from the main menu. End of input (EOF) exits; at a confirmation prompt, EOF or any other token cancels that operation. Ctrl+C interrupts.
 
 Safety: review the exact command, target, expected effect, session/log destinations and rollback path before confirming.
 Deployment requires exact APPLY; project refresh additionally requires REPLACE first; live self-heal requires exact ENABLE; project removal requires exact DECOMMISSION.
@@ -64,7 +64,6 @@ If an operation is unavailable, keep using local help and check compatibility be
 Project location: use the complete cloned or extracted folder containing PROJECT, README.md and scripts; do not select a ZIP or single script.
 The paths below bind to this running project. Open/read them yourself; help does not open programs.
 EOF
-    docs_dir="$repo/docs"; readme="$repo/README.md"
   else
     while IFS= read -r help_line || [ -n "$help_line" ]; do printf '%s\n' "$help_line"; done <<'EOF'
 Home Edge 本地帮助
@@ -77,12 +76,12 @@ Home Edge 本地帮助
 3. 会话状态：读取本地保存的状态和下一步提示；记录中的命令仅作为数据展示，此选项不会执行它们。
 4. 离线 bundle：部署前验证运行时包与就绪情况。
 5. 支持包：导出本地脱敏支持包；分享前请审查内容。
-6 / H / ? / help：在主菜单随时查看此本地帮助。
-7. 项目退出：先显示项目移除计划，输入 DECOMMISSION 后才会执行。
+6 / H / ? / help：进入本地帮助菜单，选择 5 查看完整帮助。
+7. 项目维护：进入刷新或退出子菜单。退出需 DECOMMISSION；刷新需 REPLACE 再 APPLY。
 8. 桌面入口：明确创建或更新本机启动入口，会写入本机启动文件。
 9 / L / language：立即切换本次会话的中英文，保留路由器和所选会话。
 R. 明确刷新本项目管理的内容：先审查最新安装探测与计划，再先输入 REPLACE 后输入 APPLY。运行时/核心资产保留；本项目管理的策略、集成与配置可能按计划变化。当前项目树备份至 <项目路径>.prev，旧备份可能被替换。
-0. 退出。输入结束（EOF）会退出；确认提示处的 EOF 或其他令牌取消该操作。Ctrl+C 中断。
+0. 子菜单返回，主菜单退出。输入结束（EOF）会退出；确认提示处的 EOF 或其他令牌取消该操作。Ctrl+C 中断。
 
 安全约束：确认前审查精确命令、目标、预期影响、会话和日志位置以及回退路径。
 部署必须精确输入 APPLY；刷新本项目还必须先输入 REPLACE；真实自愈必须精确输入 ENABLE；项目移除必须精确输入 DECOMMISSION。
@@ -92,14 +91,21 @@ R. 明确刷新本项目管理的内容：先审查最新安装探测与计划�
 项目目录：请选择完整克隆或解压后的文件夹，其中应包含 PROJECT、README.md 和 scripts；不要选择 ZIP 或单个脚本。
 下面路径绑定当前运行的项目。请自行打开或阅读；帮助不会打开程序。
 EOF
-    docs_dir="$repo/docs/zh-CN"; readme="$repo/README.zh-CN.md"
   fi
   printf 'L / Language: English <-> 中文 (this session / 仅当前会话).\n'
-  printf 'project_dir=%s\nreadme=%s\n' "$repo" "$readme"
+  show_documents
+}
+show_documents() {
+  if [ "$language" = en ]; then docs_dir="$repo/docs"; readme="$repo/README.md"; quickstart="$repo/QUICKSTART.md"
+  else docs_dir="$repo/docs/zh-CN"; readme="$repo/README.zh-CN.md"; quickstart="$repo/QUICKSTART.zh-CN.md"; fi
+  printf 'project_dir=%s\n' "$repo"
+  [ ! -f "$readme" ] || printf 'readme=%s\n' "$readme"
+  [ ! -f "$quickstart" ] || printf 'doc=%s\n' "$quickstart"
   for name in LAUNCHER.md COMPATIBILITY.md RUNBOOK.md NO_WALL_BOOTSTRAP.md; do
-    printf 'doc=%s/%s\n' "$docs_dir" "$name"
+    [ ! -f "$docs_dir/$name" ] || printf 'doc=%s/%s\n' "$docs_dir" "$name"
   done
 }
+
 switch_language() {
   if [ "$language" = en ]; then language=zh-CN; else language=en; fi
   printf 'language=%s\n' "$language"
@@ -126,7 +132,7 @@ version() {
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --lang) shift; [ "$#" -gt 0 ] || { echo "--lang requires a value" >&2; exit 2; }; language=$1 ;;
+    --lang) shift; [ "$#" -gt 0 ] || { echo "--lang requires a value" >&2; exit 2; }; [ -n "$1" ] || { echo "unsupported language: empty" >&2; exit 2; }; language=$1 ;;
     --router) shift; [ "$#" -gt 0 ] || { echo "--router requires a value" >&2; exit 2; }; router=$1 ;;
     --no-color) no_color=1 ;;
     --help|-h) show_help=1 ;;
@@ -136,7 +142,18 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-case "$language" in zh-CN|en) ;; *) echo "unsupported language: $language" >&2; exit 2 ;; esac
+language_ready=1
+if [ -f "$repo/scripts/lib/ui-language.sh" ]; then
+  . "$repo/scripts/lib/ui-language.sh"
+  detected_language=$(heb_detect_ui_language "$language") || { echo "unsupported language: $language" >&2; exit 2; }
+  language=$detected_language
+else
+  language_ready=0
+  case "$language" in '') language=zh-CN ;; zh-CN|en) ;; *) echo "unsupported language: $language" >&2; exit 2 ;; esac
+  echo 'missing_component=scripts/lib/ui-language.sh' >&2
+  echo 'Restore the complete project folder / 请恢复完整项目目录。' >&2
+  heb_ui_text() { if [ "$language" = en ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi; }
+fi
 
 valid_router() {
   case "$1" in
@@ -155,9 +172,11 @@ fi
 [ "$show_help" -eq 0 ] || { usage; exit 0; }
 [ "$show_version" -eq 0 ] || { version; exit 0; }
 
-. "$repo/scripts/lib/project-location.sh"
-if [ ! -f "$repo/scripts/lib/host-launcher.sh" ]; then echo 'startup_state=failed'; echo 'missing_component=scripts/lib/host-launcher.sh'; exit 2; fi
-. "$repo/scripts/lib/host-launcher.sh"
+startup_ready=$language_ready
+for component in project-location host-launcher; do
+  if [ -f "$repo/scripts/lib/$component.sh" ]; then . "$repo/scripts/lib/$component.sh"
+  else echo 'startup_state=failed'; printf 'missing_component=scripts/lib/%s.sh\n' "$component"; startup_ready=0; fi
+done
 
 startup_check() {
   for command in sh mktemp tee sed awk grep cat rm tr; do
@@ -169,10 +188,14 @@ startup_check() {
   done
   return 0
 }
-startup_check || exit $?
-repo_identity=$(home_edge_directory_identity "$repo") || { echo 'startup_state=failed'; echo 'repair_hint=Restore the complete project folder and required local tools, then restart.'; exit 2; }
-home_edge_project_dir "$repo" >/dev/null || { echo 'startup_state=invalid_project'; exit 2; }
-usage_command=$(command_line sh "$repo/scripts/tui.sh")
+repo_identity=""
+if [ "$startup_ready" -eq 1 ]; then
+  startup_check && repo_identity=$(home_edge_directory_identity "$repo") && home_edge_project_dir "$repo" >/dev/null || startup_ready=0
+fi
+if [ "$startup_ready" -ne 1 ]; then
+  last_action_status=2
+  heb_ui_text 'repair_hint=请恢复完整项目目录及所需本地工具后重新启动；本地帮助、语言和退出仍可使用。' 'repair_hint=Restore the complete project folder and required local tools, then restart. Local help, language and exit remain available.'
+fi
 
 guide_tools_available() {
   # A shell can cache the path of an executable after its file disappears.
@@ -182,73 +205,86 @@ guide_tools_available() {
       last_action_status=2
       echo 'capability_state=unavailable'
       printf 'missing_prerequisite=%s\n' "$guide_tool"
-      echo 'repair_hint=Restore the required local tool, then restart or retry. Local help, language and exit remain available.'
+      heb_ui_text 'repair_hint=请恢复所需本地工具后重新启动或重试。本地帮助、语言和退出仍可使用。' 'repair_hint=Restore the required local tool, then restart or retry. Local help, language and exit remain available.'
       return 2
     fi
   done
   return 0
 }
 current_project() {
+  [ "$startup_ready" -eq 1 ] || { last_action_status=2; return 2; }
   guide_tools_available || return 2
   if [ ! -f "$repo/scripts/lib/host-launcher.sh" ] || ! home_edge_project_dir "$repo" >/dev/null 2>&1; then
     last_action_status=2
     echo 'condition_state=project_degraded'
-    echo 'repair_hint=Restore the complete original project folder and restart this guide from that folder.'
+    heb_ui_text 'repair_hint=请恢复完整的原项目目录，并从该目录重新启动引导器。' 'repair_hint=Restore the complete original project folder and restart this guide from that folder.'
     return 2
   fi
   current_identity=$(home_edge_directory_identity "$repo") || {
-    last_action_status=2; echo 'condition_state=project_degraded'; echo 'repair_hint=Restore the required local tools and restart this guide.'; return 2;
+    last_action_status=2; echo 'condition_state=project_degraded'; heb_ui_text 'repair_hint=请恢复所需本地工具并重新启动引导器。' 'repair_hint=Restore the required local tools and restart this guide.'; return 2;
   }
   if [ "$current_identity" != "$repo_identity" ]; then
     last_action_status=2
     echo 'condition_state=project_degraded'
-    echo 'repair_hint=The project directory was replaced; restart from the complete original project folder.'
+    heb_ui_text 'repair_hint=项目目录已被替换；请从完整的原项目目录重新启动。' 'repair_hint=The project directory was replaced; restart from the complete original project folder.'
     return 2
   fi
   return 0
 }
 
+show_language_row() {
+  if [ "$language" = en ]; then current_language=English; else current_language=中文; fi
+  printf '9. Language / 语言 (English / 中文; current / 当前: %s) [L / language]\n' "$current_language"
+}
 show_menu() {
-  if [ "$language" = en ]; then
-    while IFS= read -r menu_line || [ -n "$menu_line" ]; do printf '%s\n' "$menu_line"; done <<'EOF'
-# Home Edge Guide
-1. Start or resume guided bootstrap
-2. Run read-only diagnosis
-3. View current bootstrap session state
-4. Verify offline runtime bundle
-5. Export a redacted support bundle
-6. Show help and safety boundaries [H / ? / help]
-7. Review project decommission (removes project-managed content; requires DECOMMISSION)
-8. Create or refresh a local desktop launcher
-9. Language / 语言 (English / 中文; current / 当前: English) [L / language]
-
-Dangerous changes / 危险变更 (7 / R):
-  7 removes project-managed content; R can update policy, integration and configuration, and replace an older project backup.
-R. Reinstall / refresh this project only (replaces project content; requires REPLACE then APPLY)
-Local project located; router installation is checked only after choosing a target and an operation.
-0. Exit without changes
-EOF
+  if [ "$menu_page" = help ]; then
+    heb_ui_text 'Home Edge 本地帮助 / 帮助菜单' 'Home Edge local help / Help menu'
+    heb_ui_text '1. 入门：首次安装 / 已安装' '1. Getting started: first installation / already installed'
+    heb_ui_text '2. 安全与确认令牌' '2. Safety and confirmation tokens'
+    heb_ui_text '3. 故障与恢复' '3. Troubleshooting and recovery'
+    heb_ui_text '4. 当前项目文档路径' '4. Current project documentation paths'
+    heb_ui_text '5. 完整帮助' '5. Full help'
+  elif [ "$menu_page" = maintenance ]; then
+    heb_ui_text 'Home Edge / 项目维护' 'Home Edge / Project maintenance'
+    heb_ui_text '1. 刷新本项目 [R]：需 REPLACE 再 APPLY，可能更新策略、集成与配置及替换旧备份' '1. Refresh this project [R]: REPLACE then APPLY; may change policy, integration, configuration and replace an older backup'
+    heb_ui_text '2. 项目退出：需 DECOMMISSION，按计划移除项目受管内容' '2. Decommission: DECOMMISSION removes project-managed content per plan'
   else
-    while IFS= read -r menu_line || [ -n "$menu_line" ]; do printf '%s\n' "$menu_line"; done <<'EOF'
-# Home Edge 引导器
-1. 开始或接续引导式配置
-2. 运行只读诊断
-3. 查看当前 bootstrap 会话状态
-4. 验证离线运行时 bundle
-5. 导出脱敏支持包
-6. 查看帮助与安全边界 [H / ? / help]
-7. 审查项目退出（移除项目受管内容，需 DECOMMISSION）
-8. 创建或更新本机桌面启动入口
-9. Language / 语言 (English / 中文; current / 当前: 中文) [L / language]
-
-Dangerous changes / 危险变更 (7 / R):
-  7 按计划移除项目受管内容；R 可更新策略、集成与配置，并替换旧的项目备份。
-R. 重新安装 / 刷新本项目（替换项目内容，需 REPLACE 再 APPLY）
-已定位本地项目；路由器安装状态需选择目标和操作后才检查。
-0. 不做修改并退出
-EOF
+    heb_ui_text '# Home Edge 引导器' '# Home Edge Guide'
+    printf '\n'
+    heb_ui_text '常用操作' 'Common actions'
+    heb_ui_text '1. 开始或接续引导式配置' '1. Start or resume guided bootstrap'
+    heb_ui_text '2. 运行只读诊断' '2. Run read-only diagnosis'
+    heb_ui_text '3. 查看当前 bootstrap 会话状态' '3. View current bootstrap session state'
+    printf '\n'
+    heb_ui_text '工具与帮助' 'Tools and help'
+    heb_ui_text '4. 验证离线运行时 bundle' '4. Verify offline runtime bundle'
+    heb_ui_text '5. 导出脱敏支持包' '5. Export a redacted support bundle'
+    heb_ui_text '6. 帮助 > [H / ? / help]' '6. Help > [H / ? / help]'
+    printf '\n'
+    heb_ui_text '维护与偏好' 'Maintenance and preferences'
+    heb_ui_text '7. 项目维护 >' '7. Project maintenance >'
+    heb_ui_text '8. 创建或更新本机桌面启动入口' '8. Create or refresh a local desktop launcher'
   fi
-  printf 'Select / 请选择 (0-9, L: Language / 语言, H: Help / 帮助, R): '
+  show_language_row
+  if [ "$menu_page" = main ]; then heb_ui_text '0. 不做修改并退出' '0. Exit without changes'
+  else heb_ui_text '0. 返回上一层' '0. Back'; fi
+  if [ "$menu_page" = main ]; then
+    heb_ui_text 'R: 刷新本项目快捷键（确认及影响见项目维护）' 'R: Project refresh shortcut (confirmations and effects in maintenance)'
+    choices=0-9
+  elif [ "$menu_page" = help ]; then choices=0-5/9
+  else choices=0-2/9; fi
+  printf 'Select / 请选择 (%s, L: Language / 语言, H: Help / 帮助' "$choices"
+  [ "$menu_page" = help ] || printf ', R'
+  printf '): '
+}
+show_help_topic() {
+  case "$1" in
+    1) heb_ui_text '首次安装：先阅读兼容性与前置条件，再选择主菜单 1，审查诊断和部署计划。已经安装：先查看诊断或会话状态，不要默认重装。' 'First installation: read compatibility and prerequisites, then choose main menu 1 and review diagnosis and the deployment plan. Already installed: inspect diagnosis or session state before considering reinstall.' ;;
+    2) heb_ui_text '部署需 APPLY；刷新需 REPLACE 再 APPLY；真实自愈需 ENABLE；项目退出需 DECOMMISSION。令牌区分大小写且不接受多余空格。先审查命令、目标、影响与回退路径。帮助、语言或回车不授权写入。' 'Deployment requires APPLY; refresh requires REPLACE then APPLY; live self-heal requires ENABLE; removal requires DECOMMISSION. Tokens are case-sensitive with no extra spaces. Review command, target, effects and rollback. Help, language and Enter do not authorize writes.' ;;
+    3) heb_ui_text '保留错误、会话和日志，先核对完整项目目录与所需本地工具。不要盲目重放写入；先核实实际状态。EOF 退出引导器；确认处 EOF 取消操作。本地帮助、语言和退出保持可用。' 'Keep the error, session and logs; check the complete project folder and required local tools. Verify actual state before retrying a write. EOF exits the guide; EOF at confirmation cancels the action. Local help, language and exit remain available.' ;;
+    4) show_documents ;;
+    5) usage ;;
+  esac
 }
 
 state_value_env() {
@@ -359,7 +395,7 @@ operation_available() {
     last_action_status=2
     echo 'capability_state=unavailable'
     printf 'missing_component=%s\n' "$1"
-    echo 'Restore or update the complete project folder, then restart this guide. Local help, language switching and exit remain available.'
+    heb_ui_text 'repair_hint=请恢复或更新完整项目目录后重新启动。本地帮助、语言切换和退出仍可使用。' 'repair_hint=Restore or update the complete project folder, then restart this guide. Local help, language switching and exit remain available.'
     return 2
   fi
   return 0
@@ -368,7 +404,7 @@ run_child() {
   action=$1; write_started=$2; shift 2
   guide_tools_available || return 2
   if ! command -v "${1:-}" >/dev/null 2>&1; then
-    last_action_status=2; echo 'capability_state=unavailable'; printf 'missing_prerequisite=%s\n' "${1:-unknown}"; echo 'Restore the required local tool, then retry.'; return 2
+    last_action_status=2; echo 'capability_state=unavailable'; printf 'missing_prerequisite=%s\n' "${1:-unknown}"; heb_ui_text 'repair_hint=请恢复所需本地工具后重试。' 'repair_hint=Restore the required local tool, then retry.'; return 2
   fi
   expect_script=0
   for token do
@@ -399,6 +435,7 @@ run_child() {
   if [ "$child_status" -ne 0 ]; then
     echo "failed_action=$action"
     echo "child_exit_code=$child_status"
+    heb_ui_text 'repair_hint=请保留错误与日志，核实实际状态后再决定是否重试；可在帮助菜单查看故障恢复。' 'repair_hint=Keep the error and logs, verify actual state before retrying; see recovery in Help.'
     echo "safe_resume_command=$resume_command"
     [ "$write_started" = true ] && echo "write_action_started=true"
   fi
@@ -482,7 +519,7 @@ confirm_project_refresh() {
     return 1
   fi
   if [ "$language" = en ]; then printf 'Type APPLY to apply the reviewed project refresh; anything else cancels: '
-  else printf '即将执行部署。输入 APPLY 确认，其他输入取消: '
+  else printf '即将执行已审查的项目刷新。输入 APPLY 确认，其他输入取消: '
   fi
   if ! IFS= read -r confirmation || [ "$confirmation" != APPLY ]; then
     if [ "$language" = en ]; then echo 'Action cancelled.'; else echo '操作已取消。'; fi
@@ -601,7 +638,6 @@ export_support() {
   else run_child export_support_bundle false sh "$repo/scripts/export-support-bundle.sh" || return 0
   fi
 }
-show_safety_help() { usage; }
 review_decommission() {
   last_action_status=0
   operation_available "$repo/scripts/decommission-merlin.sh" || return 0
@@ -621,27 +657,36 @@ review_decommission() {
   run_child decommission_apply true sh "$repo/scripts/decommission-merlin.sh" --apply --confirm DECOMMISSION "$router" || return 0
 }
 
+menu_page=main
+help_parent_page=main
 while :; do
-  menu_ready=1
-  current_project || menu_ready=0
   show_menu
   if ! IFS= read -r choice; then printf '\n'; exit "$last_action_status"; fi
-  case "$choice" in 0|6|H|h|\?|help|HELP|9|L|l|language|LANGUAGE) ;; *)
-    if [ "$menu_ready" -ne 1 ] || ! current_project; then continue; fi ;;
-  esac
   case "$choice" in
-    0) exit "$last_action_status" ;;
-    1) start_or_resume ;;
-    R|r) refresh_project ;;
-    2) run_doctor || true ;;
-    3) show_session ;;
-    4) verify_bundle ;;
-    5) export_support ;;
-    6|H|h|\?|help|HELP) show_safety_help ;;
-    9|L|l|language|LANGUAGE) switch_language ;;
-    7) review_decommission ;;
-    8) run_child create_local_launcher true sh "$repo/scripts/create-desktop-shortcut.sh" || true ;;
-    *) if [ "$language" = en ]; then echo "Invalid selection."; else echo "无效选择。"; fi ;;
+    '') continue ;;
+    0) if [ "$menu_page" = main ]; then exit "$last_action_status"; elif [ "$menu_page" = help ]; then menu_page=$help_parent_page; else menu_page=main; fi; continue ;;
+    9|L|l|language|LANGUAGE) switch_language; continue ;;
+    H|h|\?|help|HELP) [ "$menu_page" = help ] || help_parent_page=$menu_page; menu_page=help; continue ;;
   esac
+  if [ "$menu_page" = help ]; then
+    case "$choice" in 1|2|3|4|5) show_help_topic "$choice" ;; *) heb_ui_text '无效选择。' 'Invalid selection.' ;; esac
+    continue
+  fi
+  if [ "$menu_page" = main ]; then
+    case "$choice" in 6) help_parent_page=main; menu_page=help; continue ;; 7) menu_page=maintenance; continue ;; esac
+    case "$choice" in 1|2|3|4|5|8|R|r) ;; *) heb_ui_text '无效选择。' 'Invalid selection.'; continue ;; esac
+  else
+    case "$choice" in 1|2|R|r) ;; *) heb_ui_text '无效选择。' 'Invalid selection.'; continue ;; esac
+  fi
+  current_project || continue
+  if [ "$menu_page" = maintenance ]; then
+    case "$choice" in 1|R|r) refresh_project ;; 2) review_decommission ;; esac
+  else
+    case "$choice" in
+      1) start_or_resume ;; R|r) refresh_project ;; 2) run_doctor || true ;;
+      3) show_session ;; 4) verify_bundle ;; 5) export_support ;;
+      8) run_child create_local_launcher true sh "$repo/scripts/create-desktop-shortcut.sh" || true ;;
+    esac
+  fi
   echo
 done

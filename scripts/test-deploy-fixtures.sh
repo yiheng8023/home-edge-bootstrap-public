@@ -22,6 +22,7 @@ mkdir -p \
   "$fixture_repo/config" \
   "$fixture_repo/docs" \
   "$fixture_repo/scripts" \
+  "$fixture_repo/scripts/lib" \
   "$fixture_repo/tools"
 
 # Exercise the current deployment implementation against a deliberately small
@@ -29,6 +30,7 @@ mkdir -p \
 # provenance and release fixtures; repeating it for every fake-SSH failure path
 # makes this focused fixture needlessly expensive on Git Bash.
 cp "$repo/README.md" "$repo/README.zh-CN.md" "$repo/bootstrap.sh" "$fixture_repo/"
+cp "$repo/scripts/lib/ui-language.sh" "$fixture_repo/scripts/lib/ui-language.sh"
 for script in deploy-merlin.sh check-project-installation.sh new-deployment-provenance.sh verify-bundle.sh migrate-router-state.sh; do
   cp "$repo/scripts/$script" "$fixture_repo/scripts/$script"
 done

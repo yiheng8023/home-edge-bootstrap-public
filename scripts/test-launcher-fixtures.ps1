@@ -1,10 +1,10 @@
-param([string]$Repo = "")
+﻿param([string]$Repo = "", [switch]$MissingComponentsOnly)
 $ErrorActionPreference = "Stop"
 if (-not $Repo) { $Repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..")) }
 $Base = Join-Path ([IO.Path]::GetTempPath()) ("home-edge-launcher-test-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $Base | Out-Null
 
-function Invoke-Entry([string]$File, [string]$Arguments = "", [string]$InputText = "") {
+function Invoke-Entry([string]$File, [string]$Arguments = "", [string]$InputText = "", [string]$LanguagePreference = "en") {
   $Info = [Diagnostics.ProcessStartInfo]::new()
   if ([IO.Path]::GetExtension($File) -eq ".cmd") {
     $Info.FileName = $env:ComSpec
@@ -15,6 +15,7 @@ function Invoke-Entry([string]$File, [string]$Arguments = "", [string]$InputText
   }
   $Info.WorkingDirectory = $Base
   $Info.UseShellExecute = $false
+  $Info.EnvironmentVariables['HOME_EDGE_LANGUAGE'] = $LanguagePreference
   $Info.RedirectStandardInput = $true
   $Info.RedirectStandardOutput = $true
   $Info.RedirectStandardError = $true
@@ -31,6 +32,31 @@ function Invoke-Entry([string]$File, [string]$Arguments = "", [string]$InputText
 }
 
 try {
+  $Guarded = Join-Path $Base 'missing-component-entry'
+  New-Item -ItemType Directory -Path (Join-Path $Guarded 'lib') -Force | Out-Null
+  Copy-Item -LiteralPath (Join-Path $Repo 'scripts\launch-tui.ps1') -Destination $Guarded
+  Set-Content -LiteralPath (Join-Path $Guarded '.home-edge-launcher-owned') -Value 'home-edge-bootstrap/registered-launcher/v1' -Encoding ASCII
+  Set-Content -LiteralPath (Join-Path $Guarded 'target.txt') -Value 'fixture-original-target' -Encoding ASCII
+  foreach ($Missing in @('project-location.ps1', 'ui-language.ps1', 'host-launcher.ps1')) {
+    foreach ($Component in @('project-location.ps1', 'ui-language.ps1', 'host-launcher.ps1')) {
+      Copy-Item -LiteralPath (Join-Path $Repo ('scripts\lib\' + $Component)) -Destination (Join-Path $Guarded 'lib') -Force
+    }
+    Remove-Item -LiteralPath (Join-Path $Guarded ('lib\' + $Missing))
+    $BeforeSnapshot = @(Get-ChildItem -LiteralPath $Guarded -Recurse -Force | Sort-Object FullName | ForEach-Object {
+      $_.FullName + '|' + $(if ($_.PSIsContainer) { 'directory' } else { (Get-FileHash -LiteralPath $_.FullName).Hash })
+    }) -join "`n"
+    $MissingStartup = Invoke-Entry (Join-Path $Guarded 'launch-tui.ps1') '-Version'
+    if ($MissingStartup.Code -ne 2 -or $MissingStartup.Text -notmatch 'startup_state=failed' -or
+        -not $MissingStartup.Text.Contains('missing_component=lib/' + $Missing) -or
+        $MissingStartup.Text -notmatch '请恢复完整项目' -or $MissingStartup.Text -notmatch 'Restore the complete project' -or
+        $MissingStartup.Text -match 'project_location_state=') { throw ('Missing component did not reject with recovery guidance: ' + $MissingStartup.Text) }
+    $AfterSnapshot = @(Get-ChildItem -LiteralPath $Guarded -Recurse -Force | Sort-Object FullName | ForEach-Object {
+      $_.FullName + '|' + $(if ($_.PSIsContainer) { 'directory' } else { (Get-FileHash -LiteralPath $_.FullName).Hash })
+    }) -join "`n"
+    if ($BeforeSnapshot -cne $AfterSnapshot) { throw 'Damaged registration wrote files' }
+  }
+  Write-Host 'launcher_missing_component_fixtures=ready'
+  if ($MissingComponentsOnly) { exit 0 }
   $Copy = Join-Path $Base ("portable copy & " + [char]0x4e2d + [char]0x6587)
   $Scripts = Join-Path $Copy "scripts"
   New-Item -ItemType Directory -Path $Scripts | Out-Null
@@ -40,6 +66,7 @@ try {
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\launch-tui.ps1") -Destination $Scripts
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\project-location.ps1") -Destination (Join-Path $Scripts "lib")
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\host-launcher.ps1") -Destination (Join-Path $Scripts "lib")
+  Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\ui-language.ps1") -Destination (Join-Path $Scripts "lib")
   Copy-Item -LiteralPath (Join-Path $Repo "start.cmd") -Destination $Copy
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\tui.ps1") -Destination $Scripts
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\create-desktop-shortcut.ps1") -Destination $Scripts
@@ -59,6 +86,23 @@ try {
   if ($Forwarded.Code -ne 0 -or $Forwarded.Text -notmatch "fixture_target=user@router.lan") { throw "Launcher did not forward the router argument to the selected action" }
   $InvalidResult = Invoke-Entry $Start "-Language invalid"
   if ($InvalidResult.Code -ne 2) { throw "Launcher lost the guide failure exit code" }
+  $ExplicitEnglish = Invoke-Entry $Start '-Language en -Help -Router forbidden' '' 'zh-CN'
+  if ($ExplicitEnglish.Code -ne 0 -or $ExplicitEnglish.Text -notmatch 'Language priority:') { throw 'Explicit English did not override language environment' }
+  $ExplicitChinese = Invoke-Entry $Start '-Language zh-CN -Help' '' 'en'
+  if ($ExplicitChinese.Code -ne 0 -or $ExplicitChinese.Text -notmatch '语言顺序：') { throw 'Explicit Chinese did not override language environment' }
+  $ChineseSelection = Invoke-Entry (Join-Path $Scripts 'launch-tui.ps1') ('-Repo "' + (Join-Path $Base 'absent') + '" -Version') '' 'zh-CN'
+  if ($ChineseSelection.Code -ne 2 -or $ChineseSelection.Text -notmatch '启动已取消' -or $ChineseSelection.Text -match 'home-edge-bootstrap vfixture') { throw 'Chinese selection EOF did not cancel with localized guidance' }
+  . (Join-Path $Scripts 'lib\ui-language.ps1')
+  $SavedLanguageEnvironment = $env:HOME_EDGE_LANGUAGE
+  try {
+    $env:HOME_EDGE_LANGUAGE = 'en'
+    if ((Resolve-HomeEdgeUiLanguage -ExplicitLanguage 'zh-CN' -HostLocale 'en-US') -cne 'zh-CN' -or
+        (Resolve-HomeEdgeUiLanguage -HostLocale 'zh-TW') -cne 'en') { throw 'Language priority is incorrect' }
+    $env:HOME_EDGE_LANGUAGE = 'invalid'
+    if ((Resolve-HomeEdgeUiLanguage -HostLocale 'zh-TW') -cne 'zh-CN' -or
+        (Resolve-HomeEdgeUiLanguage -HostLocale 'fr-FR') -cne 'en' -or
+        (Resolve-HomeEdgeUiLanguage -HostLocale '') -cne 'zh-CN') { throw 'Host culture language selection is incorrect' }
+  } finally { $env:HOME_EDGE_LANGUAGE = $SavedLanguageEnvironment }
   $Incomplete = Join-Path $Base "incomplete"
   New-Item -ItemType Directory -Path $Incomplete | Out-Null
   Copy-Item -LiteralPath $Start -Destination $Incomplete
@@ -71,6 +115,8 @@ try {
   $InstallArguments = '-DestinationDirectory "' + $Desktop + '" -LauncherDirectory "' + $Installed + '"'
   $ShortcutResult = Invoke-Entry $Helper $InstallArguments
   if ($ShortcutResult.Code -ne 0) { throw ("Shortcut creation failed: " + $ShortcutResult.Text) }
+  $InstalledLanguageHelper = Join-Path $Installed 'lib\ui-language.ps1'
+  if (-not (Test-Path -LiteralPath $InstalledLanguageHelper -PathType Leaf)) { throw 'Registered launcher omitted the language helper' }
   $Shell = New-Object -ComObject WScript.Shell
   $LinkPath = Join-Path $Desktop "Home Edge Bootstrap.lnk"
   $Link = $Shell.CreateShortcut($LinkPath)
@@ -79,6 +125,13 @@ try {
   if ($ViaLink.Code -ne 0 -or $ViaLink.Text -notmatch "home-edge-bootstrap vfixture") { throw "Registered entry cannot validate and launch its project" }
   $Again = Invoke-Entry $Helper $InstallArguments
   if ($Again.Code -ne 0 -or $Again.Text -notmatch "shortcut_state=reused") { throw "Same target should reuse its registration" }
+  Remove-Item -LiteralPath $InstalledLanguageHelper
+  $CancelledUpgrade = Invoke-Entry $Helper $InstallArguments
+  if ($CancelledUpgrade.Code -ne 0 -or $CancelledUpgrade.Text -notmatch 'shortcut_state=cancelled' -or
+      (Test-Path -LiteralPath $InstalledLanguageHelper)) { throw 'Missing helper refresh wrote without explicit confirmation' }
+  $Upgraded = Invoke-Entry $Helper $InstallArguments "REPLACE`nAPPLY`n"
+  if ($Upgraded.Code -ne 0 -or -not (Test-Path -LiteralPath $InstalledLanguageHelper) -or
+      (Get-FileHash -LiteralPath $InstalledLanguageHelper).Hash -cne (Get-FileHash -LiteralPath (Join-Path $Scripts 'lib\ui-language.ps1')).Hash) { throw 'Old registration did not recover a missing language helper' }
   $SavedTarget = [IO.File]::ReadAllText((Join-Path $Installed "target.txt"))
   $SecondCopy = Join-Path $Base "another project copy"
   Copy-Item -LiteralPath $Copy -Destination $SecondCopy -Recurse

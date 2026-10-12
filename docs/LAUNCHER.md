@@ -23,15 +23,60 @@ implementation remains Merlin; synthetic adapter fixtures verify dispatch isolat
 other hardware. Existing deploy, rollback and self-heal workflows still contain reference-adapter
 integration; this change does not claim complete separation of all existing device workflows.
 
-## Local help, language and guarded project refresh
+## Menu, local help and language
 
-The main-menu aliases are `H` / `?` / `help` / `6` for comprehensive local help and `L` / `language` / `9` for a session-only Chinese/English switch. Help includes action effects, prerequisites, exact confirmation tokens, recovery and paths in the running copy. It does not open programs or contact the network. Switching language preserves the router and selected session and writes no global setting.
+The numbered, line-driven menu uses plain text without ANSI control sequences. It lists 1–9 in order:
+
+| Choice | Action |
+|---|---|
+| 1 | Start or resume guided bootstrap |
+| 2 | Run read-only diagnosis; a configured router may be contacted |
+| 3 | View saved session state and next-action hints |
+| 4 | Verify the offline runtime bundle |
+| 5 | Export a redacted local support bundle |
+| 6 / H / ? / help | Open the local help submenu |
+| 7 | Open maintenance: refresh or decommission this project |
+| 8 | Create or refresh the local desktop entry |
+| 9 / L / language | Switch Chinese/English in place |
+| 0 | Exit the guide |
+
+Help choices are **1 Getting started, 2 Safety, 3 Recovery, 4 Actual documents,
+5 Full help, 0 Back**. Maintenance choices are **1 Refresh this project,
+2 Decommission this project, 0 Back**. `R` keeps its old direct route to the project refresh
+plan. Command-line `--help` / `-Help` still prints full help without entering a menu.
+
+In either submenu, `0` returns one level; EOF exits the whole guide. Empty input only redraws
+the current menu. Invalid input reports that menu's available choices. After an action fails,
+read its reason and recovery hint before choosing another action; navigation does not turn
+that failure into success. Help, language and menu navigation do not contact the network,
+open programs or write project content. The documents page lists only files actually present
+in the running copy; a public projection does not acquire an omitted private RUNBOOK.
+
+Every menu exposes the bilingual `Language / 语言` entry. `9` / `L` / `language` switches
+immediately, keeps the current page, router and selected session, and writes no global language
+setting. Initial language is selected in this order:
+
+1. Explicit `--lang` / `-Language` (`zh-CN` or `en`); another explicit value is rejected.
+2. Valid `HOME_EDGE_LANGUAGE` (`zh-CN` or `en`); an invalid environment hint is ignored.
+3. On POSIX, `LC_ALL`, then `LC_MESSAGES`, then `LANG`; on Windows, `CurrentUICulture`.
+   A Chinese locale beginning with `zh` selects Chinese; a known non-Chinese locale selects English.
+4. If no language information is available, use `zh-CN`.
+
+Human-facing startup, folder selection and launcher recovery prompts follow the selected
+language. Machine protocol keys, commands and confirmation tokens keep their stable spelling.
+
+## Guarded project refresh and decommission
 
 Menu 1 reads fresh installation evidence for the selected router and path. It defaults to diagnosis and saved-session reuse for `installed` or `partial`. The six-field observation binds schema, router, state, reason, path and replacement permission; malformed, stale-session-only or mismatched evidence cannot authorize deployment. `installed` proves recognizable project-owned presence only, not complete lifecycle or network health. A standalone ShellCrash/Mihomo installation is independent. `not_installed` requires positive absence; unknown ownership, foreign contents or links stop the dependent write.
 
-Menu `R` obtains a project-only deployment plan before requesting exact `REPLACE`, then exact `APPLY`. The existing project tree is backed up to `<project-path>.prev`; an older backup may be replaced. The writer repeats ownership checks under its router write lock. `ProjectOnly` / `--project-only` disables runtime install/replacement, core replacement and persistent bundle copying; project-managed integration/configuration may still be updated. It does not provide a complete runtime rollback. Runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is independently explicit.
+Maintenance **7 → 1**, or the old `R` shortcut, obtains a project-only deployment plan before requesting exact `REPLACE`, then exact `APPLY`. This refreshes owned project content; it is not an instruction to reinstall the runtime. The existing project tree is backed up to `<project-path>.prev`; an older backup may be replaced. The writer repeats ownership checks under its router write lock. `ProjectOnly` / `--project-only` disables runtime install/replacement, core replacement and persistent bundle copying; project-managed integration/configuration may still be updated. It does not provide a complete runtime rollback. Runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is independently explicit.
 
-The running guide rechecks project structure, physical directory identity and action tools at menu/action transitions and around important work. A known failure blocks affected work with a reason and recovery route; `H`, `L` and `0` remain usable when these checks find degradation. There is no background watcher, and unknown faults are not all detected. These checks supplement device-state diagnosis rather than accepting a target.
+Maintenance **7 → 2** shows the project removal plan before requesting exact `DECOMMISSION`.
+Entering a menu, viewing help or pressing Enter never authorizes a write. Deployment requires
+exact `APPLY`; live self-heal requires exact `ENABLE`. At confirmation prompts, empty input,
+EOF or any other token cancels the operation. Tokens are case-sensitive and accept no extra spaces.
+
+The guide checks project structure and physical directory identity at startup and rechecks the project and required action tools before running an operation and around important work. Local menu navigation, help and language switching do not run these probes. A known failure blocks affected work with a reason and recovery route; `H`, `L` and `0` remain usable when these checks find degradation. There is no background watcher, and unknown faults are not all detected. These checks supplement device-state diagnosis rather than accepting a target.
 
 ## Conditions, decisions and recovery
 
@@ -71,6 +116,11 @@ record. It stores the selected directory's filesystem identity alongside the pat
 volume/file ID and creation time; POSIX hosts use filesystem device/inode and birth time when
 reported. This binds an ordinary filesystem instance, not a cryptographic source identity. Filesystem
 identity may change after a cross-filesystem transfer; explicit selection rebinds the target.
+
+Copied launch code includes `scripts/lib/ui-language.*`; that helper participates in the
+cached-file version comparison. An old owned entry with changed or missing cached files still
+requires exact `REPLACE` followed by `APPLY` to refresh. Use the current directory-local entry
+while reviewing that update.
 
 Defaults are `%LOCALAPPDATA%/HomeEdgeBootstrap/launcher` on Windows,
 `~/Library/Application Support/HomeEdgeBootstrap/launcher` on macOS, and

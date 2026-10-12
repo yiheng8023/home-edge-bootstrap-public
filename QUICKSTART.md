@@ -11,7 +11,7 @@ preparation, deployment, and recovery vary by device, network, and offline-trans
 no fixed completion-time promise. The full local verification suite is optional for a first read-only
 probe and may take several minutes or substantially longer.
 
-This guide targets v0.1.9. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
+This guide targets v0.1.10. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
 
 ## 1. Obtain the project and open the guide
 
@@ -19,8 +19,8 @@ This guide targets v0.1.9. Download links require its published release; clone c
 
 | Your situation | Choose | Complete flow |
 |---|---|---|
-| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
-| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.9) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
+| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
+| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
 | Git already available; keep a local repository | Git clone | Use the commands below to choose a known location → open the same entry in that clone; no second project download is required |
 | Complete extracted folder or clone already present | Reuse that folder | Skip acquisition and continue at “Open and validate the project location” below; keep different copies separate |
 | Local desktop entry already created | Reuse the desktop entry | Open `Home Edge Bootstrap` → entry revalidates its registered folder, or asks you to select and validate a replacement → choose **1** to resume |
@@ -36,9 +36,9 @@ You do not need Git to use a release package, complete existing folder or deskto
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
-| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.zip) | Double-click `start.cmd` |
-| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | Double-click `start.command` |
-| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.9/home-edge-bootstrap-v0.1.9-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
 
 Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
 
@@ -50,7 +50,7 @@ In the extracted folder or clone, find the level containing `PROJECT`, `README` 
 
 If macOS requests source confirmation, verify the download source and use the system's Open flow. If execution permission was not retained, use Terminal. Linux desktop script associations vary: when Run in Terminal is unavailable, open a terminal, type `sh ` (including the space), drag `start.sh` into it and press Enter. The same fallback works on macOS; neither requires `cd` first.
 
-The menu defaults to Chinese; type **L**, **language** or **9** in the menu to switch to English. For advanced arguments use a full path, such as `& "C:\actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
+The initial language follows the explicit option, a valid HOME_EDGE_LANGUAGE hint, then the system UI language. Without language information, it falls back to Chinese. Type **L**, **language** or **9** at any menu to switch Chinese/English and stay on that page; see [language rules](docs/LAUNCHER.md). For advanced arguments use a full path, such as `& "C:\actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
 
 ### Git clone: know the location and start the guide
 
@@ -62,7 +62,7 @@ Windows PowerShell:
 $GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($GitCommand) {
   $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-  & $GitCommand.Source clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  & $GitCommand.Source clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
   if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") -Language en }
 } else {
   Write-Host "Git was not found; use the release-package route above."
@@ -73,11 +73,11 @@ macOS / Linux:
 
 ```sh
 project_dir="$HOME/home-edge-bootstrap"
-git clone --branch v0.1.9 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+git clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
   sh "$project_dir/start.sh" --lang en
 ```
 
-The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.9` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
+The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.10` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
 
 ### Keep an entry for later
 
@@ -91,13 +91,13 @@ For absent Git, offline access, missing desktops/tools/permissions or uninstalle
 
 ### Help, language and an existing installation
 
-At the main menu, type **H**, **?**, **help**, or **6** for local help: menu actions, prerequisites, confirmations, recovery and documentation paths. Type **L**, **language**, or **9** to switch Chinese/English immediately. The switch keeps the router target and selected session, lasts for this TUI session only, and performs no network access or global setting write. **0** exits.
+The menu shows **1–9** in order: 1–3 common actions, 4–6 tools/help, 7 maintenance, 8 local entry and 9 language. **6 / H / ? / help** opens the help submenu. **0** exits from the main menu or returns from a submenu; EOF exits the whole guide. Help, language and navigation perform no network access or project writes, and language switching keeps the router/session. See the [launcher contract](docs/LAUNCHER.md) for the full menu and actual document paths.
 
-Choose **1** to start or resume. A fresh read-only probe of the selected router and project path distinguishes `installed`, `partial`, `not_installed` and `unknown`. Existing project content defaults to diagnosis and saved-session reuse. `installed` means recognized project-owned presence, not a healthy runtime or complete network/lifecycle acceptance. ShellCrash/Mihomo alone does not mean this project is installed. Only positively observed absence permits first installation; unknown ownership, foreign content, links or a failed/malformed probe stop deployment for review.
+Choose **1** to start or resume using fresh selected-router/path evidence; existing project content defaults to diagnosis and session reuse. Recognized presence is not health acceptance. Only positive absence permits initial deployment; unknown ownership, foreign content, links or an invalid probe block it.
 
-To refresh an owned project, deliberately choose **R**, review the target, plan and `<project-path>.prev` backup, then type **REPLACE** followed by **APPLY** exactly. An older `.prev` backup may be replaced. This uses the project-only deployment scope: it prevents runtime/core asset replacement, but can update project-managed integration and configuration. It is not a complete runtime rollback. The writer rechecks ownership under its lock before applying. Runtime replacement and core replacement remain separate opt-in actions; runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is separately selected.
+**7 → 1** refreshes this project; the old **R** shortcut still opens its refresh plan directly. Review the target, plan and `<project-path>.prev` backup, which may replace an older backup, then type exact **REPLACE** and **APPLY**. Runtime/core assets stay in place, but managed integration/configuration may change. **7 → 2** reviews project decommission, which requires **DECOMMISSION** to apply.
 
-The guide rechecks current project structure/directory identity and required tool availability at menu/action transitions and around important work. Known degradation stops affected actions and gives recovery guidance while **H**, **L** and **0** remain usable. These are event-driven checks, not a background daemon or detection of every unknown fault. See the launcher contract for the supported recovery paths.
+Reported project/directory/tool degradation blocks affected actions while help, language and exit remain available. Restore the reported condition before retrying; detailed boundaries are in the [launcher contract](docs/LAUNCHER.md).
 
 On macOS and Linux, local verification requires Python 3. The `python3` command is accepted; `python` is accepted only when it points to Python 3. Python 2 is unsupported.
 
