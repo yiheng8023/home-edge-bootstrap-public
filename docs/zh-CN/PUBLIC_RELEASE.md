@@ -102,7 +102,7 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 
 Linux、macOS、Windows 与 subscription-behavior CI 必须精确绑定新源码提交，再验证公开九资产具体交付和双语发行链接。保留既有宿主、安装所有权、两次确认刷新、入口元数据、仅源码 parser、许可及固定运行时门禁。
 
-追加精确 HEAL_GROUP 权限、人工／嵌套 Selector 排除、PUT 前新观测及回滚守卫核验，并披露 controller 缺少原子 CAS。核验 active service-helper 来源、缺 command 检测回退、短 argv UTF-8/LF 部署传输（含原生 PowerShell 5/7 和 16K）、归档失败作用域及非 Git／缺 Git／首个 Git 的来源边界。另行授权的仅项目采用须保留用户当前策略组选择、profiles 与 core。
+追加精确 HEAL_GROUP 权限、自动主组发现排除手动名称、显式手动组授权及 nested／role 独立启用边界、PUT 前新观测及回滚守卫核验，并披露 controller 缺少原子 CAS。核验 active service-helper 来源、缺 command 检测回退、短 argv UTF-8/LF 部署传输（含原生 PowerShell 5/7 和 16K）、归档失败作用域及非 Git／缺 Git／首个 Git 的来源边界。另行授权的仅项目采用须保留用户当前策略组选择、profiles 与 core。
 
 v0.1.8 标签／草稿保留为未发布历史候选。此源码／宿主／归档合同不认证全部设备、服务商或 GUI 现场，不升级广泛 blocked 声明，也不将仅版本文档提交当作新的现场／core 部署收据。保留运行时／源码锁及全部旧资产。
 

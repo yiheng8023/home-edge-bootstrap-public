@@ -4,7 +4,7 @@
 
 ## v0.1.9 (2026-10-13)
 
-v0.1.9 corrects automatic self-heal authority: only the exact configured HEAL_GROUP may be written, and manual selector branches are excluded. Fresh graph/selection checks run before PUT; rollback is guarded against intervening changes. The controller has no atomic compare-and-swap (CAS), so these checks reduce the observed race window without eliminating all concurrent-change risk.
+v0.1.9 corrects self-heal authority: a configured HEAL_GROUP must exactly match a writable selector, and automatic main-group discovery excludes manual names. Explicitly naming a manual group authorizes its automation; nested and role switching retain their separate opt-in controls. Fresh graph/selection checks run before PUT; rollback is guarded against intervening changes. The controller has no atomic compare-and-swap (CAS), so these checks reduce the observed race window without eliminating all concurrent-change risk.
 
 Active service-helper provenance is included in project adoption. Merlin detection falls back to an available command locator instead of treating a missing command as a negative installation verdict. PowerShell 5/7 and POSIX deployment use short SSH argv with UTF-8/LF stdin and wrapped base64 transfer, with archive failure checked in its own scope; 16K fixture transport is covered. Source provenance keeps non-Git and missing-Git cases explicit, never borrows an ancestor repository, and deterministically selects the first usable Git. Windows clone failure does not launch an existing destination.
 

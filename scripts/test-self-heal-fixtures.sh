@@ -7,6 +7,8 @@ tmp_parent=${TMPDIR:-/tmp}
 tmp_root=$(mktemp -d "${tmp_parent%/}/home-edge-self-heal-test.XXXXXX") || exit 1
 router_tmp_root=$(mktemp -d "/tmp/home-edge-self-heal-router-test.XXXXXX") || { rm -rf "$tmp_root"; exit 1; }
 fake_bin="$tmp_root/bin"
+FIXTURE_PYTHON="${SELF_HEAL_FIXTURE_PYTHON:-}"
+export FIXTURE_PYTHON
 mkdir -p "$fake_bin"
 
 cleanup() {
@@ -54,7 +56,7 @@ done
 [ -z "${SELF_HEAL_CURL_LOG:-}" ] || printf '%s\n' "$url" >>"$SELF_HEAL_CURL_LOG"
 
 case "${SELF_HEAL_FIXTURE:-}" in
-  guard_*) exec python3 "$(dirname "$0")/guard-api.py" "$method" "$url" "$data" ;;
+  guard_*) exec "$FIXTURE_PYTHON" "$(dirname "$0")/guard-api.py" "$method" "$url" "$data" ;;
 esac
 
 fixture="${SELF_HEAL_FIXTURE:-main_select}"
@@ -278,7 +280,7 @@ chmod 755 "$fake_bin/curl"
 cat >"$fake_bin/jq" <<'EOF'
 #!/bin/sh
 case "${SELF_HEAL_FIXTURE:-}" in
-  guard_*) exec python3 "$(dirname "$0")/guard-jq.py" "$@" ;;
+  guard_*) exec "$FIXTURE_PYTHON" "$(dirname "$0")/guard-jq.py" "$@" ;;
 esac
 filter=""
 group=""
@@ -456,6 +458,9 @@ chmod 755 "$fake_bin/sort"
 cat >"$fake_bin/guard-api.py" <<'PY'
 import json, os, sys
 from urllib.parse import urlsplit, unquote
+sys.stdin.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding='utf-8', newline='\n')
+sys.stderr.reconfigure(encoding='utf-8', newline='\n')
 method, url, data = sys.argv[1:]
 path = unquote(urlsplit(url).path)
 case = os.environ['SELF_HEAL_FIXTURE']
@@ -463,7 +468,7 @@ state_file = os.environ['SELF_HEAL_GUARD_STATE']
 def selector(now='Dead', choices=None, kind='Selector'):
     return {'type': kind, 'now': now, 'all': choices or ['Dead', 'Good', 'User']}
 try:
-    with open(state_file) as f: state = json.load(f)
+    with open(state_file, encoding='utf-8') as f: state = json.load(f)
 except FileNotFoundError:
     proxies = {'Main Select': selector(), 'Dead': {'type': 'Http'},
                'Good': {'type': 'Http'}, 'User': {'type': 'Http'}}
@@ -508,7 +513,7 @@ elif path.startswith('/proxies/'):
     elif method == 'PUT':
         target = json.loads(data)['name']
         state['events'].append([name, target])
-        with open(os.environ['SELF_HEAL_PUT_LOG'], 'a') as f:
+        with open(os.environ['SELF_HEAL_PUT_LOG'], 'a', encoding='utf-8', newline='\n') as f:
             f.write('PUT ' + name + ' ' + target + '\n')
         if name == 'Main Select' and case in ('guard_rollback_race', 'guard_rollback_restore'):
             status = 7
@@ -519,7 +524,7 @@ elif path.startswith('/proxies/'):
     else:
         result = dict(proxies.get(name, {}))
         if name == 'Service': state['role_started'] = True
-with open(state_file, 'w') as f: json.dump(state, f)
+with open(state_file, 'w', encoding='utf-8', newline='\n') as f: json.dump(state, f)
 print(json.dumps(result))
 sys.exit(status)
 PY
@@ -527,6 +532,10 @@ PY
 cat >"$fake_bin/guard-jq.py" <<'PY'
 import json, re, sys
 from urllib.parse import quote
+# Match jq's UTF-8/LF wire output even with native Python in Windows Git Bash.
+sys.stdin.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding='utf-8', newline='\n')
+sys.stderr.reconfigure(encoding='utf-8', newline='\n')
 args = sys.argv[1:]; variables = {}; filters = []; raw = False
 while args:
     arg = args.pop(0)
@@ -680,6 +689,114 @@ assert_not_log() {
     fail "unexpected log text: $unexpected"
   fi
 }
+
+run_guard_case() {
+  guard_case=$1
+  guard_status=$2
+  shift 2
+  guard_state="$tmp_root/$guard_case.json"
+  guard_put="$tmp_root/$guard_case.guard-put"
+  guard_log="$tmp_root/$guard_case.guard-log"
+  rm -f "$guard_state"
+  : >"$guard_put"
+  : >"$guard_log"
+  status=0
+  PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE="$guard_case" SELF_HEAL_GUARD_STATE="$guard_state" \
+    SELF_HEAL_PUT_LOG="$guard_put" CLASH_API=http://127.0.0.1:18080 \
+    HEAL_LOG="$guard_log" HEAL_API_CACHE="$tmp_root/$guard_case.api" \
+    HEAL_STATE_DIR="$router_tmp_root/$guard_case-state" HEAL_LOCK_DIR="$router_tmp_root/$guard_case-lock" \
+    HEAL_DELAY_PROBES=1 HEAL_DRY_RUN=0 HEAL_ROLE_GROUPS_ENABLED=0 \
+    "$@" sh "$repo/scripts/self-heal.sh" || status=$?
+  case "$guard_status:$status" in
+    success:0|failure:[1-9]*) ;;
+    *) cat "$guard_log" >&2; fail "$guard_case unexpected status=$status" ;;
+  esac
+}
+assert_guard_events() {
+  "$FIXTURE_PYTHON" - "$guard_state" "$1" <<'PY' || fail "unexpected guard API mutations"
+import json, sys
+sys.stdin.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding='utf-8', newline='\n')
+sys.stderr.reconfigure(encoding='utf-8', newline='\n')
+with open(sys.argv[1], encoding='utf-8') as f: state = json.load(f)
+expected = json.loads(sys.argv[2])
+assert state['events'] == expected, (state['events'], expected)
+PY
+}
+
+assert_auto_manual_group() {
+  run_guard_case guard_auto_manual success env HEAL_GROUP='' HEAL_GROUP_MATCH_REGEX='.'
+  assert_guard_events '[["🚀 节点选择", "Good"]]'
+}
+
+run_manual_guard_suite() {
+  # Probe a real interpreter: Windows may expose a non-runnable python3 Store alias.
+  # The override is test-local; never change the caller's PATH or system settings.
+  if [ -z "$FIXTURE_PYTHON" ]; then
+    for python_candidate in python3 python; do
+      if "$python_candidate" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)' >/dev/null 2>&1; then
+        FIXTURE_PYTHON=$python_candidate
+        break
+      fi
+    done
+  fi
+  if [ -z "$FIXTURE_PYTHON" ] || ! "$FIXTURE_PYTHON" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 7) else 1)' >/dev/null 2>&1; then
+    fail "manual guard fixtures require a runnable Python 3.7+ interpreter"
+    exit 1
+  fi
+  export FIXTURE_PYTHON
+  guard_suite=1
+  guard_failures=0
+  set +e
+  # Optional focused invocation reuses the same test and its strict event assertion.
+  if [ "${1:-}" = guard_auto_manual ]; then
+    assert_auto_manual_group
+    [ "$guard_failures" -eq 0 ] || { echo "self_heal_manual_guard_failures=$guard_failures"; exit 1; }
+    echo "self_heal_manual_guard_tests=ok"
+    return 0
+  fi
+  [ -z "${1:-}" ] || { fail "unknown focused manual guard fixture"; exit 1; }
+  run_guard_case guard_missing failure env HEAL_GROUP='Main'
+  assert_guard_events '[]'
+  run_guard_case guard_missing failure env HEAL_GROUP='Does Not Exist'
+  assert_guard_events '[]'
+  run_guard_case guard_readonly failure env HEAL_GROUP='Main Select'
+  assert_guard_events '[]'
+  run_guard_case guard_only_manual failure env HEAL_GROUP=''
+  assert_guard_events '[]'
+  run_guard_case guard_only_manual success env HEAL_GROUP='Manual Select'
+  assert_guard_events '[["Manual Select", "Good"]]'
+  assert_auto_manual_group
+  run_guard_case guard_auto_readonly success env HEAL_GROUP=''
+  assert_guard_events '[["Gateway", "Good"]]'
+  run_guard_case guard_main_race success env HEAL_GROUP='Main Select'
+  assert_guard_events '[]'
+  assert_log "$guard_log" 'SKIP selector changed or is no longer writable; cancelled stale switch plan'
+  run_guard_case guard_membership_race success env HEAL_GROUP='Main Select'
+  assert_guard_events '[]'
+  run_guard_case guard_nested_race success env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+  assert_guard_events '[]'
+  run_guard_case guard_nested_main_race success env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+  assert_guard_events '[["Nested", "Good"], ["Nested", "Dead"]]'
+  run_guard_case guard_role_race success env HEAL_GROUP='Main Select' HEAL_ROLE_GROUPS_ENABLED=1 \
+    HEAL_ROLE_ROUTE_GROUP_MATCH_REGEX=Service HEAL_ROLE_ROUTE_TARGET_REGEX=Good
+  assert_guard_events '[]'
+  run_guard_case guard_rollback_race failure env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+  assert_guard_events '[["Nested", "Good"], ["Main Select", "Nested"]]'
+  assert_log "$guard_log" 'SKIP nested rollback because its selector changed; preserved the later choice'
+  run_guard_case guard_rollback_restore failure env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
+  assert_guard_events '[["Nested", "Good"], ["Main Select", "Nested"], ["Nested", "Dead"]]'
+  run_guard_case guard_main_race success env HEAL_GROUP='Main Select' HEAL_DRY_RUN=1
+  assert_guard_events '[]'
+
+  [ "$guard_failures" -eq 0 ] || { echo "self_heal_manual_guard_failures=$guard_failures"; exit 1; }
+  echo "self_heal_manual_guard_tests=ok"
+}
+
+if [ "${1:-}" = "--manual-guards-only" ]; then
+  run_manual_guard_suite "${2:-}"
+  exit 0
+fi
 
 last_log=""
 if [ "${1:-}" = "--verify-readonly-only" ]; then
@@ -1089,75 +1206,7 @@ if PATH="$fake_bin:$PATH" \
 fi
 assert_log "$tmp_root/malformed_api.log" "ERROR: clash API auto-discovery failed"
 
-run_guard_case() {
-  guard_case=$1
-  guard_status=$2
-  shift 2
-  guard_state="$tmp_root/$guard_case.json"
-  guard_put="$tmp_root/$guard_case.guard-put"
-  guard_log="$tmp_root/$guard_case.guard-log"
-  rm -f "$guard_state"
-  : >"$guard_put"
-  : >"$guard_log"
-  status=0
-  PATH="$fake_bin:$PATH" SELF_HEAL_FIXTURE="$guard_case" SELF_HEAL_GUARD_STATE="$guard_state" \
-    SELF_HEAL_PUT_LOG="$guard_put" CLASH_API=http://127.0.0.1:18080 \
-    HEAL_LOG="$guard_log" HEAL_API_CACHE="$tmp_root/$guard_case.api" \
-    HEAL_STATE_DIR="$router_tmp_root/$guard_case-state" HEAL_LOCK_DIR="$router_tmp_root/$guard_case-lock" \
-    HEAL_DELAY_PROBES=1 HEAL_DRY_RUN=0 HEAL_ROLE_GROUPS_ENABLED=0 \
-    "$@" sh "$repo/scripts/self-heal.sh" || status=$?
-  case "$guard_status:$status" in
-    success:0|failure:[1-9]*) ;;
-    *) cat "$guard_log" >&2; fail "$guard_case unexpected status=$status" ;;
-  esac
-}
-assert_guard_events() {
-  python3 - "$guard_state" "$1" <<'PY' || fail "unexpected guard API mutations"
-import json, sys
-with open(sys.argv[1]) as f: state = json.load(f)
-expected = json.loads(sys.argv[2])
-assert state['events'] == expected, (state['events'], expected)
-PY
-}
+run_manual_guard_suite
 
-guard_suite=1
-guard_failures=0
-set +e
-run_guard_case guard_missing failure env HEAL_GROUP='Main'
-assert_guard_events '[]'
-run_guard_case guard_missing failure env HEAL_GROUP='Does Not Exist'
-assert_guard_events '[]'
-run_guard_case guard_readonly failure env HEAL_GROUP='Main Select'
-assert_guard_events '[]'
-run_guard_case guard_only_manual failure env HEAL_GROUP=''
-assert_guard_events '[]'
-run_guard_case guard_only_manual success env HEAL_GROUP='Manual Select'
-assert_guard_events '[["Manual Select", "Good"]]'
-run_guard_case guard_auto_manual success env HEAL_GROUP='' HEAL_GROUP_MATCH_REGEX='.'
-assert_guard_events '[["🚀 节点选择", "Good"]]'
-run_guard_case guard_auto_readonly success env HEAL_GROUP=''
-assert_guard_events '[["Gateway", "Good"]]'
-run_guard_case guard_main_race success env HEAL_GROUP='Main Select'
-assert_guard_events '[]'
-assert_log "$guard_log" 'SKIP selector changed or is no longer writable; cancelled stale switch plan'
-run_guard_case guard_membership_race success env HEAL_GROUP='Main Select'
-assert_guard_events '[]'
-run_guard_case guard_nested_race success env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
-assert_guard_events '[]'
-run_guard_case guard_nested_main_race success env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
-assert_guard_events '[["Nested", "Good"], ["Nested", "Dead"]]'
-run_guard_case guard_role_race success env HEAL_GROUP='Main Select' HEAL_ROLE_GROUPS_ENABLED=1 \
-  HEAL_ROLE_ROUTE_GROUP_MATCH_REGEX=Service HEAL_ROLE_ROUTE_TARGET_REGEX=Good
-assert_guard_events '[]'
-run_guard_case guard_rollback_race failure env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
-assert_guard_events '[["Nested", "Good"], ["Main Select", "Nested"]]'
-assert_log "$guard_log" 'SKIP nested rollback because its selector changed; preserved the later choice'
-run_guard_case guard_rollback_restore failure env HEAL_GROUP='Main Select' HEAL_MUTATE_NESTED_GROUPS=1
-assert_guard_events '[["Nested", "Good"], ["Main Select", "Nested"], ["Nested", "Dead"]]'
-run_guard_case guard_main_race success env HEAL_GROUP='Main Select' HEAL_DRY_RUN=1
-assert_guard_events '[]'
-
-[ "$guard_failures" -eq 0 ] || { echo "self_heal_manual_guard_failures=$guard_failures"; exit 1; }
-echo "self_heal_manual_guard_tests=ok"
 
 echo "self_heal_fixture_tests=ok"

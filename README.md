@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-v0.1.9 is a release candidate: the download/clone links below become available only after its publication/tag is established. v0.1.8 remains an unpublished candidate.
+This guide targets v0.1.9. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
 
 ## First use: obtain the project, open the guide, keep an entry
 
@@ -23,7 +23,7 @@ v0.1.9 is a release candidate: the download/clone links below become available o
 
 ### Open the same entry for your computer
 
-Release packages, existing folders and desktop entries do not require Git. **The download column is only for the release-package route; with a clone or complete existing folder, use its startup file without downloading again.**
+You do not need Git to use a release package, complete existing folder or desktop entry. **The download column is only for the release-package route; with a clone or complete existing folder, use its startup file without downloading again.**
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
@@ -402,7 +402,7 @@ activation and limits. This source feature is not retroactively present in the
 already published v0.1.4 download archives. Site results and offline fixture results
 are distinct; they do not establish broad firmware/provider support.
 
-The v0.1.9 candidate includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
+v0.1.9 includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
 Node-only subscription automation still needs host compilation of yamlbridge through a trusted network
 or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
 group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).

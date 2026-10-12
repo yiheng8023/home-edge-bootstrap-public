@@ -1,6 +1,7 @@
 param(
   [string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
-  [switch]$LocalRuntimeArchiveOnly
+  [switch]$LocalRuntimeArchiveOnly,
+  [switch]$GitShOnly
 )
 $ErrorActionPreference = "Stop"
 $Deploy = Join-Path $Repo "scripts\deploy-merlin.ps1"
@@ -8,7 +9,7 @@ $FixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("home-edge-deploy-ps
 $FixtureBundle = Join-Path $FixtureRoot "bundle"
 $PreviousBundleDir = $env:DEPLOY_BUNDLE_DIR
 $PreviousSsh = $env:HOME_EDGE_SSH_COMMAND
-$NativeNames = @('DEPLOY_NATIVE_TOOLS', 'DEPLOY_NATIVE_ROOT', 'DEPLOY_NATIVE_FAIL_AT', 'DEPLOY_NATIVE_ROLLBACK_FAIL')
+$NativeNames = @('DEPLOY_NATIVE_TOOLS', 'DEPLOY_NATIVE_SHELL', 'DEPLOY_NATIVE_POSIX_FLAG', 'DEPLOY_NATIVE_ROOT', 'DEPLOY_NATIVE_FAIL_AT', 'DEPLOY_NATIVE_ROLLBACK_FAIL')
 $NativePrevious = @{}
 foreach ($Name in $NativeNames) { $NativePrevious[$Name] = [Environment]::GetEnvironmentVariable($Name) }
 try {
@@ -45,18 +46,48 @@ $global:LASTEXITCODE = 0
   if ($LASTEXITCODE -ne 0 -or $RuntimePlan -notmatch '(?m)^include_bundle=0\r?$') { throw "PowerShell runtime plan persists the bundle in JFFS" }
   if ($RuntimePlan -notmatch '(?m)^runtime_bundle_transport=temporary\r?$') { throw "PowerShell runtime plan does not disclose temporary bundle transport" }
   # Exercise native stdin under both installed PowerShell hosts. The fake SSH
-  # accepts only a small argv and executes the real decoder through POSIX dash.
-  $Sh = (Get-Command sh -CommandType Application -ErrorAction Stop).Source
-  $Dash = Join-Path (Split-Path -Parent $Sh) '../usr/bin/dash.exe'
-  if (-not (Test-Path -LiteralPath $Dash)) { $Dash = Join-Path (Split-Path -Parent $Sh) 'dash.exe' }
-  $Dash = (Resolve-Path -LiteralPath $Dash).Path
-  $Tools = Split-Path -Parent $Dash
+  # accepts only a small argv and executes the real decoder through a real
+  # POSIX shell. Some Git distributions provide sh but do not ship dash.
+  $Sh = (Get-Command sh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+  $ToolCommands = @(Get-Command sh, git, dash -All -CommandType Application -ErrorAction SilentlyContinue)
+  $Dash = $null
+  if (-not $GitShOnly) {
+    foreach ($ToolCommand in $ToolCommands) {
+      $ToolDirectory = Split-Path -Parent $ToolCommand.Source
+      foreach ($RelativePath in @('dash.exe', '../usr/bin/dash.exe', '../../usr/bin/dash.exe')) {
+        $Candidate = Join-Path $ToolDirectory $RelativePath
+        if (Test-Path -LiteralPath $Candidate -PathType Leaf) {
+          $Dash = (Resolve-Path -LiteralPath $Candidate).Path
+          break
+        }
+      }
+      if ($Dash) { break }
+    }
+  }
+  $NativeShell = $Dash
+  $PosixFlag = ''
+  if (-not $NativeShell) {
+    $ShDirectory = Split-Path -Parent $Sh
+    foreach ($RelativePath in @('../usr/bin/sh.exe', 'sh.exe', '../../usr/bin/sh.exe')) {
+      $Candidate = Join-Path $ShDirectory $RelativePath
+      if (Test-Path -LiteralPath $Candidate -PathType Leaf) {
+        $NativeShell = (Resolve-Path -LiteralPath $Candidate).Path
+        break
+      }
+    }
+    if (-not $NativeShell) { throw 'Native deployment fixtures require an existing POSIX shell' }
+    $PosixFlag = '--posix'
+  }
+  $Tools = Split-Path -Parent $NativeShell
+  Write-Output "deployment_native_shell=$NativeShell posix_flag=$PosixFlag"
   $env:DEPLOY_NATIVE_TOOLS = '/' + $Tools.Substring(0, 1).ToLowerInvariant() + $Tools.Substring(2).Replace('\', '/')
+  $env:DEPLOY_NATIVE_SHELL = '/' + $NativeShell.Substring(0, 1).ToLowerInvariant() + $NativeShell.Substring(2).Replace('\', '/')
+  $env:DEPLOY_NATIVE_POSIX_FLAG = $PosixFlag
   $NativeRoot = Join-Path $FixtureRoot 'native'
   New-Item -ItemType Directory -Path $NativeRoot | Out-Null
   $env:DEPLOY_NATIVE_ROOT = '/' + $NativeRoot.Substring(0, 1).ToLowerInvariant() + $NativeRoot.Substring(2).Replace('\', '/')
   $NativeTransport = Join-Path $FixtureRoot 'native-ssh.cmd'
-  [IO.File]::WriteAllText($NativeTransport, ('@"' + $Dash + '" "%~dp0native-ssh.sh" %*' + "`r`n"), [Text.Encoding]::ASCII)
+  [IO.File]::WriteAllText($NativeTransport, ('@"' + $NativeShell + '" ' + $PosixFlag + ' "%~dp0native-ssh.sh" %*' + "`r`n"), [Text.Encoding]::ASCII)
   [IO.File]::WriteAllText((Join-Path $FixtureRoot 'native-ssh.sh'), (@'
 #!/bin/sh
 set -eu
@@ -72,7 +103,7 @@ count=$(cat "$DEPLOY_NATIVE_ROOT/count" 2>/dev/null || echo 0)
 count=$((count + 1)); printf '%s\n' "$count" >"$DEPLOY_NATIVE_ROOT/count"
 payload="$DEPLOY_NATIVE_ROOT/script.$count"
 cat >"$payload"
-"$DEPLOY_NATIVE_TOOLS/dash.exe" -n "$payload"
+"$DEPLOY_NATIVE_SHELL" ${DEPLOY_NATIVE_POSIX_FLAG:+--posix} -n "$payload"
 case "$(cat "$payload")" in
   *"HOME_EDGE_INSTALLATION_DIR='"*)
     target=$(sed -bn "s/^HOME_EDGE_INSTALLATION_ROUTER='\([^']*\)'$/\1/p" "$payload")
@@ -89,7 +120,7 @@ sed -bn '/^decode_payload <<.* | tar -xzf/,/^HOME_EDGE_ARCHIVE_BASE64$/p' "$payl
   sed -b "s# | tar -xzf - -C .*# >\"$DEPLOY_NATIVE_ROOT/archive.$count.tgz\"#" >>"$decoder"
 tail -n 2 "$payload" >>"$decoder"
 awk '/^decode_payload <<.* | tar -xzf/ { payload=1; next } /^HOME_EDGE_ARCHIVE_BASE64$/ { payload=0 } payload && length($0)>76 { exit 1 }' "$payload"
-"$DEPLOY_NATIVE_TOOLS/dash.exe" -s <"$decoder" || exit $?
+"$DEPLOY_NATIVE_SHELL" ${DEPLOY_NATIVE_POSIX_FLAG:+--posix} -s <"$decoder" || exit $?
 tar -tzf "$DEPLOY_NATIVE_ROOT/archive.$count.tgz" >/dev/null
 [ "${DEPLOY_NATIVE_FAIL_AT:-0}" != "$count" ] || exit 23
 echo 'deploy_native_archive=decoded'

@@ -11,7 +11,7 @@ preparation, deployment, and recovery vary by device, network, and offline-trans
 no fixed completion-time promise. The full local verification suite is optional for a first read-only
 probe and may take several minutes or substantially longer.
 
-v0.1.9 is a release candidate: the download/clone links below become available only after its publication/tag is established. v0.1.8 remains an unpublished candidate.
+This guide targets v0.1.9. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
 
 ## 1. Obtain the project and open the guide
 
@@ -32,7 +32,7 @@ v0.1.9 is a release candidate: the download/clone links below become available o
 
 ### Open the same entry for your computer
 
-Release packages, existing folders and desktop entries do not require Git. **The download column is only for the release-package route; with a clone or complete existing folder, use its startup file without downloading again.**
+You do not need Git to use a release package, complete existing folder or desktop entry. **The download column is only for the release-package route; with a clone or complete existing folder, use its startup file without downloading again.**
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
