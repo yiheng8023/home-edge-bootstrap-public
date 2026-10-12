@@ -14,6 +14,60 @@ The guide menu is ordered 1 through 9 with exit last, combines help aliases into
 
 Affected regression fixtures include keyword/dependency-group conflict, explicit service binding, preservation of unrelated/runtime configuration, rollback, and passive-backup boundaries. A reference site's rule-only hot application separately verified loaded rules and retained selectors/core process; this is not acceptance of every released package, router, OAuth failure or network condition. Runtime pins, licenses, source locks and broad-release `blocked` scope remain unchanged. Earlier release sections, tags and assets remain unchanged.
 
+Windows: download one complete ZIP, Extract All, then double-click start.cmd. macOS/Linux: choose tar.gz. Download SHA256SUMS to verify the selected package; complete-source audit assets are not extra installation parts.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.8-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.8-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.8-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.8-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.8-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.8-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.8-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.8-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+Choose one package for your system plus `SHA256SUMS`; verify only the file you downloaded. Manifest, SBOM (public release) and complete-source assets are audit/source-availability material, not extra installation parts. GitHub automatic Source code archives are not the contracted packages.
+
+Choose a source-only package only when the runtime is already present and you need scripts/documentation; choose an offline package for fresh offline runtime preparation.
+
+Windows PowerShell, checking only the offline ZIP you downloaded:
+
+```powershell
+$File = "home-edge-bootstrap-v0.1.8-offline.zip"
+$Expected = ((Get-Content .\SHA256SUMS | Where-Object { $_ -match "  $([regex]::Escape($File))$" }) -split '\s+')[0]
+if ((Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) {
+  throw "SHA256 mismatch: $File"
+}
+```
+
+macOS/Linux, checking only the offline `tar.gz` you downloaded:
+
+```sh
+file=home-edge-bootstrap-v0.1.8-offline.tar.gz
+line=$(awk -v f="$file" 'NF == 2 && length($1) == 64 && $2 == f { n++; hit=$0 }
+  END { if (n == 1) print hit; else exit 1 }' SHA256SUMS) || exit 1
+if command -v sha256sum >/dev/null 2>&1; then
+  printf '%s\n' "$line" | sha256sum -c -
+else
+  printf '%s\n' "$line" | shasum -a 256 -c -
+fi
+```
+
+
 ## v0.1.7 (2026-10-12)
 
 Add comprehensive local bilingual help (`H` / `?` / `help` / `6`) and a session-only language switch (`L` / `language` / `9`) that preserves the router target and selected session without network access or global setting writes.

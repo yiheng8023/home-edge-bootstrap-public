@@ -354,4 +354,4 @@ Node-only subscription automation still needs host compilation of yamlbridge thr
 or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
 group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).
 
-OpenAI routing requires a consistent service policy for login, chat and dependency domains. Generic latency tests and provider [AI] labels do not establish service availability. Review the [service routing procedure](docs/RUNBOOK.md#optional-service-dependency-profiles), preserve working manual choices, and verify both persistent and loaded rules before treating a repair as complete.
+OpenAI routing requires a consistent service policy for login, chat and dependency domains. Generic latency tests and provider [AI] labels do not establish service availability. Review the [service routing procedure](docs/SERVICE_ROUTING.md), preserve working manual choices, and verify both persistent and loaded rules before treating a repair as complete.

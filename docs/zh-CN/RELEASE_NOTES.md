@@ -14,6 +14,60 @@
 
 受影响回归覆盖关键词／依赖组冲突、显式服务绑定、无关与运行配置保留、回滚及历史空备份边界。参考现场的仅规则热更新另行核验了运行规则、策略组选择及内核进程；这不代表全部发行包、路由器、OAuth 故障或网络条件已验收。运行时固定版本、许可、源码锁及广泛发布 `blocked` 边界不变。旧发布章节、标签和资产保持原样。
 
+Windows 下载完整 ZIP、全部解压后双击 start.cmd；macOS/Linux 选择 tar.gz。只选适合系统的一个包并下载 SHA256SUMS 校验；源码审计材料不是额外安装部件。
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.8-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.8-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.8-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.8-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/home-edge-bootstrap-v0.1.8-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.8/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.8-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.8-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.8-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.8-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+选择对应系统的一种包和 `SHA256SUMS`；只校验你下载的文件。manifest、SBOM（公开发行）和完整对应源码是审计／源码可用性资料，不是额外安装部件。GitHub 自动生成的 Source code 不是契约发行包。
+
+只有已有运行时且只需要脚本／文档时才选 source 包；全新离线运行时准备选择 offline 包。
+
+Windows PowerShell 只校验已下载的离线 ZIP：
+
+```powershell
+$File = "home-edge-bootstrap-v0.1.8-offline.zip"
+$Expected = ((Get-Content .\SHA256SUMS | Where-Object { $_ -match "  $([regex]::Escape($File))$" }) -split '\s+')[0]
+if ((Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) {
+  throw "SHA256 mismatch: $File"
+}
+```
+
+macOS/Linux 只校验已下载的离线 `tar.gz`：
+
+```sh
+file=home-edge-bootstrap-v0.1.8-offline.tar.gz
+line=$(awk -v f="$file" 'NF == 2 && length($1) == 64 && $2 == f { n++; hit=$0 }
+  END { if (n == 1) print hit; else exit 1 }' SHA256SUMS) || exit 1
+if command -v sha256sum >/dev/null 2>&1; then
+  printf '%s\n' "$line" | sha256sum -c -
+else
+  printf '%s\n' "$line" | shasum -a 256 -c -
+fi
+```
+
+
 ## v0.1.7（2026-10-12）
 
 新增完整本机双语帮助（`H` / `?` / `help` / `6`）及会话内语言切换（`L` / `language` / `9`），保留路由器目标与所选会话，不联网、不写全局设置。
