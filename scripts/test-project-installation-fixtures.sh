@@ -2,7 +2,11 @@
 # Isolated observations and real lock-time deployment guards; never contact SSH.
 set -eu
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-installation-test.XXXXXX")
+tmp_parent=${TMPDIR:-/tmp}
+tmp=$(mktemp -d "${tmp_parent%/}/home-edge-installation-test.XXXXXX")
+# Test paths passed into strict router consumers must have neither doubled
+# separators nor host aliases such as macOS /var -> /private/var.
+tmp=$(CDPATH= cd "$tmp" && pwd -P) || exit 1
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 fail() { echo "project_installation_fixture_tests=failed: $*" >&2; exit 1; }
 . "$repo/adapters/merlin/lib/installation-state.sh"
