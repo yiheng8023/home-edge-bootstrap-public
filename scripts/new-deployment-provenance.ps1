@@ -43,12 +43,13 @@ else {
   }
 }
 
-$Files = Get-ChildItem -LiteralPath $StageRoot -File -Recurse | Where-Object {
-  $_.FullName -ne $MetadataPath -and $_.FullName -ne $SumsPath
-} | Sort-Object { $_.FullName.Substring($StageRoot.Length).TrimStart('\', '/').Replace('\', '/') }
-$Lines = foreach ($File in $Files) {
-  $Relative = $File.FullName.Substring($StageRoot.Length).TrimStart('\', '/').Replace('\', '/')
-  $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $File.FullName).Hash.ToLowerInvariant()
+# Ask the provider for relative names. FullName can expand an 8.3 stage alias,
+# so slicing it using the caller's root length can create nonexistent paths.
+$Files = Get-ChildItem -LiteralPath $StageRoot -File -Recurse -Name | Where-Object {
+  $_ -ne 'DEPLOYMENT-PROVENANCE.env' -and $_ -ne 'DEPLOYMENT-CONTENT-SHA256SUMS'
+} | ForEach-Object { $_.Replace('\', '/') } | Sort-Object
+$Lines = foreach ($Relative in $Files) {
+  $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $StageRoot $Relative)).Hash.ToLowerInvariant()
   "$Hash  $Relative"
 }
 $Utf8NoBom = [Text.UTF8Encoding]::new($false)

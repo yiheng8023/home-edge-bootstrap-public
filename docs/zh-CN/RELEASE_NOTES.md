@@ -6,7 +6,7 @@
 
 v0.1.9 修正自愈的写入权限：配置的 HEAL_GROUP 必须精确匹配可写 Selector，自动主组发现排除手动名称。显式指定手动组会授权其自动管理；嵌套与角色切换保留各自的主动启用控制。PUT 前重新核验图与选择值；回滚也受介入变化守卫约束。controller 没有原子 compare-and-swap（CAS），这些检查缩小已观测竞态窗口，但不能消除全部并发变化风险。
 
-项目采用证据包含当前 service-helper 来源。Merlin 检测在原 command 不可用时回退到可用的命令定位器，不把缺命令误判为未安装。PowerShell 5/7 与 POSIX 部署采用短 SSH argv、UTF-8/LF stdin 和分行 base64 传输，归档失败在独立作用域检查；覆盖 16K fixture 传输。来源记录明确非 Git／缺 Git 情况，不借用父级仓库，并确定性选择首个可用 Git。Windows 克隆失败不会启动已有目标目录。
+项目采用证据包含当前 service-helper 来源。Merlin 检测在原 command 不可用时回退到可用的命令定位器，不把缺命令误判为未安装。PowerShell 5/7 与 POSIX 部署采用短 SSH argv、UTF-8/LF stdin 和分行 base64 传输，归档失败在独立作用域检查；覆盖 16K fixture 传输。来源记录明确非 Git／缺 Git 情况，不借用父级仓库，并确定性选择首个可用 Git。 Windows 短路径与长路径暂存目录生成相同的相对校验路径。Windows 克隆失败不会启动已有目标目录。
 
 参考现场另行验收了执行源码的仅项目刷新，保留运行时／core、策略组选择与 profiles，并在后续自然 cron 中观测到选择未变。这是受限现场证据，不代表全部新归档、原生 GUI、服务商、账号或网络结果已验收。本次版本／文档提交与此前现场来源收据不同；文档字节需要单独协调采用状态。
 

@@ -53,6 +53,35 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "nested release provenance generator failed" }
   $NestedMetadata = Get-Content -LiteralPath (Join-Path $Stage "DEPLOYMENT-PROVENANCE.env")
   if ($NestedMetadata -notcontains "source_kind=release" -or $NestedMetadata -notcontains "source_version=v9.8.7") { throw "extracted release borrowed unrelated parent Git identity" }
+  # The Windows TEMP environment can contain an existing 8.3 alias while the
+  # filesystem provider returns long FullName values. Both roots must yield
+  # exactly the same relative checksum paths, not a sliced absolute prefix.
+  Add-Type -TypeDefinition @'
+using System.Text;
+using System.Runtime.InteropServices;
+public static class HomeEdgeProvenanceShortPath {
+  [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+  public static extern uint GetShortPathName(string path, StringBuilder output, uint length);
+}
+'@
+  $ShortBuffer = New-Object Text.StringBuilder 32768
+  $ShortLength = [HomeEdgeProvenanceShortPath]::GetShortPathName($Stage, $ShortBuffer, $ShortBuffer.Capacity)
+  if (-not $ShortLength) { throw 'Cannot inspect an existing Windows stage path' }
+  $ShortStage = $ShortBuffer.ToString()
+  if (-not $ShortStage.Equals($Stage, [StringComparison]::OrdinalIgnoreCase)) {
+    $ExpectedSums = [IO.File]::ReadAllText((Join-Path $Stage 'DEPLOYMENT-CONTENT-SHA256SUMS'))
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo 'scripts\new-deployment-provenance.ps1') -StageRoot $ShortStage -SourceRoot $ReleaseSource
+    if ($LASTEXITCODE -ne 0) { throw 'Short-path provenance generator failed' }
+    $ShortSums = [IO.File]::ReadAllText((Join-Path $Stage 'DEPLOYMENT-CONTENT-SHA256SUMS'))
+    if ($ShortSums -cne $ExpectedSums) { throw 'Windows short/long roots produced different checksum paths' }
+    foreach ($Line in $ShortSums.TrimEnd("`n").Split("`n")) {
+      if ($Line -notmatch '^([0-9a-f]{64})  (.+)$') { throw 'Malformed short-path checksum line' }
+      if ((Get-FileHash -LiteralPath (Join-Path $Stage $Matches[2])).Hash.ToLowerInvariant() -ne $Matches[1]) { throw 'Short-path checksum does not address actual staged bytes' }
+    }
+    Write-Host 'deployment_provenance_short_path=ok'
+  } else {
+    Write-Host 'deployment_provenance_short_path=not_available_on_this_filesystem'
+  }
 }
 finally { Remove-Item -LiteralPath $Base -Recurse -Force -ErrorAction SilentlyContinue }
 Write-Host "deployment_provenance_fixture_tests=ok"
