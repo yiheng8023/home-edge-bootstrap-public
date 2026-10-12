@@ -4,6 +4,8 @@
 
 ## v0.1.10 (2026-10-13)
 
+README now includes a bilingual Mermaid system overview that separates the operator computer, supported router, managed scripts and external runtime; it distinguishes the control workflow from the network path.
+
 v0.1.10 improves the bilingual guide without adding a terminal framework. The main menu groups common tasks, tools and preferences; local help and project maintenance have focused submenus. Main choice 7 now opens maintenance; choose 1 there to refresh project content or 2 to review decommission. The historical R refresh shortcut remains. Navigation and language switching preserve the selected router/session; 0 returns from a submenu and EOF exits the guide. Exact APPLY, REPLACE, ENABLE and DECOMMISSION confirmations retain their existing contracts.
 
 Help lists only documents present in the running copy, including source-only public packages. Human-readable startup, directory-selection and repair guidance follows the chosen language; protocol keys, enums, commands and confirmation tokens stay unchanged. Language priority is an explicit argument, a valid HOME_EDGE_LANGUAGE preference, host locale, then the documented Chinese fallback when no locale is available. The preference is session-local and writes no global setting. Chinese project-refresh confirmation now says refresh instead of deployment.

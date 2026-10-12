@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.9`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.10`, they are:
 
-- `home-edge-bootstrap-v0.1.9-source.zip`
-- `home-edge-bootstrap-v0.1.9-source.tar.gz`
-- `home-edge-bootstrap-v0.1.9-offline.zip`
-- `home-edge-bootstrap-v0.1.9-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.10-source.zip`
+- `home-edge-bootstrap-v0.1.10-source.tar.gz`
+- `home-edge-bootstrap-v0.1.10-offline.zip`
+- `home-edge-bootstrap-v0.1.10-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -110,7 +110,7 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
 
-## v0.1.9 Limited Acceptance Contract
+## v0.1.10 Limited Acceptance Contract
 
 Require the exact new source commit across Linux, macOS, Windows and subscription-behavior CI, then verify the concrete public nine-asset set and bilingual release links. Retain all prior host, installation ownership, twice-confirmed refresh, entry metadata, source-only parser, licensing and locked-runtime gates.
 

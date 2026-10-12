@@ -111,6 +111,38 @@ Future device, firmware, and runtime families may join through
 separate adapters only after their capability, safety, recovery, evidence, maintenance, migration,
 and decommission contracts are defined and verified. No unimplemented adapter is listed as supported.
 
+## How the system fits together
+
+The operator computer runs the guide; the supported router runs the managed scripts and the existing proxy runtime. Solid arrows show the workflow or network path. Dashed arrows show observation or management within the configured authority.
+
+```mermaid
+flowchart TB
+  subgraph Local["Operator computer: Windows / macOS / Linux"]
+    Files["Complete project folder<br/>Release, clone or offline transfer: choose one"]
+    Entry["Local start entry or registered desktop entry"]
+    Guide["TUI guide<br/>Help, diagnosis, session and plan"]
+    Confirm{"Review the target and plan<br/>Confirm the selected operation?"}
+    Device["Device operation<br/>Current Merlin reference implementation"]
+    Files --> Entry --> Guide --> Confirm
+    Confirm -->|Cancel| Guide
+    Confirm -->|Exact confirmation| Device
+  end
+  subgraph Router["Supported router"]
+    Kit["Project-owned scripts, policy and recovery state"]
+    Observe["Health checks<br/>Self-heal and subscription refresh when configured"]
+    Runtime["Existing external runtime<br/>ShellCrash / Mihomo"]
+    Gateway["Router network path<br/>Direct or proxy according to rules"]
+    Kit --> Observe
+    Observe -.->|Read or scoped management| Runtime
+    Runtime -.->|Routing policy| Gateway
+  end
+  Device -->|Confirmed project operation| Router
+  Guide -.->|Read-only diagnosis| Observe
+  Clients["Home devices"] --> Gateway --> Internet["Internet services"]
+```
+
+Opening the guide does not deploy the router. Local help works without a router; selected diagnosis may contact it. Device writes use the operation's exact confirmation token. Automation runs only under its own enabled policy. The diagram describes responsibilities: some existing deploy, rollback and self-heal paths still contain Merlin integration; it does not claim complete adapter isolation or support for unimplemented devices. See [architecture](docs/ARCHITECTURE.md) and [launcher and recovery](docs/LAUNCHER.md).
+
 ## Automatic management and manual choices
 
 Subscription refresh and route self-heal have separate authority. Refresh validates node changes, preserves the selected nodes, and cancels when those choices change during preparation; it does not decide which node is best for an application. A latency result or an `[AI]` label is not an application-availability guarantee.

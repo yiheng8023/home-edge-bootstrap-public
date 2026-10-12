@@ -28,7 +28,7 @@ implementation; this is progressive isolation, not a claim that all adapters alr
 See [Launcher and recovery contract](LAUNCHER.md) for conditions, instance binding and host evidence.
 
 
-The TUI exposes local bilingual help and a session-only language switch independently of device operations. Installation observation binds a fresh router/path inventory, not historical logs or runtime presence. Existing project content defaults to diagnosis/reuse; only explicit `R` followed by `REPLACE` and `APPLY` authorizes a project refresh, rechecked under the writer lock. Project-only scope excludes runtime/core assets while allowing managed integration/config changes. Event-driven structure, physical identity and tool checks run at menu/action boundaries and around important work; they preserve help/language/exit under known degradation and are not a background fault detector.
+The TUI exposes local bilingual help and a session-only language switch independently of device operations. Installation observation binds a fresh router/path inventory, not historical logs or runtime presence. Existing project content defaults to diagnosis/reuse; only maintenance `7 → 1` or the `R` shortcut followed by `REPLACE` and `APPLY` authorizes a project refresh, rechecked under the writer lock. Project-only scope excludes runtime/core assets while allowing managed integration/config changes. Structure, physical identity and required tools are checked at startup, before operations and around important work; local menu navigation, help and language switching do not run these probes; they preserve help/language/exit under known degradation and are not a background fault detector.
 
 | Layer | Artifact | Portability | Notes |
 |---|---|---|---|

@@ -109,6 +109,38 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 适配器接入其他设备、固件和运行时系列，但必须先明确并验证相应能力、安全、恢复、证据和
 维护契约。
 
+## 系统各部分如何协作
+
+操作者电脑运行引导器；受支持的路由器运行受管脚本及既有代理运行时。实线表示操作流程或网络路径，虚线表示观测或在已配置权限内的管理关系。
+
+```mermaid
+flowchart TB
+  subgraph Local["操作者电脑：Windows / macOS / Linux"]
+    Files["完整项目目录<br/>发行包、克隆、离线传递任选一种"]
+    Entry["目录内启动入口或已登记桌面入口"]
+    Guide["TUI 引导器<br/>帮助、诊断、会话与计划"]
+    Confirm{"审查目标与计划<br/>确认所选操作？"}
+    Device["设备操作<br/>当前 Merlin 参考实现"]
+    Files --> Entry --> Guide --> Confirm
+    Confirm -->|取消| Guide
+    Confirm -->|精确确认| Device
+  end
+  subgraph Router["受支持的路由器"]
+    Kit["项目自有脚本、策略与恢复状态"]
+    Observe["健康检查<br/>按配置启用的自愈与订阅更新"]
+    Runtime["既有外部运行时<br/>ShellCrash / Mihomo"]
+    Gateway["路由器网络路径<br/>按规则直连或代理"]
+    Kit --> Observe
+    Observe -.->|只读或受限管理| Runtime
+    Runtime -.->|路由策略| Gateway
+  end
+  Device -->|已确认的项目操作| Router
+  Guide -.->|只读诊断| Observe
+  Clients["家庭终端"] --> Gateway --> Internet["互联网服务"]
+```
+
+打开引导器不等于部署路由器。本机帮助不需要路由器；所选诊断可能联系路由器。设备写入必须输入对应操作的精确确认词，自动管理则按其独立启用策略执行。图表达职责分工；既有部署、回滚和自愈流程仍含 Merlin 集成，不声称已完全隔离所有适配器或支持尚未实现的设备。详见[架构说明](docs/zh-CN/ARCHITECTURE.md)与[启动和恢复](docs/zh-CN/LAUNCHER.md)。
+
 ## 自动管理与手动选择
 
 订阅刷新与线路自愈的权限分开。刷新验证节点变更、保留已选节点，并在准备期间选择发生变化时取消；它不替你判断哪个节点适合某项业务。低延迟和 `[AI]` 标签都不能保证应用可用。
