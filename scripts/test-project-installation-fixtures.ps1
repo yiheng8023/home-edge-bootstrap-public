@@ -6,7 +6,7 @@ $OldMode = $env:INSTALLATION_PROBE_MODE
 $OldState = $env:INSTALLATION_PROBE_STATE
 $OldCapture = $env:INSTALLATION_CAPTURE_FILE
 $NativeEnvironment = @{}
-$NativeNames = @('INSTALLATION_NATIVE_ROOT', 'INSTALLATION_NATIVE_CAPTURE', 'INSTALLATION_NATIVE_SHELL', 'INSTALLATION_NATIVE_MODE')
+$NativeNames = @('INSTALLATION_NATIVE_ROOT', 'INSTALLATION_NATIVE_CAPTURE', 'INSTALLATION_NATIVE_SHELL', 'INSTALLATION_NATIVE_MODE', 'INSTALLATION_NATIVE_TOOLS', 'INSTALLATION_NATIVE_STDERR')
 foreach ($Name in $NativeNames) { $NativeEnvironment[$Name] = [Environment]::GetEnvironmentVariable($Name) }
 try {
   New-Item -ItemType Directory -Path $Fixture | Out-Null
@@ -59,9 +59,15 @@ $global:LASTEXITCODE = 0
   New-Item -ItemType Directory -Path (Join-Path $NativeRoot 'jffs') | Out-Null
   $env:INSTALLATION_NATIVE_ROOT = '/' + $NativeRoot.Substring(0, 1).ToLowerInvariant() + $NativeRoot.Substring(2).Replace('\', '/')
   $env:INSTALLATION_NATIVE_CAPTURE = (Join-Path $Fixture 'native-payload').Replace('\', '/')
+  $env:INSTALLATION_NATIVE_STDERR = (Join-Path $Fixture 'native-stderr').Replace('\', '/')
   $env:INSTALLATION_NATIVE_SHELL = $Dash.Replace('\', '/')
+  $NativeTools = Split-Path -Parent $Dash
+  $env:INSTALLATION_NATIVE_TOOLS = '/' + $NativeTools.Substring(0, 1).ToLowerInvariant() + $NativeTools.Substring(2).Replace('\', '/')
   [IO.File]::WriteAllText($NativeScript, (@'
 #!/bin/sh
+# Bind tools inside this transport only; do not change the parent's tar lookup.
+PATH="$INSTALLATION_NATIVE_TOOLS:$PATH"
+export PATH
 cat > "$INSTALLATION_NATIVE_CAPTURE" || exit 1
 if [ "$INSTALLATION_NATIVE_MODE" = malformed ]; then
   printf 'project_install_state=not_installed\n'
@@ -74,7 +80,7 @@ else
 fi
 sed -b -e "s|^HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''$|HOME_EDGE_INSTALLATION_FIXTURE_ROOT='$INSTALLATION_NATIVE_ROOT'|" \
     -e "s|^home_edge_inspect_installation$|home_edge_inspect_installation$suffix|" \
-    "$INSTALLATION_NATIVE_CAPTURE" | "$INSTALLATION_NATIVE_SHELL" -s
+    "$INSTALLATION_NATIVE_CAPTURE" | "$INSTALLATION_NATIVE_SHELL" -s 2>"$INSTALLATION_NATIVE_STDERR"
 exit $?
 '@).Replace("`r", "") + "`n", [Text.Encoding]::ASCII)
   [IO.File]::WriteAllText($NativeTransport, ('@"' + $Dash + '" "%~dp0native-ssh.sh"' + "`r`n"), [Text.Encoding]::ASCII)
@@ -87,7 +93,10 @@ exit $?
       if ($NativeMode -eq 'unknown') { New-Item -ItemType Directory -Path (Join-Path $NativeRoot 'jffs/home-edge-bootstrap') | Out-Null }
       $Output = & $NativeHost -NoProfile -ExecutionPolicy Bypass -File $Observer -Router user@router -KnownHostsFile $KnownHosts -SshCommand $NativeTransport | Out-String
       if ($NativeMode -eq 'ready') {
-        if ($LASTEXITCODE -ne 0 -or $Output -notmatch 'project_install_state=not_installed' -or $Output -notmatch 'project_install_replace_allowed=0') { throw "Native stdin framing failed: $NativeHost`n$Output" }
+        if ($LASTEXITCODE -ne 0 -or $Output -notmatch 'project_install_state=not_installed' -or $Output -notmatch 'project_install_replace_allowed=0') {
+          $NativeFailure = if (Test-Path -LiteralPath $env:INSTALLATION_NATIVE_STDERR) { [IO.File]::ReadAllText($env:INSTALLATION_NATIVE_STDERR) } else { 'Native transport did not produce its stderr record.' }
+          throw "Native stdin framing failed: $NativeHost`n$Output`n$NativeFailure"
+        }
       } else {
         $Reason = if ($NativeMode -eq 'malformed') { 'malformed_observation' } elseif ($NativeMode -eq 'nonzero') { 'probe_failed' } else { 'foreign_project_directory' }
         if ($LASTEXITCODE -eq 0 -or $Output -notmatch 'project_install_state=unknown' -or $Output -notmatch "project_install_reason=$Reason" -or $Output -notmatch 'project_install_replace_allowed=0') { throw "Native invalid observation was trusted: $NativeHost/$NativeMode`n$Output" }
