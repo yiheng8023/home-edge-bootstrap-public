@@ -5,7 +5,7 @@ English | [简体中文](README.zh-CN.md)
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.6) ·
+[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.7) ·
 [release contract](docs/PUBLIC_RELEASE.md).
 
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
@@ -31,9 +31,9 @@ and decommission contracts are defined and verified. No unimplemented adapter is
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
-| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | Double-click `start.cmd` |
-| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | Double-click `start.command` |
-| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
 
 Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
 
@@ -45,7 +45,7 @@ In the extracted folder or clone, find the level containing `PROJECT`, `README` 
 
 If macOS requests source confirmation, verify the download source and use the system's Open flow. If execution permission was not retained, use Terminal. Linux desktop script associations vary: when Run in Terminal is unavailable, open a terminal, type `sh ` (including the space), drag `start.sh` into it and press Enter. The same fallback works on macOS; neither requires `cd` first.
 
-The menu defaults to Chinese. For English or advanced arguments use a full path, such as `& "actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
+The menu defaults to Chinese; type **L**, **language** or **9** in the menu to switch to English. For advanced arguments use a full path, such as `& "actual-project-folder\start.cmd" -Language en` on Windows or `sh "/actual-project-folder/start.sh" --lang en` on macOS/Linux. Dragging the file into a terminal inserts its path. On Windows, typing `powershell` into the project folder's Explorer address bar also opens the terminal in that folder.
 
 ### 3. Keep an entry for later
 
@@ -53,7 +53,19 @@ All three systems offer menu **8: Create or refresh a local desktop launcher**. 
 
 The independent entry stores your chosen location and directory-instance identity and rechecks them at startup. A move, deletion, damaged record or replacement directory prompts for a new explicit selection followed by validation. A native folder picker is used when available, otherwise a path prompt; cancellation or EOF executes no project. Multiple clones can coexist: a directory-local entry uses its own copy, and the independent entry uses the explicitly registered copy. There is no disk-wide scan or arbitrary selection. If a Linux desktop requires Allow Launching, check the entry and follow its prompt; headless environments retain the terminal entry.
 
+If the registered target and cached launcher files already match this copy and the desktop entry points to that registered launcher, desktop setup reports `shortcut_state=reused`. Updating another project-owned target, an incomplete registration or changed cached launcher files requires **REPLACE** then **APPLY**. Unowned storage and unrelated desktop files are not overwritable. This updates the local entry, not the router installation.
+
 For absent Git, offline access, missing desktops/tools/permissions or uninstalled optional operations, use [conditions and recovery](docs/LAUNCHER.md). The core entry does not require ASUS or Merlin adapter files; device operations require their implementation and target capabilities. Opening the menu performs no automatic deployment, runtime update or router change; write actions retain explicit confirmation and recovery.
+
+### Help, language and an existing installation
+
+At the main menu, type **H**, **?**, **help**, or **6** for local help: menu actions, prerequisites, confirmations, recovery and documentation paths. Type **L**, **language**, or **9** to switch Chinese/English immediately. The switch keeps the router target and selected session, lasts for this TUI session only, and performs no network access or global setting write. **0** exits.
+
+Choose **1** to start or resume. A fresh read-only probe of the selected router and project path distinguishes `installed`, `partial`, `not_installed` and `unknown`. Existing project content defaults to diagnosis and saved-session reuse. `installed` means recognized project-owned presence, not a healthy runtime or complete network/lifecycle acceptance. ShellCrash/Mihomo alone does not mean this project is installed. Only positively observed absence permits first installation; unknown ownership, foreign content, links or a failed/malformed probe stop deployment for review.
+
+To refresh an owned project, deliberately choose **R**, review the target, plan and `<project-path>.prev` backup, then type **REPLACE** followed by **APPLY** exactly. An older `.prev` backup may be replaced. This uses the project-only deployment scope: it prevents runtime/core asset replacement, but can update project-managed integration and configuration. It is not a complete runtime rollback. The writer rechecks ownership under its lock before applying. Runtime replacement and core replacement remain separate opt-in actions; runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is separately selected.
+
+The guide rechecks current project structure/directory identity and required tool availability at menu/action transitions and around important work. Known degradation stops affected actions and gives recovery guidance while **H**, **L** and **0** remain usable. These are event-driven checks, not a background daemon or detection of every unknown fault. See the launcher contract for the supported recovery paths.
 
 ## Start here
 
@@ -337,7 +349,7 @@ activation and limits. This source feature is not retroactively present in the
 already published v0.1.4 download archives. Site results and offline fixture results
 are distinct; they do not establish broad firmware/provider support.
 
-The v0.1.6 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
+The v0.1.7 release includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
 Node-only subscription automation still needs host compilation of yamlbridge through a trusted network
 or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
 group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).

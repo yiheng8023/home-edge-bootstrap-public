@@ -7,10 +7,14 @@ param(
   [switch]$InstallRuntime,
   [switch]$ReplaceRuntime,
   [switch]$ReplaceCore,
+  [switch]$ReplaceProject,
+  [string]$ProjectConfirmation = "",
+  [switch]$ProjectOnly,
   [switch]$Apply
 )
 
 $ErrorActionPreference = "Stop"
+$SshCommand = if ($env:HOME_EDGE_SSH_COMMAND) { $env:HOME_EDGE_SSH_COMMAND } else { "ssh" }
 function ConvertTo-PosixRemoteCommand {
   param([string]$Command)
   # Windows here-strings retain CRLF; ssh's remote POSIX shell needs LF.
@@ -23,7 +27,8 @@ if ($RemoteDir -notmatch '^/jffs/[A-Za-z0-9_.-]+$') {
   throw "RemoteDir must be one concrete directory below /jffs without traversal or unsupported characters: $RemoteDir"
 }
 
-foreach ($Name in @("BOOTSTRAP_INSTALL_RUNTIME", "BOOTSTRAP_REPLACE_RUNTIME", "BOOTSTRAP_REPLACE_CORE")) {
+foreach ($Name in @("BOOTSTRAP_INSTALL_RUNTIME", "BOOTSTRAP_REPLACE_RUNTIME", "BOOTSTRAP_REPLACE_CORE", "BOOTSTRAP_REPLACE_PROJECT")) {
+  if ($ProjectOnly -and $Name -ne 'BOOTSTRAP_REPLACE_PROJECT') { continue }
   $Value = [Environment]::GetEnvironmentVariable($Name)
   if ($Value -and $Value -notin @("0", "1")) {
     throw "$Name must be 0 or 1."
@@ -35,9 +40,14 @@ $BundleDir = if ($env:DEPLOY_BUNDLE_DIR) {
 } else {
   Join-Path $Repo "bundle"
 }
-$RuntimeRequested = ($InstallRuntime -or $env:BOOTSTRAP_INSTALL_RUNTIME -eq "1")
-$ReplaceRequested = ($ReplaceRuntime -or $env:BOOTSTRAP_REPLACE_RUNTIME -eq "1")
-$ReplaceCoreRequested = ($ReplaceCore -or $env:BOOTSTRAP_REPLACE_CORE -eq "1")
+if ($ProjectOnly -and ($InstallRuntime -or $ReplaceRuntime -or $ReplaceCore -or $IncludeBundle)) { throw "-ProjectOnly conflicts with runtime or bundle switches." }
+$RuntimeRequested = (-not $ProjectOnly -and ($InstallRuntime -or $env:BOOTSTRAP_INSTALL_RUNTIME -eq "1"))
+$ReplaceRequested = (-not $ProjectOnly -and ($ReplaceRuntime -or $env:BOOTSTRAP_REPLACE_RUNTIME -eq "1"))
+$ReplaceCoreRequested = (-not $ProjectOnly -and ($ReplaceCore -or $env:BOOTSTRAP_REPLACE_CORE -eq "1"))
+$ReplaceProjectRequested = ($ReplaceProject -or $env:BOOTSTRAP_REPLACE_PROJECT -eq "1")
+if (-not $ProjectConfirmation) { $ProjectConfirmation = $env:BOOTSTRAP_PROJECT_CONFIRMATION }
+if ($ReplaceProjectRequested -and $ProjectConfirmation -cne "REPLACE") { throw "Project replacement requires exact -ProjectConfirmation REPLACE." }
+if ($ProjectConfirmation -and -not $ReplaceProjectRequested) { throw "Project confirmation requires -ReplaceProject." }
 
 function Assert-LocalBundle {
   $Required = @("mihomo-linux-arm64", "ShellCrash.tar.gz", "SHA256SUMS", "MANIFEST.json")
@@ -75,7 +85,14 @@ if ($RuntimeRequested) {
   $RuntimeSpaceRequiredKiB = [int64][Math]::Ceiling(($RuntimePayloadBytes * 2) / 1KB) + 16384
 }
 
-$IncludeBundleResolved = [bool]$IncludeBundle
+$InstallationLibrary = Get-Content -LiteralPath (Join-Path $Repo "adapters/merlin/lib/installation-state.sh") -Raw
+$InstallationOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "check-project-installation.ps1") -Router $Router -RemoteDir $RemoteDir -KnownHostsFile $KnownHostsFile | Out-String
+$InstallationStatus = $LASTEXITCODE
+Write-Host $InstallationOutput.TrimEnd()
+$InstallationState = [regex]::Match($InstallationOutput, '(?m)^project_install_state=([^\r\n]+)').Groups[1].Value
+$InstallationAllowed = [regex]::Match($InstallationOutput, '(?m)^project_install_replace_allowed=([^\r\n]+)').Groups[1].Value
+$ReplacementRequired = if ($InstallationState -in @('installed', 'partial')) { '1' } elseif ($InstallationState -eq 'not_installed') { '0' } else { 'unknown' }
+$IncludeBundleResolved = (-not $ProjectOnly -and [bool]$IncludeBundle)
 if (-not $Apply) {
   Write-Host "deploy_state=plan"
   Write-Host "apply_required=1"
@@ -86,8 +103,20 @@ if (-not $Apply) {
   Write-Host "runtime_bundle_transport=$(if ($RuntimeRequested) { 'temporary' } else { 'none' })"
   Write-Host "replace_runtime=$([int]$ReplaceRequested)"
   Write-Host "replace_core=$([int]$ReplaceCoreRequested)"
-  Write-Host "next_action=rerun with -Apply after reviewing this plan"
-  exit 0
+  Write-Host "replace_project=$([int]$ReplaceProjectRequested)"
+  Write-Host "project_replacement_required=$ReplacementRequired"
+  Write-Host "installation_probe=read_only"
+  Write-Host "project_only=$([int][bool]$ProjectOnly)"
+  if ($ProjectOnly) { Write-Host "runtime_assets_effect=preserve"; Write-Host "integration_effect=project_managed_configuration_may_change" }
+  if ($InstallationState -eq 'unknown') { Write-Host "next_action=resolve the reported installation observation before deployment" }
+  elseif ($InstallationState -ne 'not_installed' -and $InstallationAllowed -ne '1') { Write-Host "next_action=preserve incomplete artifacts and establish ownership before deployment" }
+  elseif ($ReplacementRequired -eq '1') { Write-Host "next_action=review existing project replacement; require -ReplaceProject -ProjectConfirmation REPLACE with -Apply" }
+  else { Write-Host "next_action=rerun with -Apply after reviewing this plan" }
+  exit $InstallationStatus
+}
+if ($InstallationStatus -ne 0) { Write-Host "deploy_guard_state=unknown_installation"; exit 1 }
+if ($InstallationState -ne "not_installed" -and ($InstallationAllowed -ne "1" -or -not $ReplaceProjectRequested -or $ProjectConfirmation -cne "REPLACE")) {
+  Write-Host "deploy_guard_state=replacement_required"; exit 1
 }
 
 $Mode = "BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0"
@@ -104,6 +133,7 @@ previous="${remote_dir}.prev"
 lock_dir="/tmp/home-edge-bootstrap-write.lock"
 failed_dir="${remote_dir}.failed.$(date +%Y%m%d%H%M%S).$$"
 lock_held=0
+staging_owned=0
 
 for protected_path in "$remote_dir" "$staging" "$previous"; do
   [ ! -L "$protected_path" ] || {
@@ -113,7 +143,7 @@ for protected_path in "$remote_dir" "$staging" "$previous"; do
 done
 
 cleanup_deploy() {
-  rm -rf "$staging" 2>/dev/null || true
+  if [ "$staging_owned" = 1 ]; then rm -rf "$staging" 2>/dev/null || true; fi
   if [ "$lock_held" = "1" ]; then
     rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
     rmdir "$lock_dir" 2>/dev/null || true
@@ -211,7 +241,7 @@ rollback_deploy() {
     cleanup_first_install_active_state
   fi
   if [ -f "$remote_dir/bootstrap.sh" ]; then
-    if ! HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1; then
+    if ! HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="$remote_dir" sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1; then
       echo "deploy-merlin: WARN previous kit was restored but its bootstrap replay failed" >&2
     fi
   fi
@@ -222,8 +252,19 @@ rollback_deploy() {
 }
 
 acquire_deploy_lock
-rm -rf "$staging"
-mkdir -p "$staging"
+__INSTALLATION_LIBRARY__
+HOME_EDGE_INSTALLATION_DIR="$remote_dir"
+HOME_EDGE_INSTALLATION_ROUTER="__ROUTER__"
+HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''
+home_edge_inspect_installation
+home_edge_require_project_replacement "__REPLACE_PROJECT__" "__PROJECT_CONFIRMATION__" || exit 1
+[ ! -e "$staging" ] || { echo "deploy_guard_state=occupied_staging_path" >&2; exit 1; }
+if [ -e "$previous" ]; then
+  [ -f "$previous/adapters/merlin/bootstrap.sh" ] && [ ! -L "$previous/adapters" ] && [ ! -L "$previous/adapters/merlin" ] && [ ! -L "$previous/adapters/merlin/bootstrap.sh" ] &&
+    grep -Fq 'Merlin adapter' "$previous/adapters/merlin/bootstrap.sh" || { echo "deploy_guard_state=foreign_previous_backup" >&2; exit 1; }
+fi
+mkdir "$staging"
+staging_owned=1
 decode_payload() {
   if which base64 >/dev/null 2>&1; then
     tr -cd 'A-Za-z0-9+/=' | base64 -d
@@ -253,7 +294,7 @@ if [ "$runtime_follows" = "1" ]; then
   echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
   exit 0
 fi
-if ! (cd "$remote_dir" && HOME_EDGE_WRITE_LOCK_HELD=1 __MODE__ sh bootstrap.sh); then
+if ! (cd "$remote_dir" && HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_INSTALL_DIR="$remote_dir" __MODE__ sh bootstrap.sh); then
   rollback_deploy
   echo "deploy-merlin: bootstrap failed; previous kit restored" >&2
   exit 1
@@ -272,7 +313,11 @@ echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 
 $Remote = ConvertTo-PosixRemoteCommand ($RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
   Replace("__MODE__", $Mode).
-  Replace("__RUNTIME_FOLLOWS__", [int]$RuntimeRequested))
+  Replace("__RUNTIME_FOLLOWS__", [int]$RuntimeRequested).
+  Replace("__ROUTER__", $Router).
+  Replace("__REPLACE_PROJECT__", [int]$ReplaceProjectRequested).
+  Replace("__PROJECT_CONFIRMATION__", $ProjectConfirmation).
+  Replace("__INSTALLATION_LIBRARY__", $InstallationLibrary))
 $ArchiveItems = @("README.md", "README.zh-CN.md", "bootstrap.sh", "adapters", "config", "docs", "scripts", "tools")
 if ($IncludeBundleResolved) {
   $ArchiveItems += "bundle"
@@ -332,7 +377,7 @@ echo "runtime_space_preflight_state=ready"
     $RuntimeSpaceRemote = ConvertTo-PosixRemoteCommand ($RuntimeSpaceTemplate.
       Replace("__REQUIRED_KIB__", $RuntimeSpaceRequiredKiB.ToString([Globalization.CultureInfo]::InvariantCulture)).
       Replace("__PAYLOAD_BYTES__", $RuntimePayloadBytes.ToString([Globalization.CultureInfo]::InvariantCulture)))
-    & ssh @SshArgs $RuntimeSpaceRemote
+    & $SshCommand @SshArgs $RuntimeSpaceRemote
     if ($LASTEXITCODE -ne 0) {
       exit $LASTEXITCODE
     }
@@ -353,7 +398,7 @@ echo "runtime_space_preflight_state=ready"
   }
 
   $Payload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($Archive))
-  $Payload | ssh @SshArgs $Remote
+  $Payload | & $SshCommand @SshArgs $Remote
   if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
   }
@@ -400,6 +445,7 @@ decode_payload | tar -xzf - -C "$runtime_stage"
 (cd "$remote_dir" && \
   BOOTSTRAP_APPLY=1 \
   BOOTSTRAP_INSTALL_RUNTIME=1 \
+  BOOTSTRAP_INSTALL_DIR="$remote_dir" \
   BOOTSTRAP_BUNDLE_HOST_VERIFIED=1 \
   BOOTSTRAP_REPLACE_RUNTIME=__REPLACE_RUNTIME__ \
   BOOTSTRAP_REPLACE_CORE=__REPLACE_CORE__ \
@@ -492,7 +538,7 @@ printf "%s\n" runtime-rollback >"$lock_dir/operation"
 if [ -d "$previous" ]; then
   mv "$previous" "$remote_dir"
   if [ -f "$remote_dir/bootstrap.sh" ]; then
-    HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1 || {
+    HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="$remote_dir" sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1 || {
       echo "deploy-merlin: restored control-plane bootstrap replay failed" >&2
       exit 1
     }
@@ -507,11 +553,11 @@ fi
 '@
     $RuntimeRollbackRemote = ConvertTo-PosixRemoteCommand ($RuntimeRollbackTemplate.Replace("__REMOTE_DIR__", $RemoteDir))
     $RuntimePayload = [Convert]::ToBase64String([IO.File]::ReadAllBytes($BundleArchive))
-    $RuntimePayload | ssh @SshArgs $RuntimeRemote
+    $RuntimePayload | & $SshCommand @SshArgs $RuntimeRemote
     if ($LASTEXITCODE -ne 0) {
       $RuntimeExitCode = $LASTEXITCODE
       Write-Warning "Runtime stage failed; restoring the prior staged control plane."
-      & ssh @SshArgs $RuntimeRollbackRemote
+      & $SshCommand @SshArgs $RuntimeRollbackRemote
       if ($LASTEXITCODE -ne 0) {
         throw "Runtime stage failed and control-plane rollback could not be verified."
       }

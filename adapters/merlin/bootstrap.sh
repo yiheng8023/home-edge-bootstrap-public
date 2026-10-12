@@ -455,6 +455,7 @@ install_offline_runtime() {
   fi
 
   runtime_existed=0
+  previous_runtime=""
   [ -d "$shellcrash_dir" ] && runtime_existed=1
   mkdir -p "$runtime_backup_dir"
 
@@ -493,7 +494,11 @@ install_offline_runtime() {
 
   [ -d "$shellcrash_dir" ] || die "ShellCrash runtime directory missing after offline install: $shellcrash_dir"
   core_path="$shellcrash_dir/CrashCore.gz"
-  if [ "$runtime_existed" = "1" ] && [ "$replace_runtime" != "1" ] && [ -s "$core_path" ] && [ "$replace_core" != "1" ]; then
+  # Replacing runtime scripts is independent of replacing an operator's core.
+  if [ "$replace_core" != "1" ] && [ -n "$previous_runtime" ] && [ -s "$previous_runtime/CrashCore.gz" ]; then
+    cp -p "$previous_runtime/CrashCore.gz" "$core_path" || die "cannot preserve existing Mihomo core after runtime replacement"
+  fi
+  if [ "$runtime_existed" = "1" ] && [ -s "$core_path" ] && [ "$replace_core" != "1" ]; then
     log "existing Mihomo core preserved (set BOOTSTRAP_REPLACE_CORE=1 to replace it explicitly)"
     mkdir -p "$(dirname "$protected_core_path")"
     if [ ! -e "$protected_core_path" ]; then

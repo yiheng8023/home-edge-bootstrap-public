@@ -15,6 +15,11 @@ fail() {
   exit 1
 }
 
+for args in '--replace-project' '--apply-deploy --replace-project' '--apply-deploy --project-confirmation REPLACE' '--apply-deploy --replace-project --project-confirmation replace'; do
+  if sh "$repo/scripts/run-bootstrap.sh" --no-pause --session-dir "$base/rejected" $args user@router >"$base/rejected.out" 2>&1; then fail 'invalid project replacement permission accepted'; fi
+  [ ! -e "$base/rejected" ] || fail 'invalid permission created bootstrap state'
+done
+
 run_case() {
   name=$1
   guide_json=$2

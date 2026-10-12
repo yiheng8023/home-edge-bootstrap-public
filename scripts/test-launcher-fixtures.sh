@@ -31,6 +31,49 @@ grep -Fq 'home-edge-bootstrap vfixture' "$tmp/local-version" || fail 'local entr
 grep -Fq '8. Create or refresh a local desktop launcher' "$tmp/local-menu" || fail 'menu omits local launcher setup'
 case "$(uname -s)" in Linux|Darwin) ;; *) echo 'native_desktop_fixture=not_applicable_use_windows_fixture'; echo 'launcher_fixture_tests=ready'; exit 0 ;; esac
 sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/setup"
+sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" </dev/null >"$tmp/reused"
+grep -Fq 'shortcut_state=reused' "$tmp/reused" || fail 'same target was not reused'
+cp "$installed/target.txt" "$tmp/original-target"
+second_copy="$tmp/another project copy"
+cp -R "$project" "$second_copy"
+# A saved registration is not proof that the visible entry still targets it.
+other_desktop="$tmp/other desktop"
+other_launcher="$tmp/other registered entry"
+mkdir "$other_desktop"
+sh "$second_copy/scripts/create-desktop-shortcut.sh" --directory "$other_desktop" --launcher-dir "$other_launcher" >"$tmp/other-setup"
+case "$(uname -s)" in
+  Linux)
+    cp "$desktop/home-edge-bootstrap.desktop" "$tmp/expected-desktop"
+    cp "$other_desktop/home-edge-bootstrap.desktop" "$desktop/home-edge-bootstrap.desktop"
+    cp "$desktop/home-edge-bootstrap.desktop" "$tmp/wrong-desktop"
+    ;;
+  Darwin)
+    expected_link=$(readlink "$desktop/Home Edge Bootstrap.command")
+    rm "$desktop/Home Edge Bootstrap.command"
+    ln -s "$other_launcher/home-edge.command" "$desktop/Home Edge Bootstrap.command"
+    ;;
+esac
+sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" </dev/null >"$tmp/wrong-entry-cancel"
+grep -Fq 'shortcut_state=cancelled' "$tmp/wrong-entry-cancel" || fail 'wrong desktop target was reused without confirmation'
+case "$(uname -s)" in
+  Linux) cmp -s "$desktop/home-edge-bootstrap.desktop" "$tmp/wrong-desktop" || fail 'cancel changed desktop target' ;;
+  Darwin) [ "$(readlink "$desktop/Home Edge Bootstrap.command")" = "$other_launcher/home-edge.command" ] || fail 'cancel changed desktop link' ;;
+esac
+printf 'REPLACE\nAPPLY\n' | sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/wrong-entry-repaired"
+case "$(uname -s)" in
+  Linux) cmp -s "$desktop/home-edge-bootstrap.desktop" "$tmp/expected-desktop" || fail 'confirmed desktop repair has wrong target' ;;
+  Darwin) [ "$(readlink "$desktop/Home Edge Bootstrap.command")" = "$expected_link" ] || fail 'confirmed desktop repair has wrong link' ;;
+esac
+for cancel_input in '' 'REPLACE' 'REPLACE
+apply'; do
+  printf '%s\n' "$cancel_input" | sh "$second_copy/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/retarget-cancel"
+  grep -Fq 'shortcut_state=cancelled' "$tmp/retarget-cancel" || fail 'retarget did not cancel'
+  cmp -s "$installed/target.txt" "$tmp/original-target" || fail 'retarget cancellation changed target'
+done
+printf 'REPLACE\nAPPLY\n' | sh "$second_copy/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/retargeted"
+[ "$(sed -n '2p' "$installed/target.txt")" = "$second_copy" ] || fail 'confirmed retarget did not use chosen copy'
+printf 'REPLACE\nAPPLY\n' | sh "$project/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/retarget-restored"
+[ "$(sed -n '2p' "$installed/target.txt")" = "$project" ] || fail 'confirmed restore did not rebind original copy'
 sh "$installed/launch-tui.sh" --version >"$tmp/registered-version"
 grep -Fq 'home-edge-bootstrap vfixture' "$tmp/registered-version" || fail 'registered entry cannot launch'
 [ ! -e "$installed/.home-edge-launcher.lock" ] || fail 'launcher kept lock after guide startup'
@@ -62,7 +105,7 @@ ln -s "$foreign" "$installed/target.txt"
 if sh "$moved/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/link-reject" 2>&1; then fail 'registration symlink accepted'; fi
 [ "$(cat "$foreign")" = user-content ] || fail 'registration wrote through a symlink'
 rm "$installed/target.txt"
-sh "$moved/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" >"$tmp/restored"
+sh "$moved/scripts/create-desktop-shortcut.sh" --directory "$desktop" --launcher-dir "$installed" --replace-registration --registration-confirmation APPLY >"$tmp/restored"
 foreign_library="$tmp/foreign library"
 mkdir "$foreign_library"
 echo untouched >"$foreign_library/user-file"

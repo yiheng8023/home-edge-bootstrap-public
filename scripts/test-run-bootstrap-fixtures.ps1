@@ -8,6 +8,19 @@ $Base = Join-Path ([System.IO.Path]::GetTempPath()) ("home-edge-run-bootstrap-fi
 Remove-Item -LiteralPath $Base -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $Base | Out-Null
 
+foreach ($Arguments in @(
+  @('-ReplaceProject'),
+  @('-ApplyDeploy', '-ReplaceProject'),
+  @('-ApplyDeploy', '-ProjectConfirmation', 'REPLACE'),
+  @('-ApplyDeploy', '-ReplaceProject', '-ProjectConfirmation', 'replace')
+)) {
+  $RejectedSession = Join-Path $Base 'rejected-authorization'
+  $ErrorActionPreference = 'Continue'
+  $Rejected = powershell -NoProfile -ExecutionPolicy Bypass -File $Script -Router user@router -SessionDir $RejectedSession -NoPause @Arguments 2>&1 | Out-String
+  $ErrorActionPreference = 'Stop'
+  if ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath $RejectedSession)) { throw 'Invalid replacement permission created bootstrap state' }
+}
+
 function Invoke-BootstrapFixture {
   param(
     [string]$Name,

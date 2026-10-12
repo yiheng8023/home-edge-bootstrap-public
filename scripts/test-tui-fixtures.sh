@@ -6,6 +6,7 @@ repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 find_cmd=$(command -v find) || exit 1
 [ ! -x /usr/bin/find ] || find_cmd=/usr/bin/find
 tmp_base=${TMPDIR:-/tmp}
+if command -v cygpath >/dev/null 2>&1; then tmp_base=$(cygpath -u "$tmp_base"); fi
 [ "$tmp_base" = "/" ] || tmp_base=${tmp_base%/}
 tmp=$(mktemp -d "$tmp_base/home-edge-tui-test.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
@@ -14,6 +15,11 @@ fail() {
   echo "tui_fixture_tests=failed" >&2
   echo "$*" >&2
   exit 1
+}
+
+snapshot_project() {
+  "$find_cmd" "$fake_repo" -type d -print
+  "$find_cmd" "$fake_repo" -type f -exec cksum {} \;
 }
 
 tui="$repo/scripts/tui.sh"
@@ -27,6 +33,7 @@ mkdir -p "$fake_repo/scripts/lib" "$fake_repo/config" "$fake_repo/adapters/merli
 cp "$repo/PROJECT" "$fake_repo/PROJECT"
 echo fixture >"$fake_repo/README.md"
 cp "$repo/scripts/lib/project-location.sh" "$fake_repo/scripts/lib/"
+cp "$repo/scripts/lib/host-launcher.sh" "$fake_repo/scripts/lib/"
 cp "$repo/scripts/launch-tui.sh" "$fake_repo/scripts/"
 touch "$fake_repo/bootstrap.sh" "$fake_repo/config/policy.env" "$fake_repo/adapters/merlin/bootstrap.sh"
 cat >"$fake_repo/scripts/create-desktop-shortcut.sh" <<'EOF'
@@ -36,6 +43,9 @@ EOF
 cat >"$fake_repo/scripts/doctor.sh" <<'EOF'
 #!/bin/sh
 printf 'doctor %s\n' "$*" >>"$TUI_FIXTURE_CALL_LOG"
+if [ "${DOCTOR_STUB_REMOVE_PROJECT:-0}" = 1 ]; then rm "$(dirname "$0")/../PROJECT"; fi
+if [ "${DOCTOR_STUB_REMOVE_BOOTSTRAP:-0}" = 1 ]; then rm "$(dirname "$0")/run-bootstrap.sh"; fi
+if [ -n "${DOCTOR_STUB_REMOVE_TOOL:-}" ]; then rm "$DOCTOR_STUB_REMOVE_TOOL"; fi
 echo '{"doctor_state":"ready","next_action_code":"monitor_live_managed"}'
 exit "${DOCTOR_STUB_EXIT:-0}"
 EOF
@@ -70,6 +80,28 @@ cat >"$fake_repo/scripts/decommission-merlin.sh" <<'EOF'
 #!/bin/sh
 printf 'decommission-merlin %s\n' "$*" >>"$TUI_FIXTURE_CALL_LOG"
 echo 'decommission_state=plan_ready'
+EOF
+cat >"$fake_repo/scripts/check-project-installation.sh" <<'EOF'
+#!/bin/sh
+printf 'project-probe %s\n' "$1" >>"$TUI_FIXTURE_CALL_LOG"
+state=${PROJECT_STUB_STATE:-not_installed}
+allowed=${PROJECT_STUB_ALLOWED:-}
+[ -n "$allowed" ] || { case "$state" in installed|partial) allowed=1 ;; *) allowed=0 ;; esac; }
+if [ "${PROJECT_STUB_CHANGE_ON_SECOND:-0}" = 1 ] && [ "$(grep -c '^project-probe ' "$TUI_FIXTURE_CALL_LOG")" -ge 2 ]; then PROJECT_STUB_PATH=/jffs/changed; fi
+for pair in "schema=${PROJECT_STUB_SCHEMA:-1}" "router=${PROJECT_STUB_ROUTER:-$1}" "state=$state" 'reason=fixture_observation' "path=${PROJECT_STUB_PATH:-/jffs/home-edge-bootstrap}" "replace_allowed=$allowed"; do
+  key=${pair%%=*}
+  [ "$key" = "${PROJECT_STUB_OMIT:-}" ] || printf 'project_install_%s\n' "$pair"
+  [ "$key" != "${PROJECT_STUB_DUPLICATE:-}" ] || printf 'project_install_%s\n' "$pair"
+done
+exit "${PROJECT_STUB_EXIT:-0}"
+EOF
+cat >"$fake_repo/scripts/deploy-merlin.sh" <<'EOF'
+#!/bin/sh
+printf 'deploy-merlin apply=%s replace_project=%s confirmation=%s router=%s path=%s\n' "$APPLY" "$BOOTSTRAP_REPLACE_PROJECT" "$BOOTSTRAP_PROJECT_CONFIRMATION" "$1" "$REMOTE_DIR" >>"$TUI_FIXTURE_CALL_LOG"
+printf 'deploy-scope runtime=%s replace_runtime=%s replace_core=%s include_bundle=%s\n' "$BOOTSTRAP_INSTALL_RUNTIME" "$BOOTSTRAP_REPLACE_RUNTIME" "$BOOTSTRAP_REPLACE_CORE" "$INCLUDE_BUNDLE" >>"$TUI_FIXTURE_CALL_LOG"
+if [ "$APPLY" = 1 ]; then echo deploy_state=applied; else echo deploy_state=plan; fi
+printf 'router=%s\nremote_dir=%s\n' "$1" "$REMOTE_DIR"
+if [ "$APPLY" != 1 ]; then echo 'runtime_assets_effect=preserve'; echo 'integration_effect=project_managed_configuration_may_change'; fi
 EOF
 chmod +x "$fake_repo/scripts/"*.sh
 
@@ -131,6 +163,34 @@ if LC_ALL=C grep "$(printf '\033')" "$tmp/default.out" "$tmp/en.out" >/dev/null 
 fi
 
 call_log="$tmp/calls.log"
+snapshot_project | LC_ALL=C sort >"$tmp/local-before.snapshot"
+for alias in H '?' help 6; do
+  : >"$call_log"
+  printf '%s\n0\n' "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/local-help.out"
+  for expected in 'Home Edge local help' "project_dir=$fake_repo" "doc=$fake_repo/docs/RUNBOOK.md" 'First installation:' 'Already installed:' APPLY ENABLE DECOMMISSION EOF 'H / ? / help. Local help' '9 / L / language.'; do
+    grep -Fq "$expected" "$tmp/local-help.out" || fail "local help missing $expected ($alias)"
+  done
+  [ ! -s "$call_log" ] || fail "help dispatched a child: $alias"
+done
+sh "$fake_repo/scripts/tui.sh" --lang en --help >"$tmp/cli-en-help.out"
+grep -Fq 'Home Edge local help' "$tmp/cli-en-help.out" || fail "CLI English help missing"
+grep -Fq 'Home Edge 本地帮助' "$tmp/help.out" || fail "CLI Chinese help missing"
+for alias in L language 9; do
+  : >"$call_log"
+  printf '%s\nH\n%s\n?\n0\n' "$alias" "$alias" | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --no-color >"$tmp/language-toggle.out"
+  for expected in 'language=en' 'language=zh-CN' 'Home Edge local help' 'Home Edge 本地帮助' '1. Start or resume guided bootstrap' '1. 开始或接续引导式配置'; do
+    grep -Fq "$expected" "$tmp/language-toggle.out" || fail "toggle did not localize menu/help: $alias ($expected)"
+  done
+  [ ! -s "$call_log" ] || fail "language/help dispatched a child: $alias"
+done
+printf 'L\nhelp\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/english-to-chinese.out"
+grep -Fq 'Home Edge 本地帮助' "$tmp/english-to-chinese.out" || fail "English-to-Chinese toggle/EOF failed"
+printf 'invalid-choice\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/local-invalid.out"
+grep -Fq 'Invalid selection.' "$tmp/local-invalid.out" || fail "invalid choice/EOF was not handled"
+[ ! -s "$call_log" ] || fail "local choice dispatched a child"
+snapshot_project | LC_ALL=C sort >"$tmp/local-after.snapshot"
+cmp -s "$tmp/local-before.snapshot" "$tmp/local-after.snapshot" || fail "local help/language changed fixture project"
+
 : >"$call_log"
 printf '2\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/doctor.out"
 grep -Fxq 'doctor --json' "$call_log" || fail "diagnosis did not dispatch doctor --json"
@@ -161,7 +221,7 @@ grep -Eq '^decommission-merlin user@192\.168\.50\.1$' "$call_log" || fail "decom
 if grep -q -- '--apply' "$call_log"; then fail "EOF enabled decommission"; fi
 
 : >"$call_log"
-printf '9\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/invalid-choice.out"
+printf 'invalid-choice\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/invalid-choice.out"
 [ ! -s "$call_log" ] || fail "invalid choice dispatched a child"
 
 : >"$call_log"
@@ -204,7 +264,7 @@ set -e
 grep -Fq 'child_exit_code=17' "$tmp/child-error.out" || fail "child exit code was not preserved"
 [ "$child_error_status" -eq 17 ] || fail "TUI process did not exit with the last child failure"
 grep -Fq 'failed_action=bootstrap_read_only' "$tmp/child-error.out" || fail "failed action was not reported"
-grep -Fq "safe_resume_command='sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' 'user@192.168.50.1'" "$tmp/child-error.out" || fail "safe resume command did not bind its project and target"
+grep -Fq "'sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' 'user@192.168.50.1'" "$tmp/child-error.out" || fail "safe resume command did not bind its project and target"
 
 : >"$call_log"
 set +e
@@ -277,12 +337,23 @@ printf '3\n2\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts
 grep -Fq 'router=json-user@192.168.50.3' "$tmp/session-json.out" || fail "state.json router was not read"
 grep -Fq 'next_action_command=json-resume-command' "$tmp/session-json.out" || fail "state.json resume command was not preserved"
 
+snapshot_project | LC_ALL=C sort >"$tmp/session-before.snapshot"
+: >"$call_log"
+printf '3\n2\nL\nH\n3\n9\nhelp\n3\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/switch-session.out"
+[ "$(grep -c 'next_action_command=json-resume-command' "$tmp/switch-session.out")" -eq 3 ] || fail "language/help lost selected state"
+[ "$(grep -c 'existing_session=2' "$tmp/switch-session.out")" -eq 1 ] || fail "language/help lost selected router/session"
+[ ! -s "$call_log" ] || fail "language/help/session display dispatched a child"
+snapshot_project | LC_ALL=C sort >"$tmp/session-after.snapshot"
+cmp -s "$tmp/session-before.snapshot" "$tmp/session-after.snapshot" || fail "language/help/session changed fixture project"
+printf 'L\nH\n9\n2\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --no-color --router user@192.168.50.1 >"$tmp/router-toggle.out"
+grep -Fxq 'doctor --json user@192.168.50.1' "$call_log" || fail "language/help lost CLI router"
+
 : >"$call_log"
 runtime_tmp="$tmp/runtime-tmp"
 mkdir -p "$runtime_tmp"
-printf '1\n2\nWRONG\n0\n' | env TMPDIR="$runtime_tmp" TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/session-resume.out"
+printf '3\n2\nL\nH\n9\n1\nWRONG\n0\n' | env TMPDIR="$runtime_tmp" TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --no-color >"$tmp/session-resume.out"
 grep -Eq 'run-bootstrap --no-pause --session-dir .*/02-json json-user@192\.168\.50\.3' "$call_log" || fail "selected session did not infer router and preserve session directory"
-grep -Fq "exact_command='sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' '--apply-deploy' '--session-dir' '$session_json' 'json-user@192.168.50.3'" "$tmp/session-resume.out" || fail "selected-session command did not bind its project, session and router"
+grep -Fq "'sh' '$fake_repo/scripts/run-bootstrap.sh' '--no-pause' '--apply-deploy' '--session-dir' '$session_json' 'json-user@192.168.50.3'" "$tmp/session-resume.out" || fail "selected-session command did not bind its project, session and router"
 if "$find_cmd" "$runtime_tmp" -type f -name 'home-edge-tui-*' | grep -q .; then fail "TUI temporary capture files were not cleaned"; fi
 
 : >"$call_log"
@@ -317,5 +388,123 @@ if command -v mkfifo >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
   [ "$interrupt_status" -ne 0 ] || fail "INT should exit nonzero"
   if grep -q -- '--apply-deploy' "$call_log"; then fail "INT enabled deploy"; fi
 fi
+
+# Installation observation and explicit project refresh are entirely stubbed.
+: >"$call_log"
+printf '1\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE=installed BOOTSTRAP_STUB_ACTION=deploy_plan sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/existing.out"
+grep -Fq 'explicitly choose R' "$tmp/existing.out" || fail "existing default did not explain continuation"
+if grep -Eq -- '--apply-deploy|deploy-merlin' "$call_log"; then fail "already installed default silently redeployed"; fi
+for state in installed partial; do
+  for inputs in 'R|WRONG|0' 'R|replace|0' 'R|REPLACE |0' 'R|REPLACE|WRONG|0' 'R|REPLACE|apply|0' 'R|REPLACE|APPLY |0' 'R' 'R|REPLACE'; do
+    : >"$call_log"
+    printf '%s\n' "$inputs" | tr '|' '\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE="$state" sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/refresh-cancel.out"
+    if grep -Fq 'deploy-merlin apply=1' "$call_log"; then fail "refresh cancellation/EOF allowed a write ($state)"; fi
+    grep -Fq 'project-probe user@192.168.50.1' "$call_log" || fail "refresh did not probe ($state)"
+    grep -Fq 'deploy-merlin apply=0' "$call_log" || fail "refresh did not plan ($state)"
+  done
+  : >"$call_log"
+  printf 'R\nREPLACE\nAPPLY\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE="$state" BOOTSTRAP_INSTALL_RUNTIME=1 BOOTSTRAP_REPLACE_RUNTIME=1 BOOTSTRAP_REPLACE_CORE=1 INCLUDE_BUNDLE=1 sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/refresh-apply.out"
+  grep -Fxq 'deploy-merlin apply=1 replace_project=1 confirmation=REPLACE router=user@192.168.50.1 path=/jffs/home-edge-bootstrap' "$call_log" || fail "double confirmation did not refresh owned project ($state)"
+  [ "$(grep -Fc 'deploy-scope runtime=0 replace_runtime=0 replace_core=0 include_bundle=0' "$call_log")" -eq 2 ] || fail "refresh inherited broader runtime scope ($state)"
+  grep -Fq 'project_backup_path=/jffs/home-edge-bootstrap.prev' "$tmp/refresh-apply.out" || fail "refresh backup disclosure missing"
+done
+for bad_probe in PROJECT_STUB_STATE=unknown PROJECT_STUB_EXIT=1 PROJECT_STUB_SCHEMA=2 PROJECT_STUB_ROUTER=other@192.168.50.1 PROJECT_STUB_PATH=/jffs/../wrong PROJECT_STUB_STATE=unrecognized PROJECT_STUB_STATE=INSTALLED PROJECT_STUB_PATH=/JFFS/wrong PROJECT_STUB_ALLOWED=2 PROJECT_STUB_ALLOWED=0; do
+  : >"$call_log"
+  set +e
+  printf 'R\nREPLACE\nAPPLY\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE=partial "$bad_probe" sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/blocked-refresh.out"
+  set -e
+  if grep -Eq 'deploy-merlin|run-bootstrap' "$call_log"; then fail "unknown/foreign installation enabled deployment ($bad_probe)"; fi
+done
+for key in schema router state reason path replace_allowed; do
+  for format in PROJECT_STUB_DUPLICATE PROJECT_STUB_OMIT; do
+    : >"$call_log"
+    set +e
+    printf 'R\nREPLACE\nAPPLY\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE=installed "$format=$key" sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/malformed-probe.out"
+    set -e
+    grep -Fq 'attention_state=invalid_installation_probe' "$tmp/malformed-probe.out" || fail "missing/duplicate critical probe field accepted: $key"
+    if grep -q deploy-merlin "$call_log"; then fail "malformed probe enabled deployment: $key"; fi
+  done
+done
+: >"$call_log"
+printf 'R\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/not-installed-refresh.out"
+grep -Fq 'Choose 1 for first installation' "$tmp/not-installed-refresh.out" || fail "R did not direct missing project to first installation"
+if grep -q deploy-merlin "$call_log"; then fail "R interpreted missing project as replacement"; fi
+for state in unknown partial installed; do
+  : >"$call_log"
+  set +e
+  printf '1\nENABLE\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE="$state" PROJECT_STUB_ALLOWED=0 BOOTSTRAP_STUB_ACTION=enable_live_self_heal sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/unsafe-enable.out"
+  set -e
+  if grep -Eq -- '--enable-live-self-heal|--apply-deploy' "$call_log"; then fail "unknown/foreign/partial installation enabled write ($state)"; fi
+done
+: >"$call_log"
+set +e
+printf '1\nH\nL\n' | env TUI_FIXTURE_CALL_LOG="$call_log" BOOTSTRAP_STUB_EXIT=17 sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/failure-then-help.out"
+help_after_failure_status=$?
+set -e
+[ "$help_after_failure_status" -eq 17 ] || fail "help/language erased the preceding child failure"
+mv "$fake_repo/scripts/check-project-installation.sh" "$fake_repo/scripts/check-project-installation.sh.missing"
+: >"$call_log"
+set +e
+printf '1\nH\nL\nR\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/missing-probe.out"
+set -e
+grep -Fq 'capability_state=unavailable' "$tmp/missing-probe.out" || fail "missing probe was not explained"
+grep -Fq 'Home Edge local help' "$tmp/missing-probe.out" || fail "missing probe blocked local help"
+[ ! -s "$call_log" ] || fail "missing probe dispatched an operation"
+mv "$fake_repo/scripts/check-project-installation.sh.missing" "$fake_repo/scripts/check-project-installation.sh"
+
+: >"$call_log"
+printf 'R\nREPLACE\nAPPLY\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" PROJECT_STUB_STATE=installed PROJECT_STUB_CHANGE_ON_SECOND=1 sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/changed-probe.out"
+grep -Fq 'attention_state=installation_probe_changed' "$tmp/changed-probe.out" || fail "changed refresh target path was accepted"
+if grep -q 'deploy-merlin apply=1' "$call_log"; then fail "changed target path reached fake deploy apply"; fi
+
+: >"$call_log"
+set +e
+printf '2\n1\nH\nL\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" DOCTOR_STUB_REMOVE_PROJECT=1 sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/removed-project.out"
+set -e
+grep -Fq 'condition_state=project_degraded' "$tmp/removed-project.out" || fail "removed PROJECT did not degrade current condition"
+grep -Fq 'Home Edge local help' "$tmp/removed-project.out" || fail "removed PROJECT blocked loaded help"
+grep -Fq 'language=zh-CN' "$tmp/removed-project.out" || fail "removed PROJECT blocked language switch"
+if grep -q 'run-bootstrap ' "$call_log"; then fail "removed PROJECT reached bootstrap"; fi
+cp "$repo/PROJECT" "$fake_repo/PROJECT"
+
+cp "$fake_repo/scripts/run-bootstrap.sh" "$fake_repo/scripts/run-bootstrap.sh.saved"
+: >"$call_log"
+set +e
+printf '1\nH\nL\n0\n' | env TUI_FIXTURE_CALL_LOG="$call_log" DOCTOR_STUB_REMOVE_BOOTSTRAP=1 sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/removed-operation.out"
+set -e
+grep -Fq 'capability_state=unavailable' "$tmp/removed-operation.out" || fail "removed child operation was not reported"
+grep -Fq 'Home Edge local help' "$tmp/removed-operation.out" || fail "removed child operation blocked help"
+if grep -q 'run-bootstrap ' "$call_log"; then fail "removed child operation was invoked"; fi
+mv "$fake_repo/scripts/run-bootstrap.sh.saved" "$fake_repo/scripts/run-bootstrap.sh"
+
+# Native private PATH only: removal cannot reveal another system copy or touch it.
+case "$(uname -s)" in
+  Linux|Darwin)
+    tool_bin="$tmp/private-tools"
+    mkdir "$tool_bin"
+    for missing_tool in tee cat; do
+      for fixture_tool in sh mktemp tee sed awk grep cat rm tr stat uname dirname env; do
+        ln -s "$(command -v "$fixture_tool")" "$tool_bin/$fixture_tool"
+      done
+      : >"$call_log"
+      set +e
+      printf '2\n8\nH\nL\n0\n' | env PATH="$tool_bin" TUI_FIXTURE_CALL_LOG="$call_log" DOCTOR_STUB_REMOVE_TOOL="$tool_bin/$missing_tool" \
+        /bin/sh "$fake_repo/scripts/tui.sh" --lang en --router user@192.168.50.1 >"$tmp/missing-$missing_tool.out" 2>"$tmp/missing-$missing_tool.err"
+      missing_tool_status=$?
+      set -e
+      [ "$missing_tool_status" -eq 2 ] || fail "tool degradation did not retain failure status: $missing_tool"
+      if ! grep -Fq "missing_prerequisite=$missing_tool" "$tmp/missing-$missing_tool.out"; then
+        cat "$tmp/missing-$missing_tool.out" "$tmp/missing-$missing_tool.err" >&2
+        fail "removed capture tool was not detected: $missing_tool"
+      fi
+      grep -Fq 'child_result_state=capture_unavailable' "$tmp/missing-$missing_tool.out" || fail "tool loss concealed child result uncertainty"
+      grep -Fq 'Home Edge local help' "$tmp/missing-$missing_tool.out" || fail "removed tool blocked loaded help"
+      grep -Fq 'language=zh-CN' "$tmp/missing-$missing_tool.out" || fail "removed tool blocked language switch"
+      if grep -q 'desktop-shortcut' "$call_log"; then fail "tool degradation reached a write child: $missing_tool"; fi
+      rm -f "$tool_bin"/*
+    done
+    ;;
+esac
+echo "tui_fixture_installation_guard_tests=ok"
 
 echo "tui_fixture_tests=ok"

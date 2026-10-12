@@ -70,7 +70,9 @@ git add bundle/MANIFEST.json bundle/SHA256SUMS
 - Do not require GitHub or any other internet download to be reachable before the proxy path is
   verified.
 - Runtime installation is opt-in: set `BOOTSTRAP_INSTALL_RUNTIME=1`. Existing ShellCrash directories
-  are not replaced unless `BOOTSTRAP_REPLACE_RUNTIME=1` is also set.
+  are not replaced unless `BOOTSTRAP_REPLACE_RUNTIME=1` is also set. Replacing the runtime alone
+  preserves an existing core; core replacement independently requires `BOOTSTRAP_REPLACE_CORE=1`
+  (`-ReplaceCore` on the PowerShell deployer). Project-only TUI refresh disables both asset replacements.
 - Host deploy helpers transport an opted-in runtime bundle through a protected `/tmp` stage and
   remove it after installation. They do not persist the large raw runtime bundle in JFFS unless
   `IncludeBundle`/`INCLUDE_BUNDLE=1` is requested separately.

@@ -23,6 +23,16 @@ implementation remains Merlin; synthetic adapter fixtures verify dispatch isolat
 other hardware. Existing deploy, rollback and self-heal workflows still contain reference-adapter
 integration; this change does not claim complete separation of all existing device workflows.
 
+## Local help, language and guarded project refresh
+
+The main-menu aliases are `H` / `?` / `help` / `6` for comprehensive local help and `L` / `language` / `9` for a session-only Chinese/English switch. Help includes action effects, prerequisites, exact confirmation tokens, recovery and paths in the running copy. It does not open programs or contact the network. Switching language preserves the router and selected session and writes no global setting.
+
+Menu 1 reads fresh installation evidence for the selected router and path. It defaults to diagnosis and saved-session reuse for `installed` or `partial`. The six-field observation binds schema, router, state, reason, path and replacement permission; malformed, stale-session-only or mismatched evidence cannot authorize deployment. `installed` proves recognizable project-owned presence only, not complete lifecycle or network health. A standalone ShellCrash/Mihomo installation is independent. `not_installed` requires positive absence; unknown ownership, foreign contents or links stop the dependent write.
+
+Menu `R` obtains a project-only deployment plan before requesting exact `REPLACE`, then exact `APPLY`. The existing project tree is backed up to `<project-path>.prev`; an older backup may be replaced. The writer repeats ownership checks under its router write lock. `ProjectOnly` / `--project-only` disables runtime install/replacement, core replacement and persistent bundle copying; project-managed integration/configuration may still be updated. It does not provide a complete runtime rollback. Runtime-only replacement preserves the existing core unless `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1` is independently explicit.
+
+The running guide rechecks project structure, physical directory identity and action tools at menu/action transitions and around important work. A known failure blocks affected work with a reason and recovery route; `H`, `L` and `0` remain usable when these checks find degradation. There is no background watcher, and unknown faults are not all detected. These checks supplement device-state diagnosis rather than accepting a target.
+
 ## Conditions, decisions and recovery
 
 | Observed condition | Guided response |
@@ -42,7 +52,10 @@ integration; this change does not claim complete separation of all existing devi
 | Registration setup or location repair already running | Close that instance and retry; use the project's local start entry meanwhile |
 | Leftover or unknown POSIX registration lock | Inspect the reported lock and confirm the owner has ended before removing it; otherwise choose a new empty registration directory |
 | Empty interrupted initial setup | Retry safely; an unowned nonempty directory is preserved |
-| Owned incomplete setup | Re-run shortcut creation from the valid project to restore the copied launcher files |
+| Owned incomplete setup or changed cached launcher | Review the target and type `REPLACE`, then `APPLY`, to refresh; preserve unowned content |
+| Same target, matching cached launcher and correct desktop pointer | Report `shortcut_state=reused` and reuse the registration |
+| Directory identity, structure or tools change during the guide | Block affected actions and restore the reported source/tool condition; retain help, language and exit |
+| Unknown router installation, foreign content or links | Stop deployment and review target/ownership; do not classify it as first installation |
 | Linux desktop requests trust | Follow its Allow Launching action after checking the source; the helper does not alter desktop trust |
 
 Windows uses `.cmd` and PowerShell; macOS uses `.command`; Linux uses POSIX shell plus an optional
@@ -64,7 +77,9 @@ Defaults are `%LOCALAPPDATA%/HomeEdgeBootstrap/launcher` on Windows,
 `${XDG_DATA_HOME:-~/.local/share}/home-edge-bootstrap/launcher` on Linux. Registration does not edit
 PATH or shell profiles. It does not store router credentials, subscription URLs or controller keys.
 
-Shortcut creation is an explicit local write. It checks the ownership marker, expected leaf types
+Shortcut creation is an explicit local write. A matching target, cached launcher and correct desktop pointer report
+`shortcut_state=reused`. Another owned target, incomplete registration or cached-version update
+requires `REPLACE` followed by `APPLY`; unowned contents are not overwritable. It checks the ownership marker, expected leaf types
 and links before replacing project-owned files, and creates the desktop entry after copying the
 launcher. A partial failure does not report readiness; re-run from the source entry. Target-location
 repair uses a temporary record and rename. The multi-file installation is not claimed to be an

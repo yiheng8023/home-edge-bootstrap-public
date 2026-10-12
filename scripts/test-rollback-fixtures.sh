@@ -29,6 +29,7 @@ set -u
 root="${HOME_EDGE_ROLLBACK_ROOT:-}"
 mkdir -p "$root/jffs/scripts"
 printf 'restored\n' > "$root/jffs/scripts/bootstrap-applied"
+printf '%s\n' "${BOOTSTRAP_INSTALL_DIR:-unbound}" > "$root/jffs/scripts/restored-install-dir"
 EOF
   chmod 755 "$prev/bootstrap.sh"
 }
@@ -63,7 +64,16 @@ HOME_EDGE_ROLLBACK_ROOT="$apply_root" ROLLBACK_APPLY=1 sh "$repo/scripts/rollbac
 assert_file "$apply_root/jffs/home-edge-bootstrap/previous.txt"
 assert_not_path "$apply_root/jffs/home-edge-bootstrap.prev"
 assert_file "$apply_root/jffs/scripts/bootstrap-applied"
+grep -Fxq "$apply_root/jffs/home-edge-bootstrap" "$apply_root/jffs/scripts/restored-install-dir" || fail 'default restoration target was not bound'
 ls "$apply_root"/jffs/home-edge-bootstrap.rollback.* >/dev/null 2>&1 || fail "missing rollback backup directory"
+
+custom_root=$(make_fixture custom)
+mv "$custom_root/jffs/home-edge-bootstrap" "$custom_root/jffs/custom"
+mv "$custom_root/jffs/home-edge-bootstrap.prev" "$custom_root/jffs/custom.prev"
+HOME_EDGE_ROLLBACK_ROOT="$custom_root" ROLLBACK_APPLY=1 ROLLBACK_INSTALL_DIR=/jffs/custom sh "$repo/scripts/rollback-router-state.sh" >"$tmp_root/rollback-custom.log"
+assert_file "$custom_root/jffs/custom/previous.txt"
+grep -Fxq "$custom_root/jffs/custom" "$custom_root/jffs/scripts/restored-install-dir" || fail 'custom restoration bootstrap received the default target'
+assert_not_path "$custom_root/jffs/home-edge-bootstrap"
 
 runtime_root=$(make_fixture runtime)
 mkdir -p "$runtime_root/jffs/home-edge-bootstrap-state/backups/runtime/ShellCrash.20260101000000"

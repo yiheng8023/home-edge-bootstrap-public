@@ -3,6 +3,8 @@ param(
   [string]$SessionDir = "",
   [int]$MaxLoops = 20,
   [switch]$ApplyDeploy,
+  [switch]$ReplaceProject,
+  [string]$ProjectConfirmation = "",
   [switch]$EnableLiveSelfHeal,
   [switch]$AcceptRuntimeImportedSubscription,
   [switch]$DashboardConfirmed,
@@ -17,6 +19,10 @@ $ErrorActionPreference = "Stop"
 if (-not $Router) {
   throw "Router is required. Pass -Router <ssh-user>@<router-ip> or set ROUTER."
 }
+
+if (($ReplaceProject -or $ProjectConfirmation) -and -not $ApplyDeploy) { throw "Project replacement requires -ApplyDeploy." }
+if ($ReplaceProject -and $ProjectConfirmation -cne "REPLACE") { throw "Project replacement requires exact -ProjectConfirmation REPLACE." }
+if ($ProjectConfirmation -and -not $ReplaceProject) { throw "Project confirmation requires -ReplaceProject." }
 
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $RouterId = ($Router -replace '[^A-Za-z0-9_.-]', '_')
@@ -317,7 +323,20 @@ for ($Loop = 1; $Loop -le $MaxLoops; $Loop++) {
     }
     "deploy_plan" {
       if ($ApplyDeploy) {
-        Run-Step "deploy-apply" { powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "deploy-merlin.ps1") -Router $Router -KnownHostsFile $KnownHostsFile -Apply } | Out-Null
+        $DeployArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $PSScriptRoot "deploy-merlin.ps1"), "-Router", $Router, "-KnownHostsFile", $KnownHostsFile, "-Apply")
+        if ($ReplaceProject) { $DeployArgs += @("-ReplaceProject", "-ProjectConfirmation", $ProjectConfirmation) }
+        Run-Step "deploy-apply" {
+          $OldReplaceProject = $env:BOOTSTRAP_REPLACE_PROJECT
+          $OldProjectConfirmation = $env:BOOTSTRAP_PROJECT_CONFIRMATION
+          try {
+            $env:BOOTSTRAP_REPLACE_PROJECT = $null
+            $env:BOOTSTRAP_PROJECT_CONFIRMATION = $null
+            powershell @DeployArgs
+          } finally {
+            $env:BOOTSTRAP_REPLACE_PROJECT = $OldReplaceProject
+            $env:BOOTSTRAP_PROJECT_CONFIRMATION = $OldProjectConfirmation
+          }
+        } | Out-Null
         continue
       }
       Write-FlowLog "INFO" "deploy_ready apply_required=1"

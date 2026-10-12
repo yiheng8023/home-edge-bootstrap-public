@@ -1,4 +1,4 @@
-param([string]$DestinationDirectory = "", [string]$LauncherDirectory = "")
+param([string]$DestinationDirectory = "", [string]$LauncherDirectory = "", [switch]$ReplaceRegistration, [string]$RegistrationConfirmation = "")
 
 $ErrorActionPreference = "Stop"
 $Repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
@@ -53,6 +53,55 @@ try {
   $RegistrationLock = Enter-HomeEdgeLauncherLock $LauncherDirectory
   Assert-HomeEdgeRegistrationPaths $LauncherDirectory
   Assert-HomeEdgeRegistrationLeaf $ShortcutPath
+  $RegistrationState = "not_registered"
+  $ExistingProject = ""
+  $TargetPath = Join-Path $LauncherDirectory "target.txt"
+  if (Test-Path -LiteralPath $Marker) {
+    $RegistrationState = "partial"
+    if (Test-Path -LiteralPath $TargetPath -PathType Leaf) {
+      $TargetLines = [IO.File]::ReadAllLines($TargetPath)
+      if ($TargetLines.Count -eq 3 -and $TargetLines[0] -ceq "home-edge-bootstrap/target/v2" -and $TargetLines[1] -and $TargetLines[2]) {
+        $ExistingProject = $TargetLines[1]
+        $RegistrationState = "different_target"
+        if ($ExistingProject -ieq $Repo -and $TargetLines[2] -ceq $DirectoryIdentity) { $RegistrationState = "same_target" }
+      }
+    }
+  }
+  Write-Host "registration_state=$RegistrationState"
+  Write-Host "requested_project=$Repo"
+  if ($ExistingProject) { Write-Host "registered_project=$ExistingProject" }
+  if ($RegistrationState -eq "same_target" -and -not $ReplaceRegistration -and -not $RegistrationConfirmation -and (Test-Path -LiteralPath $ShortcutPath)) {
+    $CacheMatches = $true
+    foreach ($Relative in @("launch-tui.ps1", "lib\project-location.ps1", "lib\host-launcher.ps1")) {
+      $CachedPath = Join-Path $LauncherDirectory $Relative
+      if (-not (Test-Path -LiteralPath $CachedPath -PathType Leaf) -or
+          (Get-FileHash -LiteralPath $CachedPath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $Relative) -Algorithm SHA256).Hash) { $CacheMatches = $false; break }
+    }
+    if ($CacheMatches -and $Shortcut.TargetPath -ieq (Join-Path $LauncherDirectory "home-edge.cmd") -and
+        (Test-Path -LiteralPath (Join-Path $LauncherDirectory "home-edge.cmd") -PathType Leaf)) {
+      Write-Host "shortcut_state=reused"
+      Write-Host "Existing launcher already uses this project; no registration files were replaced."
+      exit 0
+    }
+  }
+  if ($RegistrationState -ne "not_registered") {
+    Write-Host "This updates this computer's copied launcher and saved project location; it does not reinstall the router."
+    if (-not $ReplaceRegistration) {
+      [Console]::Write("Existing registration found. Type REPLACE to choose an update; anything else cancels: ")
+      if ([Console]::In.ReadLine() -cne "REPLACE") { Write-Host "shortcut_state=cancelled"; exit 0 }
+    }
+    if (-not $RegistrationConfirmation) {
+      [Console]::Write("Confirm the displayed project target. Type APPLY to replace this owned registration: ")
+      $RegistrationConfirmation = [Console]::In.ReadLine()
+    }
+    if ($RegistrationConfirmation -cne "APPLY") { Write-Host "shortcut_state=cancelled"; exit 0 }
+  } elseif ($ReplaceRegistration -or $RegistrationConfirmation) {
+    throw "Replacement flags require an existing project-owned registration."
+  }
+  [void](Resolve-HomeEdgeProject $Repo)
+  if ((Get-HomeEdgeDirectoryIdentity $Repo) -cne $DirectoryIdentity) {
+    throw "The selected project directory changed during confirmation. Restart setup from the intended complete folder."
+  }
   New-Item -ItemType Directory -Path (Join-Path $LauncherDirectory "lib") -Force | Out-Null
   Write-HomeEdgeRegistrationText $Marker "home-edge-bootstrap/registered-launcher/v1`n" ([Text.UTF8Encoding]::new($false))
   Copy-HomeEdgeRegistrationFile (Join-Path $PSScriptRoot "launch-tui.ps1") (Join-Path $LauncherDirectory "launch-tui.ps1")

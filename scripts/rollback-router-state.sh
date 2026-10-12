@@ -183,7 +183,7 @@ reapply_restored_kit() {
   [ "$apply" = "1" ] || restored_kit="$prev_dir"
   [ -f "$restored_kit/bootstrap.sh" ] || die "restored kit does not contain bootstrap.sh"
   if [ "$apply" = "1" ]; then
-    HOME_EDGE_ROLLBACK_ROOT="$root" HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$current_dir/bootstrap.sh"
+    HOME_EDGE_ROLLBACK_ROOT="$root" HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="$current_dir" sh "$current_dir/bootstrap.sh"
   else
     log "PLAN: reapply restored kit with BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0"
   fi

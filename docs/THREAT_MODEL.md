@@ -21,6 +21,8 @@ signature; desktop trust and source authenticity remain separate. See [Launcher 
 - Offline runtime bundle integrity.
 - Router traffic path and client reachability.
 
+Fresh installation probes and writer-lock rechecks prevent old session logs, foreign content or links from being interpreted as permission for first installation or overwrite. Recognized project presence is separate from runtime/network health. Project refresh and owned launcher updates require two exact confirmations; same-target/current cached launchers with a matching desktop target are reused. Help/language grant no write authority. Event-driven directory/structure/tool checks block known invalid conditions, but are not source authentication or exhaustive fault monitoring. Project-only refresh may update managed configuration/integration and must not be described as a complete runtime rollback.
+
 ## Trust Boundaries
 
 | Boundary | Project Position |

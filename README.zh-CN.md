@@ -5,7 +5,7 @@
 最短路径：[快速开始](QUICKSTART.zh-CN.md)。
 
 发布下载：[GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.6) ·
+[应该下载哪些文件](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.7) ·
 [发布契约](docs/zh-CN/PUBLIC_RELEASE.md)。
 
 Home Edge Bootstrap 是面向家庭与中小组织网络边缘的能力驱动型启动、恢复与韧性框架。
@@ -29,9 +29,9 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 
 | 你的电脑系统 | 下载哪个包 | 解压后打开哪个文件 |
 |---|---|---|
-| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.zip) | 双击 `start.cmd` |
-| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | 双击 `start.command` |
-| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.6/home-edge-bootstrap-v0.1.6-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
+| Windows | [ZIP 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.zip) | 双击 `start.cmd` |
+| macOS | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | 双击 `start.command` |
+| Linux | [tar.gz 启动包](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | 打开 `start.sh`，可选择“在终端运行” |
 
 下载完在浏览器的下载记录中选择“在文件夹中显示”（Windows 常用 **Ctrl+J**），再**解压整个包**。可将解压文件夹保存在“文档”或自己的常用目录；不限定盘符、用户名或路径。不要在压缩包窗口内运行，也不要只取一个脚本。安装只需对应系统的一种包；校验文件和复制即用的校验步骤见 [发布说明](docs/zh-CN/RELEASE_NOTES.md)。
 
@@ -43,7 +43,7 @@ ShellCrash/ShellClash 与 Mihomo 兼容运行时。这是首个已实现适配�
 
 macOS 若系统要求确认来源，核对下载来源后按系统提供的“打开”流程处理；如果执行权限没有保留，可通过终端运行。Linux 不同桌面的脚本关联不同：没有“在终端运行”时，打开终端，输入 `sh `（末尾保留空格），把 `start.sh` 拖进去，再按回车。macOS 也支持这个替代入口，均无需先 `cd`。
 
-菜单默认中文。需要英文或非交互参数时，可使用完整路径，例如 Windows 的 `& "实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
+菜单默认中文；菜单内输入 **L**、**language** 或 **9** 即可切换英文。需要非交互参数时，可使用完整路径，例如 Windows 的 `& "实际项目目录\start.cmd" -Language en`，或 macOS/Linux 的 `sh "/实际项目目录/start.sh" --lang en`。可将文件拖入终端自动填入路径，不必手抄。Windows 用户也可以在项目文件夹的资源管理器地址栏输入 `powershell` 并回车，终端会直接位于该目录。
 
 ### 3. 以后从固定入口进入
 
@@ -51,7 +51,19 @@ macOS 若系统要求确认来源，核对下载来源后按系统提供的“�
 
 独立入口保存你选择的项目位置和目录实例身份，启动时重新检查；项目移动、删除、注册记录失效或旧路径被另一副本占用时，会引导重新选择，并再次核验。可用时使用系统文件夹选择器，否则提示输入路径；取消或输入结束不会执行项目。多个 clone 可以并存：目录内入口使用自身副本，独立入口使用你明确登记的副本，不进行全盘扫描或随便选择。Linux 若桌面要求“允许启动”，核对入口后按桌面提示完成；无桌面环境仍可使用终端入口。
 
+登记目标与缓存启动文件均匹配当前副本且桌面指向该登记入口时，桌面设置报告 `shortcut_state=reused`。更新另一项目自有目标、不完整登记或已变化的缓存启动文件，须先输入 **REPLACE** 再输入 **APPLY**。无所有权的存储与无关桌面文件不能覆盖。此操作更新本机入口，不是重装路由器。
+
 没有 Git、不能联网、没有桌面、缺少工具/权限、可选功能未安装等情况，按 [条件与恢复说明](docs/zh-CN/LAUNCHER.md) 选择可行路径。核心入口不要求华硕或梅林适配器存在；设备操作需要相应实现和目标能力，条件不足时说明缺项。打开菜单不会自动部署、更新运行时或改路由器；可写操作沿用明确确认和原有恢复流程。
+
+### 帮助、语言与已有安装
+
+在主菜单输入 **H**、**?**、**help** 或 **6** 查看本机帮助：菜单动作、前置条件、确认、恢复与文档路径。输入 **L**、**language** 或 **9** 即时切换中英文。切换保留路由器目标与所选会话，只在本次 TUI 会话有效，不联网、不写全局设置。**0** 退出。
+
+选择 **1** 开始或接续。系统对所选路由器和项目路径进行新的只读探测，区分 `installed`、`partial`、`not_installed` 和 `unknown`。发现已有项目内容时，默认诊断并复用保存的会话。`installed` 只表示可识别的项目自有内容存在，不代表运行时健康或网络／生命周期完整验收；单独安装 ShellCrash/Mihomo 不等于安装本项目。只有正面确认项目不存在才允许首次安装；所有权未知、外来内容、链接或探测失败／格式异常时，停止部署并要求审查。
+
+需要刷新项目自有内容时，主动选择 **R**，审阅目标、计划和 `<项目路径>.prev` 备份，再精确输入 **REPLACE**，随后输入 **APPLY**。旧 `.prev` 备份可能被替换。此操作使用仅项目部署范围，阻止运行时／core 载荷替换，但可能更新项目受管集成与配置，不是完整运行时回滚。实际写者在取得锁后重新检查所有权。运行时替换与 core 替换仍须分别显式选择；仅替换运行时会保留已有 core，除非另行指定 `ReplaceCore` / `BOOTSTRAP_REPLACE_CORE=1`。
+
+向导在菜单／动作切换及重要工作前后重新检查当前项目结构、目录实例和所需工具可用性。已知条件退化会阻断受影响动作并提供恢复指引，**H**、**L** 与 **0** 仍可用。这是事件触发的检查，不是后台守护，也不声称识别全部未知故障。支持的恢复路径见启动契约。
 
 ## 从这里开始
 
@@ -299,6 +311,6 @@ Yacd-meta 初始默认：延迟从小到大、隐藏不可用节点、关闭自�
 详见[订阅自动化](docs/SUBSCRIPTION_AUTOMATION.md)。已发布 v0.1.4 下载包不会追溯包含
 这个源码功能；本站点验证与离线夹具证据分开，不扩大为全部固件或供应方的支持声明。
 
-最新 v0.1.6 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
+最新 v0.1.7 发行包含上述源码及 helper，Mihomo 离线载荷固定为 v1.19.32。
 节点订阅自动更新仍需宿主编译 yamlbridge（可信网络或预备模块缓存），包内没有预编译 parser；
 HTTPS 订阅、controller key、本地组过滤和站点显式启用是独立前提。详见[发布说明](docs/zh-CN/RELEASE_NOTES.md)。

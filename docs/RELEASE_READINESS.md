@@ -23,11 +23,13 @@ readiness alone.
 
 ## Claim boundary
 
-For v0.1.6, limited source/host/archive distribution additionally requires three-host guide entries,
+For v0.1.7, exact-commit host/fixture and concrete archive verification must additionally cover bilingual local help/session language switching, fresh target-bound project observation, default diagnosis/reuse, project-only refresh with `REPLACE` then `APPLY`, lock-time ownership rechecks, safe desktop reuse/update and event-driven directory/tool degradation. Project-only scope preserves runtime/core assets but may update managed integration/configuration. These gates do not establish exhaustive fault detection or complete runtime rollback.
+
+For v0.1.7, limited source/host/archive distribution additionally requires three-host guide entries,
 validated local location recovery and the concrete ZIP/tar entry metadata. The v0.1.5 exact-commit
 subscription-behavior gate and source-only yamlbridge preparation/activation prerequisites remain.
 Mihomo v1.19.32 and ShellCrash 1.9.4 are unchanged. Broad claims stay `blocked`; no new device,
-runtime or native macOS GUI acceptance is assigned by this release.
+runtime or native GUI field acceptance is assigned by this release.
 
 Source-tree readiness does not certify router models, firmware, providers, live-network behavior, security outcomes, uninterrupted availability, or deployment success. No support service level is offered. A release decision requires review of the concrete source commit and any concrete offline artifact.
 

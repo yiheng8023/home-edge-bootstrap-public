@@ -17,6 +17,13 @@ function Read-CallLog([string]$Path) {
   return [string](Get-Content -LiteralPath $Path -Raw)
 }
 
+function Get-FixtureSnapshot([string]$Root) {
+  return ((Get-ChildItem -LiteralPath $Root -Recurse -Force | Sort-Object FullName | ForEach-Object {
+    if ($_.PSIsContainer) { "directory=$($_.FullName)" }
+    else { "$($_.FullName)|$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)|$($_.LastWriteTimeUtc.Ticks)" }
+  }) -join "`n")
+}
+
 function Invoke-TuiProcess {
   param(
     [string]$Script,
@@ -57,6 +64,7 @@ try {
   Copy-Item -LiteralPath (Join-Path $Repo "PROJECT") -Destination $FakeRepo
   Set-Content -LiteralPath (Join-Path $FakeRepo "README.md") -Value "fixture" -Encoding ASCII
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\project-location.ps1") -Destination (Join-Path $FakeScripts "lib")
+  Copy-Item -LiteralPath (Join-Path $Repo "scripts\lib\host-launcher.ps1") -Destination (Join-Path $FakeScripts "lib")
   Copy-Item -LiteralPath (Join-Path $Repo "scripts\launch-tui.ps1") -Destination $FakeScripts
   foreach ($Relative in @("bootstrap.sh","config\policy.env","adapters\merlin\bootstrap.sh")) { Set-Content -LiteralPath (Join-Path $FakeRepo $Relative) -Value "fixture" -Encoding ASCII }
   Set-Content -LiteralPath (Join-Path $FakeScripts "create-desktop-shortcut.ps1") -Value 'Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value "desktop-shortcut"' -Encoding ASCII
@@ -66,6 +74,8 @@ $Parts = @()
 if ($Json) { $Parts += "-Json" }
 if ($Router) { $Parts += $Router }
 Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("doctor " + ($Parts -join " "))
+if ($env:DOCTOR_STUB_REMOVE_PROJECT -eq "1") { Remove-Item -LiteralPath (Join-Path $PSScriptRoot "..\PROJECT") -Force }
+if ($env:DOCTOR_STUB_REMOVE_BOOTSTRAP -eq "1") { Remove-Item -LiteralPath (Join-Path $PSScriptRoot "run-bootstrap.ps1") -Force }
 Write-Host '{"doctor_state":"ready","next_action_code":"monitor_live_managed"}'
 if ($env:DOCTOR_STUB_EXIT) { exit [int]$env:DOCTOR_STUB_EXIT }
 '@ | Set-Content -LiteralPath (Join-Path $FakeScripts "doctor.ps1") -Encoding ASCII
@@ -116,6 +126,41 @@ Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("decommission-merlin 
 Write-Host 'decommission_state=plan_ready'
 '@ | Set-Content -LiteralPath (Join-Path $FakeScripts "decommission-merlin.ps1") -Encoding ASCII
 
+  @'
+param([string]$Router)
+Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("project-probe " + $Router)
+$State = if ($env:PROJECT_STUB_STATE) { $env:PROJECT_STUB_STATE } else { "not_installed" }
+$Fields = [ordered]@{
+  schema = if ($env:PROJECT_STUB_SCHEMA) { $env:PROJECT_STUB_SCHEMA } else { "1" }
+  router = if ($env:PROJECT_STUB_ROUTER) { $env:PROJECT_STUB_ROUTER } else { $Router }
+  state = $State
+  reason = "fixture_observation"
+  path = if ($env:PROJECT_STUB_PATH) { $env:PROJECT_STUB_PATH } else { "/jffs/home-edge-bootstrap" }
+  replace_allowed = if ($env:PROJECT_STUB_ALLOWED) { $env:PROJECT_STUB_ALLOWED } elseif ($State -in @("installed", "partial")) { "1" } else { "0" }
+}
+if ($env:PROJECT_STUB_CHANGE_ON_SECOND -eq "1" -and @(Get-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG | Where-Object { $_ -like "project-probe *" }).Count -ge 2) { $Fields.path = "/jffs/changed" }
+foreach ($Key in $Fields.Keys) {
+  if ($Key -ne $env:PROJECT_STUB_OMIT) { Write-Host ("project_install_" + $Key + "=" + $Fields[$Key]) }
+  if ($Key -eq $env:PROJECT_STUB_DUPLICATE) { Write-Host ("project_install_" + $Key + "=" + $Fields[$Key]) }
+}
+if ($env:PROJECT_STUB_EXIT) { exit [int]$env:PROJECT_STUB_EXIT }
+'@ | Set-Content -LiteralPath (Join-Path $FakeScripts "check-project-installation.ps1") -Encoding ASCII
+  @'
+param([string]$Router, [string]$RemoteDir, [switch]$Apply, [switch]$ReplaceProject, [string]$ProjectConfirmation, [switch]$ProjectOnly)
+$Parts = @()
+if ($ProjectOnly) { $Parts += "-ProjectOnly" }
+$Parts += @("-Router", $Router, "-RemoteDir", $RemoteDir)
+if ($Apply) { $Parts += "-Apply" }
+if ($ReplaceProject) { $Parts += "-ReplaceProject" }
+if ($ProjectConfirmation) { $Parts += @("-ProjectConfirmation", $ProjectConfirmation) }
+Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("deploy-merlin " + ($Parts -join " "))
+Add-Content -LiteralPath $env:TUI_FIXTURE_CALL_LOG -Value ("deploy-scope runtime=" + $env:BOOTSTRAP_INSTALL_RUNTIME + " replace_runtime=" + $env:BOOTSTRAP_REPLACE_RUNTIME + " replace_core=" + $env:BOOTSTRAP_REPLACE_CORE + " include_bundle=" + $env:INCLUDE_BUNDLE)
+Write-Host ("deploy_state=" + $(if ($Apply) { "applied" } else { "plan" }))
+Write-Host ("router=" + $Router)
+Write-Host ("remote_dir=" + $RemoteDir)
+if (-not $Apply) { Write-Host 'runtime_assets_effect=preserve'; Write-Host 'integration_effect=project_managed_configuration_may_change' }
+'@ | Set-Content -LiteralPath (Join-Path $FakeScripts "deploy-merlin.ps1") -Encoding ASCII
+
   $SupportStub = Join-Path $FakeScripts "export-support-bundle.ps1"
   $SupportMissing = "$SupportStub.missing"
   Move-Item -LiteralPath $SupportStub -Destination $SupportMissing
@@ -156,6 +201,35 @@ Write-Host 'decommission_state=plan_ready'
   $CallLog = Join-Path $Base "calls.log"
   $CommonEnvironment = @{ TUI_FIXTURE_CALL_LOG = $CallLog }
 
+  $ChineseHelp = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("SG9tZSBFZGdlIOacrOWcsOW4ruWKqQ=="))
+  $Snapshot = Get-FixtureSnapshot $FakeRepo
+  foreach ($Alias in @("H", "?", "help", "6")) {
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $LocalHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "$Alias`n0`n" -Environment $CommonEnvironment
+    if ($LocalHelp.Status -ne 0 -or $LocalHelp.Output -notmatch "Home Edge local help") { Fail "local help alias failed: $Alias" }
+    foreach ($Expected in @("project_dir=$FakeRepo", "doc=$(Join-Path $FakeRepo 'docs\RUNBOOK.md')", "First installation:", "Already installed:", "APPLY", "ENABLE", "DECOMMISSION", "EOF", "H / ? / help. Local help", "9 / L / language.")) {
+      if ($LocalHelp.Output -notmatch [regex]::Escape($Expected)) { Fail "local help missing $Expected" }
+    }
+    if ((Read-CallLog $CallLog).Length -ne 0) { Fail "help dispatched a child: $Alias" }
+  }
+  $CliEnglishHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Help") -Environment $CommonEnvironment
+  if ($Help.Output -notmatch [regex]::Escape($ChineseHelp) -or $CliEnglishHelp.Output -notmatch "Home Edge local help") { Fail "CLI help did not follow language" }
+  $ChineseAssetScope = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("6L+Q6KGM5pe25ZKM5qC45b+D6LWE5Lqn"))
+  $ChineseConfigScope = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("562W55Wl44CB6ZuG5oiQ5ZKM6YWN572u"))
+  $OverbroadScope = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("5L+d55WZ55So5oi36YWN572u"))
+  if (-not $Help.Output.Contains($ChineseAssetScope) -or -not $Help.Output.Contains($ChineseConfigScope) -or $Help.Output.Contains($OverbroadScope)) { Fail "Chinese help conceals project-managed configuration effects" }
+  foreach ($Alias in @("L", "language", "9")) {
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $LanguageToggle = Invoke-TuiProcess -Script $FakeTui -Arguments @("-NoColor") -InputText "$Alias`nH`n$Alias`n?`n0`n" -Environment $CommonEnvironment
+    if ($LanguageToggle.Status -ne 0 -or $LanguageToggle.Output -notmatch "language=en" -or $LanguageToggle.Output -notmatch "language=zh-CN" -or $LanguageToggle.Output -notmatch "Home Edge local help" -or $LanguageToggle.Output -notmatch [regex]::Escape($ChineseHelp) -or $LanguageToggle.Output -notmatch "1. Start or resume guided bootstrap") { Fail "language toggle did not immediately localize menu/help: $Alias" }
+    if ((Read-CallLog $CallLog).Length -ne 0) { Fail "language/help dispatched a child: $Alias" }
+  }
+  $EnglishToChinese = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "L`nhelp`n" -Environment $CommonEnvironment
+  if ($EnglishToChinese.Status -ne 0 -or $EnglishToChinese.Output -notmatch "language=zh-CN" -or $EnglishToChinese.Output -notmatch [regex]::Escape($ChineseHelp)) { Fail "English-to-Chinese toggle or EOF failed" }
+  $LocalInvalid = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "invalid-choice`n" -Environment $CommonEnvironment
+  if ($LocalInvalid.Status -ne 0 -or $LocalInvalid.Output -notmatch "Invalid selection.") { Fail "invalid choice/EOF was not handled" }
+  if ((Read-CallLog $CallLog).Length -ne 0 -or (Get-FixtureSnapshot $FakeRepo) -cne $Snapshot) { Fail "local help/language/EOF changed fixture project or dispatched a child" }
+
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $Doctor = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "2`n0`n" -Environment $CommonEnvironment
   $DoctorCalls = ([string](Read-CallLog $CallLog)).Trim()
@@ -188,7 +262,7 @@ Write-Host 'decommission_state=plan_ready'
   if ($DecommissionEofCalls -match "-Apply") { Fail "PowerShell EOF enabled decommission" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-  $InvalidChoice = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "9`n0`n" -Environment $CommonEnvironment
+  $InvalidChoice = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "invalid-choice`n0`n" -Environment $CommonEnvironment
   if (([string](Read-CallLog $CallLog)).Length -ne 0) { Fail "invalid choice dispatched a child" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
@@ -219,8 +293,8 @@ Write-Host 'decommission_state=plan_ready'
   if ($ChildError.Output -notmatch "child_exit_code=17") { Fail "child exit code was not preserved" }
   if ($ChildError.Status -ne 17) { Fail "TUI process did not exit with the last child failure" }
   if ($ChildError.Output -notmatch "failed_action=bootstrap_read_only") { Fail "failed action was not reported" }
-  $ExpectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' '-NoPause' '-Router' 'user@192.168.50.1'"
-  if ($ChildError.Output -notmatch "safe_resume_command=& " -or $ChildError.Output -notmatch [regex]::Escape($ExpectedResume)) { Fail "safe resume command did not bind its project and target" }
+  $ExpectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' -NoPause -Router 'user@192.168.50.1'"
+  if ($ChildError.Output -notmatch "safe_resume_command=& " -or $ChildError.Output.Replace("''", "'") -notmatch [regex]::Escape($ExpectedResume)) { Fail "safe resume command did not bind its project and target" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $WriteError = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "1`nAPPLY`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan"; BOOTSTRAP_STUB_WRITE_EXIT = "19" })
@@ -260,11 +334,19 @@ Write-Host 'decommission_state=plan_ready'
   if ($JsonView.Output -notmatch "router=json-user@192.168.50.3" -or $JsonView.Output -notmatch "next_action_command=json-resume-command") { Fail "state.json session was not read" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
-  $SelectedResume = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "1`n2`nWRONG`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
+  $Snapshot = Get-FixtureSnapshot $FakeRepo
+  $SwitchSession = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n2`nL`nH`n3`n9`nhelp`n3`n0`n" -Environment $CommonEnvironment
+  if ($SwitchSession.Status -ne 0 -or ([regex]::Matches($SwitchSession.Output, "next_action_command=json-resume-command")).Count -ne 3 -or ([regex]::Matches($SwitchSession.Output, "existing_session=2")).Count -ne 1) { Fail "language/help lost selected session or router" }
+  if ((Read-CallLog $CallLog).Length -ne 0 -or (Get-FixtureSnapshot $FakeRepo) -cne $Snapshot) { Fail "language/help/session display changed the fixture project" }
+  $RouterToggle = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "L`nH`n9`n2`n0`n" -Environment $CommonEnvironment
+  if ((Read-CallLog $CallLog).Trim() -ne "doctor -Json user@192.168.50.1") { Fail "language/help lost CLI router" }
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $SelectedResume = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n2`nL`nH`n9`n1`nWRONG`n0`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
   $SelectedCalls = Read-CallLog $CallLog
   if ($SelectedCalls -notmatch "run-bootstrap -NoPause -SessionDir .*02-json json-user@192.168.50.3") { Fail "selected session did not infer router and preserve session directory" }
-  $ExpectedSelectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' '-NoPause' '-ApplyDeploy' '-SessionDir' '" + $SessionJson + "' '-Router' 'json-user@192.168.50.3'"
-  if ($SelectedResume.Output -notmatch "exact_command=& " -or $SelectedResume.Output -notmatch [regex]::Escape($ExpectedSelectedResume)) { Fail "selected-session command did not bind its project, session and router" }
+  $ExpectedSelectedResume = "'" + (Join-Path (Split-Path $FakeTui -Parent) 'run-bootstrap.ps1') + "' -NoPause -ApplyDeploy -SessionDir '" + $SessionJson + "' -Router 'json-user@192.168.50.3'"
+  if ($SelectedResume.Output -notmatch "exact_command=& " -or $SelectedResume.Output.Replace("''", "'") -notmatch [regex]::Escape($ExpectedSelectedResume)) { Fail "selected-session command did not bind its project, session and router" }
 
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $UnknownSession = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor") -InputText "3`n3`n0`n" -Environment $CommonEnvironment
@@ -283,6 +365,80 @@ Write-Host 'decommission_state=plan_ready'
   Set-Content -LiteralPath $CallLog -Value "" -NoNewline
   $ApplyEof = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-NoColor", "-Router", "user@192.168.50.1") -InputText "1`n" -Environment (@{ TUI_FIXTURE_CALL_LOG = $CallLog; BOOTSTRAP_STUB_ACTION = "deploy_plan" })
   if ((Read-CallLog $CallLog) -match "ApplyDeploy") { Fail "EOF enabled deploy" }
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $Existing = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "1`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE="installed"; BOOTSTRAP_STUB_ACTION="deploy_plan" }
+  if ($Existing.Status -ne 0 -or $Existing.Output -notmatch "explicitly choose R" -or (Read-CallLog $CallLog) -match "ApplyDeploy|deploy-merlin") { Fail "already installed default silently redeployed" }
+  foreach ($State in @("installed", "partial")) {
+    foreach ($Inputs in @("R`nWRONG`n0`n", "R`nreplace`n0`n", "R`nREPLACE `n0`n", "R`nREPLACE`nWRONG`n0`n", "R`nREPLACE`napply`n0`n", "R`nREPLACE`nAPPLY `n0`n", "R`n", "R`nREPLACE`n")) {
+      Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+      $CancelRefresh = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText $Inputs -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE=$State }
+      if ($CancelRefresh.Status -ne 0 -or (Read-CallLog $CallLog) -match "-Apply|-ReplaceProject") { Fail "project refresh cancellation/EOF allowed a write ($State)" }
+      if ((Read-CallLog $CallLog) -notmatch "project-probe user@192.168.50.1" -or (Read-CallLog $CallLog) -notmatch "deploy-merlin -ProjectOnly -Router") { Fail "refresh did not probe and plan first ($State)" }
+    }
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $Refresh = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "R`nREPLACE`nAPPLY`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE=$State; BOOTSTRAP_INSTALL_RUNTIME="1"; BOOTSTRAP_REPLACE_RUNTIME="1"; BOOTSTRAP_REPLACE_CORE="1"; INCLUDE_BUNDLE="1" }
+    $RefreshCalls = Read-CallLog $CallLog
+    if ($Refresh.Status -ne 0 -or $RefreshCalls -notmatch "deploy-merlin -ProjectOnly -Router user@192.168.50.1 -RemoteDir /jffs/home-edge-bootstrap -Apply -ReplaceProject -ProjectConfirmation REPLACE") { Fail "double confirmation did not refresh owned project ($State)" }
+    if (([regex]::Matches($RefreshCalls, "deploy-scope runtime=0 replace_runtime=0 replace_core=0 include_bundle=0")).Count -ne 2 -or $Refresh.Output -notmatch "project_backup_path=/jffs/home-edge-bootstrap.prev") { Fail "project refresh scope or backup disclosure incorrect ($State)" }
+    $DisplayedCommand = [regex]::Match($Refresh.Output, "(?m)^exact_command=(.*)$").Groups[1].Value.TrimEnd("`r")
+    if ($DisplayedCommand -notmatch "BOOTSTRAP_REPLACE_CORE" -or $DisplayedCommand -notmatch "-Command") { Fail "displayed refresh command omitted isolated environment scope" }
+    $ReplayScript = Join-Path $Base "replay-scoped-command.ps1"
+    Set-Content -LiteralPath $ReplayScript -Value $DisplayedCommand -Encoding ASCII
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $Replay = Invoke-TuiProcess -Script $ReplayScript -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; BOOTSTRAP_INSTALL_RUNTIME="1"; BOOTSTRAP_REPLACE_RUNTIME="1"; BOOTSTRAP_REPLACE_CORE="1"; INCLUDE_BUNDLE="1" }
+    if ($Replay.Status -ne 0 -or (Read-CallLog $CallLog) -notmatch "deploy-scope runtime=0 replace_runtime=0 replace_core=0 include_bundle=0" -or (Read-CallLog $CallLog) -notmatch "-Apply -ReplaceProject -ProjectConfirmation REPLACE") { Fail "copied scoped refresh command changed authority or quoting: status=$($Replay.Status) error=$($Replay.Error) output=$($Replay.Output) calls=$(Read-CallLog $CallLog)" }
+
+  }
+  foreach ($BadProbe in @(@{PROJECT_STUB_STATE="unknown"}, @{PROJECT_STUB_STATE="installed";PROJECT_STUB_EXIT="1"}, @{PROJECT_STUB_SCHEMA="2"}, @{PROJECT_STUB_ROUTER="other@192.168.50.1"}, @{PROJECT_STUB_PATH="/jffs/../wrong"}, @{PROJECT_STUB_STATE="unrecognized"}, @{PROJECT_STUB_STATE="INSTALLED"}, @{PROJECT_STUB_PATH="/JFFS/wrong"}, @{PROJECT_STUB_ALLOWED="2"}, @{PROJECT_STUB_STATE="partial";PROJECT_STUB_ALLOWED="0"})) {
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $BadProbe.TUI_FIXTURE_CALL_LOG=$CallLog
+    $BlockedRefresh = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "R`nREPLACE`nAPPLY`n0`n" -Environment $BadProbe
+    if ((Read-CallLog $CallLog) -match "deploy-merlin|run-bootstrap") { Fail "unknown/foreign installation enabled deployment" }
+  }
+  foreach ($Key in @("schema", "router", "state", "reason", "path", "replace_allowed")) {
+    foreach ($Format in @("PROJECT_STUB_DUPLICATE", "PROJECT_STUB_OMIT")) {
+      Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+      $BadEnvironment = @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE="installed" }
+      $BadEnvironment[$Format]=$Key
+      $MalformedProbe = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "R`nREPLACE`nAPPLY`n0`n" -Environment $BadEnvironment
+      if ($MalformedProbe.Output -notmatch "attention_state=invalid_installation_probe" -or (Read-CallLog $CallLog) -match "deploy-merlin") { Fail "missing/duplicate critical probe field was accepted: $Key" }
+    }
+  }
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $NotInstalledRefresh = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "R`n0`n" -Environment $CommonEnvironment
+  if ($NotInstalledRefresh.Output -notmatch "Choose 1 for first installation" -or (Read-CallLog $CallLog) -match "deploy-merlin") { Fail "R interpreted missing project as replacement" }
+  foreach ($State in @("unknown", "partial", "installed")) {
+    Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+    $UnsafeEnable = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "1`nENABLE`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE=$State; PROJECT_STUB_ALLOWED="0"; BOOTSTRAP_STUB_ACTION="enable_live_self_heal" }
+    if ((Read-CallLog $CallLog) -match "EnableLiveSelfHeal|ApplyDeploy") { Fail "unknown/foreign/partial installation enabled write ($State)" }
+  }
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $FailureThenHelp = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "1`nH`nL`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; BOOTSTRAP_STUB_EXIT="17" }
+  if ($FailureThenHelp.Status -ne 17) { Fail "help/language erased the preceding child failure" }
+  $ProbeFile = Join-Path $FakeScripts "check-project-installation.ps1"
+  Move-Item -LiteralPath $ProbeFile -Destination "$ProbeFile.missing"
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $MissingProbe = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "1`nH`nL`nR`n0`n" -Environment $CommonEnvironment
+  if ($MissingProbe.Output -notmatch "capability_state=unavailable" -or $MissingProbe.Output -notmatch "Home Edge local help" -or (Read-CallLog $CallLog).Length -ne 0) { Fail "missing probe blocked local UI or dispatched an operation" }
+  Move-Item -LiteralPath "$ProbeFile.missing" -Destination $ProbeFile
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $ChangedProbe = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "R`nREPLACE`nAPPLY`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; PROJECT_STUB_STATE="installed"; PROJECT_STUB_CHANGE_ON_SECOND="1" }
+  if ($ChangedProbe.Output -notmatch "attention_state=installation_probe_changed" -or (Read-CallLog $CallLog) -match "-Apply -ReplaceProject") { Fail "changed refresh path reached fake deploy apply" }
+
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $RemovedProject = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "2`n1`nH`nL`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; DOCTOR_STUB_REMOVE_PROJECT="1" }
+  if ($RemovedProject.Output -notmatch "condition_state=project_degraded" -or $RemovedProject.Output -notmatch "Home Edge local help" -or $RemovedProject.Output -notmatch "language=zh-CN" -or (Read-CallLog $CallLog) -match "run-bootstrap ") { Fail "removed PROJECT did not stop dependent work while retaining local UI" }
+  Copy-Item -LiteralPath (Join-Path $Repo "PROJECT") -Destination $FakeRepo
+
+  $BootstrapFile = Join-Path $FakeScripts "run-bootstrap.ps1"
+  Copy-Item -LiteralPath $BootstrapFile -Destination "$BootstrapFile.saved"
+  Set-Content -LiteralPath $CallLog -Value "" -NoNewline
+  $RemovedOperation = Invoke-TuiProcess -Script $FakeTui -Arguments @("-Language", "en", "-Router", "user@192.168.50.1") -InputText "1`nH`nL`n0`n" -Environment @{ TUI_FIXTURE_CALL_LOG=$CallLog; DOCTOR_STUB_REMOVE_BOOTSTRAP="1" }
+  if ($RemovedOperation.Output -notmatch "capability_state=unavailable" -or $RemovedOperation.Output -notmatch "Home Edge local help" -or (Read-CallLog $CallLog) -match "run-bootstrap ") { Fail "removed operation was invoked or blocked local UI" }
+  Move-Item -LiteralPath "$BootstrapFile.saved" -Destination $BootstrapFile
+  Write-Host "tui_fixture_installation_guard_tests=ok"
 
   Write-Host "tui_fixture_tests=ok"
 }

@@ -2,6 +2,71 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.7 (2026-10-12)
+
+Add comprehensive local bilingual help (`H` / `?` / `help` / `6`) and a session-only language switch (`L` / `language` / `9`) that preserves the router target and selected session without network access or global setting writes.
+
+Existing or partial project installations default to fresh read-only diagnosis and saved-session reuse. Installation evidence is bound to the selected router and path; only positive absence permits first installation. Unknown ownership, foreign content, links and malformed probes stop deployment. `installed` means project-owned presence, not complete lifecycle/network health; ShellCrash/Mihomo alone does not prove project installation.
+
+An explicit `R` project refresh reviews a project-only plan and `<project-path>.prev` backup, then requires exact `REPLACE` followed by `APPLY`; an older backup may be replaced. The writer rechecks ownership under its lock. Runtime/core assets are preserved, while project-managed integration/configuration may change. Runtime-only replacement separately preserves the existing core unless core replacement is explicitly selected. This is not complete runtime rollback.
+
+Desktop registration reuses a matching target, cached launcher and desktop pointer; other owned target/cache updates or repairs require `REPLACE` then `APPLY`. Unowned contents are not overwritable. Event-driven checks of current structure, directory identity and tools run at menu/action transitions and around important work; known degradation retains local help/language/exit and provides recovery. There is no background daemon or claim to detect every unknown failure.
+
+Mihomo v1.19.32, ShellCrash 1.9.4, source locks and supply-chain review remain unchanged. yamlbridge remains source-only with the v0.1.5 preparation and explicit activation prerequisites. Common, host and device evidence remain distinct; Merlin is the only implemented real-device reference. No new live-device, shipped-core execution or native GUI field acceptance is claimed; broad claims remain `blocked`. All earlier release sections, tags and assets remain unchanged. Publication does not update an existing installation.
+
+On Windows, download the ZIP below, Extract All, and double-click `start.cmd`. Optionally double-click `create-desktop-shortcut.cmd` to keep a desktop entry. Keep the extracted folder; downloading one script or opening it inside a ZIP is not a complete installation. On macOS/Linux choose tar.gz; if macOS execution permission was not preserved, invoke `sh` with the full path to `start.sh`. Complete-source audit assets are not needed for installation.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.7-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.7-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.7-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.7-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/home-edge-bootstrap-v0.1.7-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.7/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.7-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.7-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.7-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.7-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
+Choose one package for your system plus `SHA256SUMS`; verify only the file you downloaded. Manifest, SBOM (public release) and complete-source assets are audit/source-availability material, not extra installation parts. GitHub automatic Source code archives are not the contracted packages.
+
+Choose a source-only package only when the runtime is already present and you need scripts/documentation; choose an offline package for fresh offline runtime preparation.
+
+Windows PowerShell, checking only the offline ZIP you downloaded:
+
+```powershell
+$File = "home-edge-bootstrap-v0.1.7-offline.zip"
+$Expected = ((Get-Content .\SHA256SUMS | Where-Object { $_ -match "  $([regex]::Escape($File))$" }) -split '\s+')[0]
+if ((Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) {
+  throw "SHA256 mismatch: $File"
+}
+```
+
+macOS/Linux, checking only the offline `tar.gz` you downloaded:
+
+```sh
+file=home-edge-bootstrap-v0.1.7-offline.tar.gz
+line=$(awk -v f="$file" 'NF == 2 && length($1) == 64 && $2 == f { n++; hit=$0 }
+  END { if (n == 1) print hit; else exit 1 }' SHA256SUMS) || exit 1
+if command -v sha256sum >/dev/null 2>&1; then
+  printf '%s\n' "$line" | sha256sum -c -
+else
+  printf '%s\n' "$line" | shasum -a 256 -c -
+fi
+```
+
 ## v0.1.6 (2026-10-12)
 
 Add equal Windows/macOS/Linux directory-local and registered independent entries, with optional desktop integration. macOS uses `start.command`; Linux uses the self-locating `start.sh`. The entries resolve their own package and preserve the existing guide, failure exit codes and confirmation gates. README and Quickstart no longer assume a clone, known folder or prior `cd`.

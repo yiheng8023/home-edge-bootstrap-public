@@ -1,0 +1,95 @@
+param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
+$ErrorActionPreference = "Stop"
+$Fixture = Join-Path ([IO.Path]::GetTempPath()) ("home-edge-installation-ps-" + [guid]::NewGuid().ToString('N'))
+$OldSsh = $env:HOME_EDGE_SSH_COMMAND
+$OldMode = $env:INSTALLATION_PROBE_MODE
+$OldState = $env:INSTALLATION_PROBE_STATE
+$OldCapture = $env:INSTALLATION_CAPTURE_FILE
+try {
+  New-Item -ItemType Directory -Path $Fixture | Out-Null
+  $Stub = Join-Path $Fixture 'ssh.ps1'
+  @'
+$Payload = $input | Out-String
+$Remote = [string]$args[-1]
+if ($Remote -ne 'sh -s') {
+  [IO.File]::WriteAllText($env:INSTALLATION_CAPTURE_FILE, $Remote)
+  $global:LASTEXITCODE = 0
+  return
+}
+if ($env:INSTALLATION_PROBE_MODE -eq 'fail') { $global:LASTEXITCODE = 23; return }
+if ($env:INSTALLATION_PROBE_MODE -eq 'malformed') { Write-Output 'project_install_state=not_installed'; $global:LASTEXITCODE = 0; return }
+$Target = if ($env:INSTALLATION_PROBE_MODE -eq 'mismatch') { 'user@other' } else { 'user@router' }
+$State = if ($env:INSTALLATION_PROBE_STATE) { $env:INSTALLATION_PROBE_STATE } else { 'not_installed' }
+$Allowed = if ($State -in @('installed','partial')) { '1' } else { '0' }
+$InstallPath = [regex]::Match($Payload, "(?m)^HOME_EDGE_INSTALLATION_DIR='([^']+)'$").Groups[1].Value
+Write-Output 'project_install_schema=1'
+Write-Output "project_install_router=$Target"
+Write-Output "project_install_state=$State"
+Write-Output 'project_install_reason=fixture_observation'
+Write-Output "project_install_path=$InstallPath"
+Write-Output "project_install_replace_allowed=$Allowed"
+$global:LASTEXITCODE = 0
+'@ | Set-Content -LiteralPath $Stub -Encoding ASCII
+  $env:HOME_EDGE_SSH_COMMAND = $Stub
+  $env:INSTALLATION_CAPTURE_FILE = Join-Path $Fixture 'deploy-command'
+  $KnownHosts = Join-Path $Fixture 'known_hosts'
+  $Observer = Join-Path $Repo 'scripts/check-project-installation.ps1'
+  $Deploy = Join-Path $Repo 'scripts/deploy-merlin.ps1'
+  foreach ($Mode in @('ready', 'fail', 'malformed', 'mismatch')) {
+    $env:INSTALLATION_PROBE_MODE = $Mode
+    $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Observer -Router user@router -KnownHostsFile $KnownHosts | Out-String
+    if ($Mode -eq 'ready') {
+      if ($LASTEXITCODE -ne 0 -or $Output -notmatch 'project_install_state=not_installed') { throw 'Fresh observation failed' }
+    } elseif ($LASTEXITCODE -eq 0 -or $Output -notmatch 'project_install_state=unknown') { throw "Invalid observation was trusted: $Mode" }
+  }
+  $env:INSTALLATION_PROBE_MODE = 'ready'
+  foreach ($State in @('installed', 'partial', 'unknown')) {
+    $env:INSTALLATION_PROBE_STATE = $State
+    $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -Apply | Out-String
+    if ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath $env:INSTALLATION_CAPTURE_FILE)) { throw "Default write reached SSH transfer: $State" }
+  }
+  $env:INSTALLATION_PROBE_STATE = 'installed'
+  foreach ($Wrong in @('', 'replace', 'REPLACE ')) {
+    $WrongArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Deploy, '-Router', 'user@router', '-KnownHostsFile', $KnownHosts, '-ReplaceProject', '-Apply')
+    if ($Wrong) { $WrongArgs += @('-ProjectConfirmation', $Wrong) }
+    $ErrorActionPreference = 'Continue'
+    $Output = & powershell @WrongArgs 2>&1 | Out-String
+    $ErrorActionPreference = 'Stop'
+    if ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath $env:INSTALLATION_CAPTURE_FILE)) { throw 'Inexact replacement confirmation reached a transfer' }
+  }
+  $Plan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts | Out-String
+  if ($LASTEXITCODE -ne 0 -or $Plan -notmatch 'project_replacement_required=1' -or $Plan -notmatch 'installation_probe=read_only') { throw 'Existing installation plan failed' }
+  $RuntimeNames = @('BOOTSTRAP_INSTALL_RUNTIME', 'BOOTSTRAP_REPLACE_RUNTIME', 'BOOTSTRAP_REPLACE_CORE')
+  $RuntimePrevious = @{}
+  try {
+    foreach ($Name in $RuntimeNames) { $RuntimePrevious[$Name] = [Environment]::GetEnvironmentVariable($Name); [Environment]::SetEnvironmentVariable($Name, '1') }
+    $Plan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -ProjectOnly | Out-String
+    foreach ($Expected in @('install_runtime=0', 'replace_runtime=0', 'replace_core=0', 'include_bundle=0', 'runtime_assets_effect=preserve', 'integration_effect=project_managed_configuration_may_change')) {
+      if ($LASTEXITCODE -ne 0 -or $Plan -notmatch ('(?m)^' + [regex]::Escape($Expected) + '\r?$')) { throw "ProjectOnly honored ambient runtime authority: $Expected" }
+    }
+    $ErrorActionPreference = 'Continue'
+    $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -ProjectOnly -InstallRuntime 2>&1 | Out-String
+    $ErrorActionPreference = 'Stop'
+    if ($LASTEXITCODE -eq 0) { throw 'ProjectOnly accepted a conflicting explicit switch' }
+  } finally { foreach ($Name in $RuntimeNames) { [Environment]::SetEnvironmentVariable($Name, $RuntimePrevious[$Name]) } }
+  # No remote code is executed. The transport records the actual locked template.
+  $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -Apply -ReplaceProject -ProjectConfirmation REPLACE | Out-String
+  if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $env:INSTALLATION_CAPTURE_FILE)) { throw 'Explicit project replacement was not forwarded' }
+  $Remote = Get-Content -LiteralPath $env:INSTALLATION_CAPTURE_FILE -Raw
+  if ($Remote -notmatch 'home_edge_require_project_replacement "1" "REPLACE"' -or $Remote.Contains('__INSTALLATION_LIBRARY__')) { throw 'Replacement permission or observer missing from actual locked template' }
+  if ($Remote.IndexOf('home_edge_require_project_replacement "1" "REPLACE"') -lt $Remote.IndexOf("acquire_deploy_lock`n")) { throw 'Fresh guard is before the writer lock' }
+  if ($Remote.IndexOf('home_edge_require_project_replacement "1" "REPLACE"') -gt $Remote.IndexOf('mkdir "$staging"', $Remote.IndexOf("acquire_deploy_lock`n"))) { throw 'Fresh guard is after staging mutation' }
+  $env:INSTALLATION_PROBE_STATE = 'not_installed'
+  $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -RemoteDir /jffs/custom -ProjectOnly -Apply | Out-String
+  if ($LASTEXITCODE -ne 0) { throw 'Custom target cannot reach isolated transport' }
+  $Remote = Get-Content -LiteralPath $env:INSTALLATION_CAPTURE_FILE -Raw
+  if ($Remote -notmatch 'remote_dir="/jffs/custom"' -or $Remote -notmatch 'HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_INSTALL_DIR="\$remote_dir" BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh bootstrap.sh' -or
+      $Remote -notmatch 'BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="\$remote_dir" sh "\$remote_dir/bootstrap.sh"') { throw 'Actual PowerShell custom deployment/restoration template lost its bound installation target' }
+  Write-Host 'project_installation_fixture_tests_ps=ok'
+} finally {
+  $env:HOME_EDGE_SSH_COMMAND = $OldSsh
+  $env:INSTALLATION_PROBE_MODE = $OldMode
+  $env:INSTALLATION_PROBE_STATE = $OldState
+  $env:INSTALLATION_CAPTURE_FILE = $OldCapture
+  if (([IO.Path]::GetFullPath($Fixture)).StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()), [StringComparison]::OrdinalIgnoreCase)) { Remove-Item -LiteralPath $Fixture -Recurse -Force }
+}

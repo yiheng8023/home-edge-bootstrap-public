@@ -5,6 +5,8 @@
 Compatibility is declared from capabilities and evidence. It is not inferred from a brand name,
 model family, adapter maturity, or successful fixture.
 
+Local help and session-only language switching do not require device operations or grant write authority. Fresh project installation observation and event-driven host condition checks are independent of target compatibility and lifecycle/network acceptance. Existing project content defaults to diagnosis/reuse; unknown/foreign/link states cannot authorize first installation or overwrite. See [LAUNCHER](LAUNCHER.md) for the explicit project-refresh and local-registration gates.
+
 ## Current implemented reference adapter
 
 The implemented Merlin adapter targets ASUS gateways running official Asuswrt-Merlin with persistent

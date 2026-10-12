@@ -12,12 +12,13 @@ fixture_repo="$tmp_root/repo"
 deploy="$fixture_repo/scripts/deploy-merlin.sh"
 export DEPLOY_FAKE_SSH_LOG="$tmp_root/default-ssh.log"
 export DEPLOY_FAKE_SSH_ARCHIVE="$tmp_root/default-ssh.tgz"
+export KNOWN_HOSTS_FILE="$tmp_root/known_hosts"
 mkdir -p \
   "$fake_bin" \
   "$fixture_bundle" \
   "$fixture_shellcrash/libs" \
   "$fixture_shellcrash/starts" \
-  "$fixture_repo/adapters" \
+  "$fixture_repo/adapters/merlin/lib" \
   "$fixture_repo/config" \
   "$fixture_repo/docs" \
   "$fixture_repo/scripts"
@@ -27,9 +28,10 @@ mkdir -p \
 # provenance and release fixtures; repeating it for every fake-SSH failure path
 # makes this focused fixture needlessly expensive on Git Bash.
 cp "$repo/README.md" "$repo/README.zh-CN.md" "$repo/bootstrap.sh" "$fixture_repo/"
-for script in deploy-merlin.sh new-deployment-provenance.sh verify-bundle.sh migrate-router-state.sh; do
+for script in deploy-merlin.sh check-project-installation.sh new-deployment-provenance.sh verify-bundle.sh migrate-router-state.sh; do
   cp "$repo/scripts/$script" "$fixture_repo/scripts/$script"
 done
+cp "$repo/adapters/merlin/lib/installation-state.sh" "$fixture_repo/adapters/merlin/lib/installation-state.sh"
 printf 'fixture\n' >"$fixture_repo/adapters/.fixture"
 printf 'fixture\n' >"$fixture_repo/config/.fixture"
 printf 'fixture\n' >"$fixture_repo/docs/.fixture"
@@ -89,6 +91,12 @@ if [ "${DEPLOY_FAKE_SSH_FAIL_AT:-0}" != "0" ] &&
   exit 23
 fi
 case "$last" in
+  'sh -s')
+    payload=$(cat)
+    target=$(printf '%s\n' "$payload" | sed -n "s/^HOME_EDGE_INSTALLATION_ROUTER='\([^']*\)'$/\1/p")
+    printf 'project_install_schema=1\nproject_install_router=%s\nproject_install_state=not_installed\nproject_install_reason=no_project_artifacts\nproject_install_path=/jffs/home-edge-bootstrap\nproject_install_replace_allowed=0\n' "$target"
+    exit 0
+    ;;
   *runtime_space_preflight_state*)
     case "${DEPLOY_FAKE_RUNTIME_SPACE_STATE:-ready}" in
       ready)
@@ -144,8 +152,15 @@ PATH="$fake_bin:$PATH" DEPLOY_FAKE_SSH_LOG="$plan_log" DEPLOY_FAKE_SSH_ARCHIVE="
   sh "$deploy" user@router >"$tmp_root/deploy-plan.out" 2>"$tmp_root/deploy-plan.err"
 grep -q '^deploy_state=plan$' "$tmp_root/deploy-plan.out" || fail "plan state missing"
 grep -q '^apply_required=1$' "$tmp_root/deploy-plan.out" || fail "plan apply boundary missing"
-[ ! -e "$plan_log" ] || fail "plan mode contacted ssh"
+grep -Fxq 'sh -s' "$plan_log" || fail "plan mode did not perform the read-only installation probe"
+grep -Fxq 'installation_probe=read_only' "$tmp_root/deploy-plan.out" || fail "plan mode did not disclose the probe"
 [ ! -e "$plan_archive" ] || fail "plan mode streamed an archive"
+
+PATH="$fake_bin:$PATH" BOOTSTRAP_INSTALL_RUNTIME=1 BOOTSTRAP_REPLACE_RUNTIME=1 BOOTSTRAP_REPLACE_CORE=1 INCLUDE_BUNDLE=1 \
+  sh "$deploy" --project-only user@router >"$tmp_root/project-only.out"
+for expected in 'install_runtime=0' 'replace_runtime=0' 'replace_core=0' 'include_bundle=0' 'runtime_assets_effect=preserve' 'integration_effect=project_managed_configuration_may_change'; do
+  grep -Fxq "$expected" "$tmp_root/project-only.out" || fail "project-only honored ambient runtime authority: $expected"
+done
 
 apply_log="$tmp_root/apply-command.log"
 apply_archive="$tmp_root/apply.tgz"
@@ -191,18 +206,19 @@ runtime_sequence="$tmp_root/runtime-sequence"
 PATH="$fake_bin:$PATH" APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=1 \
 DEPLOY_FAKE_SSH_SEQUENCE_DIR="$runtime_sequence" \
 sh "$deploy" user@router >"$tmp_root/runtime-apply.out" 2>"$tmp_root/runtime-apply.err"
-[ "$(cat "$runtime_sequence/count")" -eq 3 ] || fail "runtime deploy should preflight space before separate control-plane and bundle transfers"
-grep -q 'LC_ALL=C df -k /tmp' "$runtime_sequence/command.1.log" || fail "runtime deploy did not preflight portable /tmp free space"
+[ "$(cat "$runtime_sequence/count")" -eq 4 ] || fail "runtime deploy should preflight space before separate control-plane and bundle transfers"
+grep -q 'LC_ALL=C df -k /tmp' "$runtime_sequence/command.2.log" || fail "runtime deploy did not preflight portable /tmp free space"
 grep -q 'runtime_space_preflight_state=ready' "$tmp_root/runtime-apply.out" || fail "runtime deploy did not report a ready space preflight"
-grep -q 'BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_RUNTIME_FOLLOWS=1 sh bootstrap.sh' "$runtime_sequence/command.2.log" || fail "control-plane deploy did not declare the following runtime stage"
-grep -q 'runtime_follows="1"' "$runtime_sequence/command.2.log" || fail "control-plane deploy did not bind its staged-only state"
-grep -q 'deploy_state=staged' "$runtime_sequence/command.2.log" || fail "control-plane deploy lacks a staged state before runtime activation"
-grep -q 'runtime_stage="/tmp/home-edge-runtime-bundle.\$\$"' "$runtime_sequence/command.3.log" || fail "runtime deploy did not allocate the temporary bundle directory"
-grep -q 'BOOTSTRAP_BUNDLE_DIR="\$runtime_stage"' "$runtime_sequence/command.3.log" || fail "runtime deploy did not bind the temporary bundle directory"
+grep -q 'BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_RUNTIME_FOLLOWS=1 sh bootstrap.sh' "$runtime_sequence/command.3.log" || fail "control-plane deploy did not declare the following runtime stage"
+grep -q 'runtime_follows="1"' "$runtime_sequence/command.3.log" || fail "control-plane deploy did not bind its staged-only state"
+grep -q 'deploy_state=staged' "$runtime_sequence/command.3.log" || fail "control-plane deploy lacks a staged state before runtime activation"
+grep -q 'runtime_stage="/tmp/home-edge-runtime-bundle.\$\$"' "$runtime_sequence/command.4.log" || fail "runtime deploy did not allocate the temporary bundle directory"
+grep -q 'BOOTSTRAP_BUNDLE_DIR="\$runtime_stage"' "$runtime_sequence/command.4.log" || fail "runtime deploy did not bind the temporary bundle directory"
+grep -Fq 'BOOTSTRAP_INSTALL_DIR="$remote_dir"' "$runtime_sequence/command.4.log" || fail 'runtime activation lost its bound installation target'
 mkdir -p "$tmp_root/runtime-main-extract" "$tmp_root/runtime-bundle-extract"
-tar -xzf "$runtime_sequence/archive.2.tgz" -C "$tmp_root/runtime-main-extract"
+tar -xzf "$runtime_sequence/archive.3.tgz" -C "$tmp_root/runtime-main-extract"
 [ ! -e "$tmp_root/runtime-main-extract/bundle/mihomo-linux-arm64" ] || fail "runtime payload leaked into persistent control-plane archive"
-tar -xzf "$runtime_sequence/archive.3.tgz" -C "$tmp_root/runtime-bundle-extract"
+tar -xzf "$runtime_sequence/archive.4.tgz" -C "$tmp_root/runtime-bundle-extract"
 [ -s "$tmp_root/runtime-bundle-extract/mihomo-linux-arm64" ] || fail "temporary runtime archive is missing Mihomo"
 [ -s "$tmp_root/runtime-bundle-extract/ShellCrash.tar.gz" ] || fail "temporary runtime archive is missing ShellCrash"
 
@@ -213,27 +229,27 @@ if PATH="$fake_bin:$PATH" APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=1 \
   sh "$deploy" user@router >"$tmp_root/runtime-insufficient.out" 2>"$tmp_root/runtime-insufficient.err"; then
   fail "insufficient /tmp space should fail closed"
 fi
-[ "$(cat "$runtime_insufficient_sequence/count")" -eq 1 ] || fail "space failure should stop before control-plane or runtime bundle transfer"
+[ "$(cat "$runtime_insufficient_sequence/count")" -eq 2 ] || fail "space failure should stop before control-plane or runtime bundle transfer"
 grep -q '^runtime_space_preflight_state=insufficient$' "$tmp_root/runtime-insufficient.out" || fail "space failure marker missing"
-[ ! -e "$runtime_insufficient_sequence/archive.1.tgz" ] || fail "space preflight should not receive a bundle payload"
+[ ! -e "$runtime_insufficient_sequence/archive.2.tgz" ] || fail "space preflight should not receive a bundle payload"
 
 runtime_failure_sequence="$tmp_root/runtime-failure-sequence"
 if PATH="$fake_bin:$PATH" APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=1 \
   DEPLOY_FAKE_SSH_SEQUENCE_DIR="$runtime_failure_sequence" \
-  DEPLOY_FAKE_SSH_FAIL_AT=3 \
+  DEPLOY_FAKE_SSH_FAIL_AT=4 \
   sh "$deploy" user@router >"$tmp_root/runtime-failure.out" 2>"$tmp_root/runtime-failure.err"; then
   fail "runtime transfer failure should propagate after rollback"
 fi
-[ "$(cat "$runtime_failure_sequence/count")" -eq 4 ] ||
+[ "$(cat "$runtime_failure_sequence/count")" -eq 5 ] ||
   fail "runtime failure should trigger exactly one separate control-plane rollback"
-grep -q 'control_plane_rollback_state=restored' "$runtime_failure_sequence/command.4.log" ||
+grep -q 'control_plane_rollback_state=restored' "$runtime_failure_sequence/command.5.log" ||
   fail "runtime failure rollback command does not restore the previous control plane"
-grep -q 'control_plane_rollback_state=removed' "$runtime_failure_sequence/command.4.log" ||
+grep -q 'control_plane_rollback_state=removed' "$runtime_failure_sequence/command.5.log" ||
   fail "runtime failure rollback command does not remove a first-install staged control plane"
-grep -q 'cleanup_first_install_active_state' "$runtime_failure_sequence/command.4.log" ||
+grep -q 'cleanup_first_install_active_state' "$runtime_failure_sequence/command.5.log" ||
   fail "runtime failure rollback command does not clean first-install active surfaces"
-grep -q 'HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$remote_dir/bootstrap.sh"' \
-  "$runtime_failure_sequence/command.4.log" ||
+grep -q 'HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="$remote_dir" sh "$remote_dir/bootstrap.sh"' \
+  "$runtime_failure_sequence/command.5.log" ||
   fail "runtime failure rollback command does not replay the restored control plane"
 rollback_sim="$tmp_root/runtime-rollback-sim"
 rollback_sim_script="$rollback_sim/rollback.sh"
@@ -244,14 +260,15 @@ mkdir -p \
 cat >"$rollback_sim/jffs/home-edge-bootstrap.prev/bootstrap.sh" <<'EOF'
 #!/bin/sh
 [ "${HOME_EDGE_WRITE_LOCK_HELD:-0}" = 1 ] || exit 91
+[ "${BOOTSTRAP_INSTALL_DIR:-}" = "$DEPLOY_ROLLBACK_EXPECTED_DIR" ] || exit 92
 : >"$DEPLOY_ROLLBACK_MARKER"
 EOF
 chmod 755 "$rollback_sim/jffs/home-edge-bootstrap.prev/bootstrap.sh"
 sed \
   -e "s#remote_dir=\"/jffs/home-edge-bootstrap\"#remote_dir=\"$rollback_sim/jffs/home-edge-bootstrap\"#" \
   -e "s#lock_dir=\"/tmp/home-edge-bootstrap-write.lock\"#lock_dir=\"$rollback_sim/write.lock\"#" \
-  "$runtime_failure_sequence/command.4.log" >"$rollback_sim_script"
-DEPLOY_ROLLBACK_MARKER="$rollback_sim_marker" sh "$rollback_sim_script" \
+  "$runtime_failure_sequence/command.5.log" >"$rollback_sim_script"
+DEPLOY_ROLLBACK_MARKER="$rollback_sim_marker" DEPLOY_ROLLBACK_EXPECTED_DIR="$rollback_sim/jffs/home-edge-bootstrap" sh "$rollback_sim_script" \
   >"$rollback_sim/out" 2>"$rollback_sim/err" ||
   fail "runtime rollback could not replay the previous bootstrap while holding the global write lock"
 [ -f "$rollback_sim_marker" ] ||

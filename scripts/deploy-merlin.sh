@@ -7,7 +7,17 @@ validate_bool() {
   case "$value" in 0|1) ;; *) echo "deploy-merlin: invalid boolean $name=$value; expected 0 or 1" >&2; exit 2 ;; esac
 }
 
-router="${1:-${ROUTER:-}}"
+router=""
+project_only=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --project-only) project_only=1 ;;
+    -*) echo "deploy-merlin: unknown option: $1" >&2; exit 2 ;;
+    *) [ -z "$router" ] || { echo 'deploy-merlin: unexpected router argument' >&2; exit 2; }; router=$1 ;;
+  esac
+  shift
+done
+router="${router:-${ROUTER:-}}"
 if [ -z "$router" ]; then
   echo "usage: sh scripts/deploy-merlin.sh <ssh-user>@<router-ip>" >&2
   echo "       or set ROUTER=<ssh-user>@<router-ip>" >&2
@@ -19,14 +29,22 @@ apply="${APPLY:-0}"
 runtime_install="${BOOTSTRAP_INSTALL_RUNTIME:-0}"
 replace_runtime="${BOOTSTRAP_REPLACE_RUNTIME:-0}"
 replace_core="${BOOTSTRAP_REPLACE_CORE:-0}"
+replace_project="${BOOTSTRAP_REPLACE_PROJECT:-0}"
+project_confirmation="${BOOTSTRAP_PROJECT_CONFIRMATION:-}"
 include_bundle="${INCLUDE_BUNDLE:-0}"
+if [ "$project_only" = 1 ]; then runtime_install=0; replace_runtime=0; replace_core=0; include_bundle=0; fi
 validate_bool APPLY "$apply"
 validate_bool BOOTSTRAP_INSTALL_RUNTIME "$runtime_install"
 validate_bool BOOTSTRAP_REPLACE_RUNTIME "$replace_runtime"
 validate_bool BOOTSTRAP_REPLACE_CORE "$replace_core"
 validate_bool INCLUDE_BUNDLE "$include_bundle"
+validate_bool BOOTSTRAP_REPLACE_PROJECT "$replace_project"
+if [ "$replace_project" = 1 ] || [ -n "$project_confirmation" ]; then
+  [ "$replace_project" = 1 ] && [ "$project_confirmation" = REPLACE ] || { echo "Project replacement requires BOOTSTRAP_REPLACE_PROJECT=1 and BOOTSTRAP_PROJECT_CONFIRMATION=REPLACE" >&2; exit 2; }
+fi
 known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
 ssh_timeout="${SSH_CONNECT_TIMEOUT_SEC:-8}"
+ssh_command="${HOME_EDGE_SSH_COMMAND:-ssh}"
 ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 bundle_dir="${DEPLOY_BUNDLE_DIR:-$repo/bundle}"
@@ -79,6 +97,14 @@ if [ "$runtime_install" = "1" ]; then
   runtime_space_required_kib=$(((runtime_payload_bytes * 2 + 1023) / 1024 + 16384))
 fi
 
+installation_library=$(cat "$repo/adapters/merlin/lib/installation-state.sh") || exit 1
+if installation_output=$(KNOWN_HOSTS_FILE="$known_hosts_file" sh "$repo/scripts/check-project-installation.sh" --remote-dir "$remote_dir" "$router"); then installation_status=0; else installation_status=$?; fi
+printf '%s\n' "$installation_output"
+installation_state=$(printf '%s\n' "$installation_output" | sed -n 's/^project_install_state=//p')
+installation_allowed=$(printf '%s\n' "$installation_output" | sed -n 's/^project_install_replace_allowed=//p')
+replacement_required=0
+case "$installation_state" in installed|partial) replacement_required=1 ;; unknown|'') replacement_required=unknown ;; esac
+
 if [ "$apply" != "1" ]; then
   echo "deploy_state=plan"
   echo "apply_required=1"
@@ -89,8 +115,21 @@ if [ "$apply" != "1" ]; then
   echo "runtime_bundle_transport=$([ "$runtime_install" = "1" ] && echo temporary || echo none)"
   echo "replace_runtime=$replace_runtime"
   echo "replace_core=$replace_core"
-  echo "next_action=rerun with APPLY=1 after reviewing this plan"
-  exit 0
+  echo "replace_project=$replace_project"
+  echo "project_replacement_required=$replacement_required"
+  echo "installation_probe=read_only"
+  echo "project_only=$project_only"
+  if [ "$project_only" = 1 ]; then echo 'runtime_assets_effect=preserve'; echo 'integration_effect=project_managed_configuration_may_change'; fi
+  if [ "$installation_state" = unknown ]; then echo 'next_action=resolve the reported installation observation before deployment'
+  elif [ "$installation_state" != not_installed ] && [ "$installation_allowed" != 1 ]; then echo 'next_action=preserve incomplete artifacts and establish ownership before deployment'
+  elif [ "$replacement_required" = 1 ]; then echo 'next_action=review existing project replacement; require BOOTSTRAP_REPLACE_PROJECT=1 BOOTSTRAP_PROJECT_CONFIRMATION=REPLACE with APPLY=1'
+  else echo 'next_action=rerun with APPLY=1 after reviewing this plan'; fi
+  exit "$installation_status"
+fi
+
+[ "$installation_status" = 0 ] || { echo "deploy_guard_state=unknown_installation" >&2; exit 1; }
+if [ "$installation_state" != not_installed ]; then
+  [ "$installation_allowed" = 1 ] && [ "$replace_project" = 1 ] && [ "$project_confirmation" = REPLACE ] || { echo "deploy_guard_state=replacement_required" >&2; exit 1; }
 fi
 
 mkdir -p "$(dirname "$known_hosts_file")"
@@ -131,7 +170,7 @@ echo "runtime_space_preflight_state=ready"
 '
   runtime_space_preflight=$(printf '%s' "$runtime_space_preflight" |
     sed "s#__REQUIRED_KIB__#$runtime_space_required_kib#g; s#__PAYLOAD_BYTES__#$runtime_payload_bytes#g")
-  ssh $ssh_opts -- "$router" "$runtime_space_preflight" || exit $?
+  "$ssh_command" $ssh_opts -- "$router" "$runtime_space_preflight" || exit $?
 fi
 
 mode="BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0"
@@ -146,6 +185,7 @@ previous="${remote_dir}.prev"
 lock_dir="/tmp/home-edge-bootstrap-write.lock"
 failed_dir="${remote_dir}.failed.$(date +%Y%m%d%H%M%S).$$"
 lock_held=0
+staging_owned=0
 
 for protected_path in "$remote_dir" "$staging" "$previous"; do
   [ ! -L "$protected_path" ] || {
@@ -155,7 +195,7 @@ for protected_path in "$remote_dir" "$staging" "$previous"; do
 done
 
 cleanup_deploy() {
-  rm -rf "$staging" 2>/dev/null || true
+  if [ "$staging_owned" = 1 ]; then rm -rf "$staging" 2>/dev/null || true; fi
   if [ "$lock_held" = "1" ]; then
     rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
     rmdir "$lock_dir" 2>/dev/null || true
@@ -253,7 +293,7 @@ rollback_deploy() {
     cleanup_first_install_active_state
   fi
   if [ -f "$remote_dir/bootstrap.sh" ]; then
-    if ! HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1; then
+    if ! HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="$remote_dir" sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1; then
       echo "deploy-merlin: WARN previous kit was restored but its bootstrap replay failed" >&2
     fi
   fi
@@ -264,8 +304,20 @@ rollback_deploy() {
 }
 
 acquire_deploy_lock
-rm -rf "$staging"
-mkdir -p "$staging"
+__INSTALLATION_LIBRARY__
+HOME_EDGE_INSTALLATION_DIR="$remote_dir"
+HOME_EDGE_INSTALLATION_ROUTER="__ROUTER__"
+HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''
+home_edge_inspect_installation
+home_edge_require_project_replacement "__REPLACE_PROJECT__" "__PROJECT_CONFIRMATION__" || exit 1
+[ ! -e "$staging" ] || { echo "deploy_guard_state=occupied_staging_path" >&2; exit 1; }
+# An unrecognized previous backup remains addressable instead of being deleted.
+if [ -e "$previous" ]; then
+  [ -f "$previous/adapters/merlin/bootstrap.sh" ] && [ ! -L "$previous/adapters" ] && [ ! -L "$previous/adapters/merlin" ] && [ ! -L "$previous/adapters/merlin/bootstrap.sh" ] &&
+    grep -Fq 'Merlin adapter' "$previous/adapters/merlin/bootstrap.sh" || { echo "deploy_guard_state=foreign_previous_backup" >&2; exit 1; }
+fi
+mkdir "$staging"
+staging_owned=1
 tar -xzf - -C "$staging"
 [ -s "$staging/bootstrap.sh" ] || { echo "deploy-merlin: staged kit is incomplete" >&2; exit 1; }
 rm -rf "$previous"
@@ -285,7 +337,7 @@ if [ "$runtime_follows" = "1" ]; then
   echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
   exit 0
 fi
-if ! (cd "$remote_dir" && HOME_EDGE_WRITE_LOCK_HELD=1 __MODE__ sh bootstrap.sh); then
+if ! (cd "$remote_dir" && HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_INSTALL_DIR="$remote_dir" __MODE__ sh bootstrap.sh); then
   rollback_deploy
   echo "deploy-merlin: bootstrap failed; previous kit restored" >&2
   exit 1
@@ -303,7 +355,8 @@ echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 HOME_EDGE_REMOTE_SCRIPT
 )
 remote_script=$(printf '%s' "$remote_script" |
-  sed "s#__REMOTE_DIR__#$remote_dir#g; s#__MODE__#$mode#g; s#__RUNTIME_FOLLOWS__#$runtime_install#g")
+  sed "s#__REMOTE_DIR__#$remote_dir#g; s#__MODE__#$mode#g; s#__RUNTIME_FOLLOWS__#$runtime_install#g; s#__ROUTER__#$router#g; s#__REPLACE_PROJECT__#$replace_project#g; s#__PROJECT_CONFIRMATION__#$project_confirmation#g")
+remote_script="${remote_script%%__INSTALLATION_LIBRARY__*}$installation_library${remote_script#*__INSTALLATION_LIBRARY__}"
 
 # Stage first so provenance hashes the exact bytes sent to the router.
 tmp_parent=${TMPDIR:-/tmp}
@@ -313,7 +366,7 @@ tar -C "$repo" -cf - $archive_items | tar -C "$deploy_stage" -xf -
 sh "$repo/scripts/new-deployment-provenance.sh" "$deploy_stage" "$repo" || exit 1
 [ -s "$deploy_stage/DEPLOYMENT-CONTENT-SHA256SUMS" ] || { echo "deploy-merlin: provenance generation failed" >&2; exit 1; }
 tar -C "$deploy_stage" -czf - . |
-  ssh $ssh_opts -- "$router" "$remote_script" || exit $?
+  "$ssh_command" $ssh_opts -- "$router" "$remote_script" || exit $?
 
 if [ "$runtime_install" = "1" ]; then
   runtime_rollback_script='
@@ -398,7 +451,7 @@ printf "%s\n" runtime-rollback >"$lock_dir/operation"
 if [ -d "$previous" ]; then
   mv "$previous" "$remote_dir"
   if [ -f "$remote_dir/bootstrap.sh" ]; then
-    HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1 || {
+    HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="$remote_dir" sh "$remote_dir/bootstrap.sh" >/dev/null 2>&1 || {
       echo "deploy-merlin: restored control-plane bootstrap replay failed" >&2
       exit 1
     }
@@ -438,6 +491,7 @@ tar -xzf - -C "$runtime_stage"
 (cd "$remote_dir" && \
   BOOTSTRAP_APPLY=1 \
   BOOTSTRAP_INSTALL_RUNTIME=1 \
+  BOOTSTRAP_INSTALL_DIR="$remote_dir" \
   BOOTSTRAP_BUNDLE_HOST_VERIFIED=1 \
   BOOTSTRAP_REPLACE_RUNTIME=__REPLACE_RUNTIME__ \
   BOOTSTRAP_REPLACE_CORE=__REPLACE_CORE__ \
@@ -448,12 +502,12 @@ echo "runtime_deploy_state=applied"
   runtime_script=$(printf '%s' "$runtime_script" |
     sed "s#__REMOTE_DIR__#$remote_dir#g; s#__REPLACE_RUNTIME__#$replace_runtime#g; s#__REPLACE_CORE__#$replace_core#g")
   if tar -C "$bundle_dir" -czf - . |
-    ssh $ssh_opts -- "$router" "$runtime_script"; then
+    "$ssh_command" $ssh_opts -- "$router" "$runtime_script"; then
     :
   else
     runtime_status=$?
     echo "deploy-merlin: runtime stage failed; restoring the prior staged control plane" >&2
-    ssh $ssh_opts -- "$router" "$runtime_rollback_script" || {
+    "$ssh_command" $ssh_opts -- "$router" "$runtime_rollback_script" || {
       echo "deploy-merlin: runtime stage failed and control-plane rollback could not be verified" >&2
       exit 1
     }

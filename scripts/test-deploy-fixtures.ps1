@@ -1,12 +1,27 @@
 param([string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path)
 $ErrorActionPreference = "Stop"
 $Deploy = Join-Path $Repo "scripts\deploy-merlin.ps1"
-$Plan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router 2>&1 | Out-String
-if ($LASTEXITCODE -ne 0 -or $Plan -notmatch 'deploy_state=plan') { throw "PowerShell deploy plan failed" }
 $FixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("home-edge-deploy-ps-" + [guid]::NewGuid().ToString("N"))
 $FixtureBundle = Join-Path $FixtureRoot "bundle"
 $PreviousBundleDir = $env:DEPLOY_BUNDLE_DIR
+$PreviousSsh = $env:HOME_EDGE_SSH_COMMAND
 try {
+  New-Item -ItemType Directory -Path $FixtureRoot | Out-Null
+  $ProbeStub = Join-Path $FixtureRoot 'ssh.ps1'
+  @'
+$null = $input | Out-String
+Write-Output 'project_install_schema=1'
+Write-Output 'project_install_router=user@router'
+Write-Output 'project_install_state=not_installed'
+Write-Output 'project_install_reason=no_project_artifacts'
+Write-Output 'project_install_path=/jffs/home-edge-bootstrap'
+Write-Output 'project_install_replace_allowed=0'
+$global:LASTEXITCODE = 0
+'@ | Set-Content -LiteralPath $ProbeStub -Encoding ASCII
+  $env:HOME_EDGE_SSH_COMMAND = $ProbeStub
+  $KnownHosts = Join-Path $FixtureRoot 'known_hosts'
+  $Plan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0 -or $Plan -notmatch 'deploy_state=plan' -or $Plan -notmatch 'installation_probe=read_only') { throw "PowerShell read-only deploy plan failed" }
   New-Item -ItemType Directory -Force -Path $FixtureBundle | Out-Null
   [System.IO.File]::WriteAllBytes(
     (Join-Path $FixtureBundle "mihomo-linux-arm64"),
@@ -20,11 +35,12 @@ try {
   }
   Set-Content -LiteralPath (Join-Path $FixtureBundle "SHA256SUMS") -Value $ChecksumLines
   $env:DEPLOY_BUNDLE_DIR = $FixtureBundle
-  $RuntimePlan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -InstallRuntime 2>&1 | Out-String
+  $RuntimePlan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -InstallRuntime 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0 -or $RuntimePlan -notmatch '(?m)^include_bundle=0\r?$') { throw "PowerShell runtime plan persists the bundle in JFFS" }
   if ($RuntimePlan -notmatch '(?m)^runtime_bundle_transport=temporary\r?$') { throw "PowerShell runtime plan does not disclose temporary bundle transport" }
 } finally {
   $env:DEPLOY_BUNDLE_DIR = $PreviousBundleDir
+  $env:HOME_EDGE_SSH_COMMAND = $PreviousSsh
   Remove-Item -LiteralPath $FixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 $Source = Get-Content -LiteralPath $Deploy -Raw
@@ -66,8 +82,11 @@ if ($Source -notmatch 'RuntimeRollbackRemote') { throw "PowerShell deploy does n
 if ($Source -notmatch '(?s)\$RuntimeRollbackTemplate\s*=\s*@''.*cleanup_first_install_active_state') {
   throw "PowerShell runtime-failure rollback does not clean first-install active surfaces"
 }
-if ($Source -notmatch '(?s)\$RuntimeRollbackTemplate\s*=\s*@''.*HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh "\$remote_dir/bootstrap\.sh"') {
+if ($Source -notmatch '(?s)\$RuntimeRollbackTemplate\s*=\s*@''.*HOME_EDGE_WRITE_LOCK_HELD=1 BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 BOOTSTRAP_INSTALL_DIR="\$remote_dir" sh "\$remote_dir/bootstrap\.sh"') {
   throw "PowerShell runtime-failure rollback does not replay the restored control plane"
+}
+if ($Source -notmatch '(?s)\$RuntimeTemplate\s*=\s*@''.*BOOTSTRAP_INSTALL_RUNTIME=1\s+\\\s+BOOTSTRAP_INSTALL_DIR="\$remote_dir"') {
+  throw 'PowerShell runtime activation lost its custom installation target'
 }
 if ($Source -notmatch 'RuntimePayloadBytes \* 2') { throw "PowerShell deploy does not derive conservative space from host bundle size" }
 if ($Source -notmatch 'LC_ALL=C df -k /tmp') { throw "PowerShell deploy lacks portable remote /tmp space inspection" }

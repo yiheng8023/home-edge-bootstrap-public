@@ -93,6 +93,7 @@ echo 'python3_runtime_state=ready'
 
 for fixture in \
   test-host-ssh-fixtures.sh \
+  test-project-installation-fixtures.sh \
   test-self-heal-fixtures.sh \
   test-shellcrash-dns-fixtures.sh \
   test-shellcrash-data-fixtures.sh \

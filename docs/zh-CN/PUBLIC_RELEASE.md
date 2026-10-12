@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.6` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.7` 对应：
 
-- `home-edge-bootstrap-v0.1.6-source.zip`
-- `home-edge-bootstrap-v0.1.6-source.tar.gz`
-- `home-edge-bootstrap-v0.1.6-offline.zip`
-- `home-edge-bootstrap-v0.1.6-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.7-source.zip`
+- `home-edge-bootstrap-v0.1.7-source.tar.gz`
+- `home-edge-bootstrap-v0.1.7-offline.zip`
+- `home-edge-bootstrap-v0.1.7-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -97,6 +97,21 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## v0.1.7 有限验收合同
+
+v0.1.7 在既有个人／可信分发的有限范围交付当前源码与不变的已审阅运行时。发布必须满足：
+
+- 保留全部旧标签、资产及历史发布章节，新建九项已验证且精确标签正确的 v0.1.7 资产。
+- 通过精确提交的 Linux、macOS、Windows 和 subscription-behavior 门禁，再核验匹配的具体归档及中英文渲染链接。
+- 验证本机帮助／会话语言切换、新的路由器／路径观测、已有项目诊断／复用、正面不存在才允许首装、拒绝未知／外来／链接、`REPLACE` 后再 `APPLY` 刷新及持锁所有权复核。
+- 验证相同目标／当前缓存／正确桌面指向的复用、自有更新两次确认、无所有权内容保护，以及事件边界的已知结构／目录／工具退化；帮助／语言／退出继续可用。
+- 仅项目刷新保留运行时／core 载荷，并披露可能的受管集成／配置变化。仅替换运行时保留已有 core，除非另行明确选择。不得声称完整运行时回滚或穷尽未知故障检测。
+- 按已审阅锁重新校验不变的 Mihomo v1.19.32／ShellCrash 1.9.4 载荷和完整源码；保留许可证、SPDX、校验和、manifest、二进制元数据、安全审查及 v32 三控制源码回归边界。
+- 保留仅源码 yamlbridge 的准备与显式启用前提、缺少维护者签名／可复现构建证据、TUN 采用注意事项和广泛声明上限。
+- 发布后匿名核验 README、Release 页面、校验和、manifest 及一个源码包下载。
+
+本次不包含真实路由器访问、部署、重启、随包 core 执行或原生 GUI 现场验收。通用、宿主与设备观测分别成立；Merlin 是唯一已实现的真实设备参考。既有私有现场观测保留为历史证据。
 
 ## v0.1.6 有限验收合同
 

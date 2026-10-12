@@ -70,7 +70,7 @@ mkdir -p \
   "$fixture_bundle" \
   "$fixture_payload/libs" \
   "$fixture_payload/starts"
-cp "$repo/adapters/merlin/bootstrap.sh" "$fixture_kit/adapters/merlin/bootstrap.sh"
+cp "${MERLIN_ADAPTER_FIXTURE_SOURCE:-$repo/adapters/merlin/bootstrap.sh}" "$fixture_kit/adapters/merlin/bootstrap.sh"
 cp "$repo/config/policy.env" "$fixture_kit/config/policy.env"
 cp "$repo/scripts/self-heal.sh" "$fixture_kit/scripts/self-heal.sh"
 cp "$repo/scripts/update-sub.sh" "$fixture_kit/scripts/update-sub.sh"
@@ -273,13 +273,15 @@ grep -Fq 'command.env contains unsupported statements' "$tmp/command-env-attack.
 
 printf 'custom-nat-start\n' >"$core/jffs/scripts/nat-start"
 printf 'old-core\n' >"$core/jffs/ShellCrash/CrashCore.gz"
+cp "$core/jffs/ShellCrash/CrashCore.gz" "$tmp/operator-core.expected"
 mkdir -p "$core/jffs/home-edge-bootstrap/backups/runtime/ShellCrash.20000101000000.1" "$core/jffs/home-edge-bootstrap/backups/runtime/ShellCrash.20000101000001.1"
 printf 'old-a\n' >"$core/jffs/home-edge-bootstrap/backups/runtime/CrashCore.20000101000000.1.gz"
 printf 'old-b\n' >"$core/jffs/home-edge-bootstrap/backups/runtime/CrashCore.20000101000001.1.gz"
 printf 'old-a\n' >"$core/jffs/home-edge-bootstrap/backups/runtime/nat-start.20000101000000.1"
 printf 'old-b\n' >"$core/jffs/home-edge-bootstrap/backups/runtime/nat-start.20000101000001.1"
 sleep 1
-if ! BOOTSTRAP_JFFS_DIR="$core/jffs" \
+run_core_fixture() {
+BOOTSTRAP_JFFS_DIR="$core/jffs" \
 BOOTSTRAP_INSTALL_DIR="$core/jffs/home-edge-bootstrap" \
 BOOTSTRAP_SCRIPT_DIR="$core/jffs/scripts" \
 BOOTSTRAP_SHELLCRASH_DIR="$core/jffs/ShellCrash" \
@@ -289,6 +291,7 @@ BOOTSTRAP_INSTALL_RUNTIME=1 \
 BOOTSTRAP_BUNDLE_DIR="$fixture_bundle" \
 BOOTSTRAP_RUNTIME_MAX_BACKUPS=1 \
 BOOTSTRAP_REPLACE_RUNTIME=1 \
+BOOTSTRAP_REPLACE_CORE="$1" \
 BOOTSTRAP_RUNTIME_INIT_FIXTURE=1 \
 BOOTSTRAP_ARCH_OVERRIDE=aarch64 \
 BOOTSTRAP_BUNDLE_HOST_VERIFIED=1 \
@@ -299,10 +302,18 @@ PATH="$fixture_kit/bin:$fakebin:$PATH" \
 HEAL_POLICY_FILE="$fixture_kit/config/policy.env" \
 HEAL_LOG="$core/self-heal.log" \
 HEAL_API_CACHE="$core/self-heal.api" \
-sh "$fixture_kit/adapters/merlin/bootstrap.sh" >"$tmp/core.out" 2>"$tmp/core.err"; then
+sh "$fixture_kit/adapters/merlin/bootstrap.sh" >"$tmp/core.out" 2>"$tmp/core.err"
+}
+if ! run_core_fixture 0; then
+  cat "$tmp/core.err" >&2
+  fail "independent runtime replacement fixture failed"
+fi
+cmp -s "$tmp/operator-core.expected" "$core/jffs/ShellCrash/CrashCore.gz" || fail "runtime replacement changed user core without explicit core permission"
+cmp -s "$tmp/operator-core.expected" "$core/jffs/home-edge-bootstrap-state/runtime/mihomo-linux-arm64.gz" || fail "runtime replacement protected a different core"
+if ! run_core_fixture 1; then
   cat "$tmp/core.out" >&2
   cat "$tmp/core.err" >&2
-  fail "runtime replacement fixture failed"
+  fail "explicit runtime and core replacement fixture failed"
 fi
 
 grep -qx -- '-s' "$fixture_uname_log" || fail "synthetic verifier uname -s override was not used"

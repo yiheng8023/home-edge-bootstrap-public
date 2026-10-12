@@ -6,6 +6,8 @@ router=${ROUTER:-}
 session_dir=""
 max_loops=20
 apply_deploy=0
+replace_project=0
+project_confirmation=""
 enable_live_self_heal=0
 accept_runtime_imported_subscription=0
 accept_client_runtime=0
@@ -17,6 +19,8 @@ no_pause=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --apply-deploy) apply_deploy=1 ;;
+    --replace-project) replace_project=1 ;;
+    --project-confirmation) shift; [ $# -gt 0 ] || exit 2; project_confirmation=$1 ;;
     --enable-live-self-heal) enable_live_self_heal=1 ;;
     --accept-runtime-imported-subscription) accept_runtime_imported_subscription=1 ;;
     --accept-client-runtime) accept_client_runtime=1 ;;
@@ -47,6 +51,10 @@ done
 
 [ -n "$router" ] || { echo "Router is required. Pass <ssh-user>@<router-ip> or set ROUTER." >&2; exit 2; }
 case "$max_loops" in ''|*[!0-9]*) echo "--max-loops must be numeric" >&2; exit 2 ;; esac
+
+if [ "$replace_project" = 1 ] || [ -n "$project_confirmation" ]; then
+  [ "$apply_deploy" = 1 ] && [ "$replace_project" = 1 ] && [ "$project_confirmation" = REPLACE ] || { echo "Project replacement requires --apply-deploy --replace-project --project-confirmation REPLACE" >&2; exit 2; }
+fi
 
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 router_id=$(printf '%s' "$router" | sed 's/[^A-Za-z0-9_.-]/_/g')
@@ -287,7 +295,11 @@ while [ "$loop" -le "$max_loops" ]; do
       ;;
     deploy_plan)
       if [ "$apply_deploy" -eq 1 ]; then
-        run_step deploy-apply env APPLY=1 KNOWN_HOSTS_FILE="$known_hosts_file" sh "$repo/scripts/deploy-merlin.sh" "$router" || exit 1
+        if [ "$replace_project" = 1 ]; then
+          run_step deploy-apply env APPLY=1 BOOTSTRAP_REPLACE_PROJECT=1 BOOTSTRAP_PROJECT_CONFIRMATION="$project_confirmation" KNOWN_HOSTS_FILE="$known_hosts_file" sh "$repo/scripts/deploy-merlin.sh" "$router" || exit 1
+        else
+          run_step deploy-apply env -u BOOTSTRAP_REPLACE_PROJECT -u BOOTSTRAP_PROJECT_CONFIRMATION APPLY=1 KNOWN_HOSTS_FILE="$known_hosts_file" sh "$repo/scripts/deploy-merlin.sh" "$router" || exit 1
+        fi
       else
         log_msg INFO "deploy_ready apply_required=1"
         wait_or_return "$code" "sh scripts/run-bootstrap.sh --apply-deploy \"$router\"" "Deployment is ready. Rerun with --apply-deploy after reviewing the guide output, or deploy manually and continue." || exit 0

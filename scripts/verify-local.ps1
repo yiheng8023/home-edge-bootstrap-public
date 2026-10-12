@@ -72,6 +72,7 @@ Write-Host "python3_runtime_state=ready"
 
 $RequiredPowerShellFixtures = @(
   "test-host-ssh-fixtures.ps1",
+  "test-project-installation-fixtures.ps1",
   "test-client-topology-fixtures.ps1",
   "test-installation-closeout-client-fixtures.ps1",
   "test-edge-health-fixtures.ps1",
@@ -92,6 +93,7 @@ foreach ($Fixture in $RequiredPowerShellFixtures) { Run-RequiredPowerShellFixtur
 if ($HasSh) {
   $RequiredShellFixtures = @(
     "test-host-ssh-fixtures.sh",
+    "test-project-installation-fixtures.sh",
     "test-self-heal-fixtures.sh",
     "test-shellcrash-dns-fixtures.sh",
     "test-shellcrash-data-fixtures.sh",

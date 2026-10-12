@@ -78,7 +78,20 @@ try {
   $ViaLink = Invoke-Entry $Link.TargetPath "-Version"
   if ($ViaLink.Code -ne 0 -or $ViaLink.Text -notmatch "home-edge-bootstrap vfixture") { throw "Registered entry cannot validate and launch its project" }
   $Again = Invoke-Entry $Helper $InstallArguments
-  if ($Again.Code -ne 0) { throw "Existing project shortcut cannot be refreshed" }
+  if ($Again.Code -ne 0 -or $Again.Text -notmatch "shortcut_state=reused") { throw "Same target should reuse its registration" }
+  $SavedTarget = [IO.File]::ReadAllText((Join-Path $Installed "target.txt"))
+  $SecondCopy = Join-Path $Base "another project copy"
+  Copy-Item -LiteralPath $Copy -Destination $SecondCopy -Recurse
+  $SecondHelper = Join-Path $SecondCopy "scripts\create-desktop-shortcut.ps1"
+  foreach ($InputText in @("", "REPLACE`n", "REPLACE`napply`n")) {
+    $Rejected = Invoke-Entry $SecondHelper $InstallArguments $InputText
+    if ($Rejected.Code -ne 0 -or $Rejected.Text -notmatch "shortcut_state=cancelled" -or
+        [IO.File]::ReadAllText((Join-Path $Installed "target.txt")) -cne $SavedTarget) { throw "Retarget cancellation changed registration" }
+  }
+  $Retargeted = Invoke-Entry $SecondHelper $InstallArguments "REPLACE`nAPPLY`n"
+  if ($Retargeted.Code -ne 0 -or [IO.File]::ReadAllLines((Join-Path $Installed "target.txt"))[1] -ne $SecondCopy) { throw "Explicit two-token retarget did not use selected copy" }
+  $RestoredTarget = Invoke-Entry $Helper $InstallArguments "REPLACE`nAPPLY`n"
+  if ($RestoredTarget.Code -ne 0 -or [IO.File]::ReadAllLines((Join-Path $Installed "target.txt"))[1] -ne $Copy) { throw "Explicit restore did not rebind original copy" }
   $Moved = Join-Path $Base "moved project copy"
   Move-Item -LiteralPath $Copy -Destination $Moved
   $Stale = Invoke-Entry $Link.TargetPath "-Version"

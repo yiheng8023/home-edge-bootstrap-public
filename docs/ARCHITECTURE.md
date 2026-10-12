@@ -28,6 +28,8 @@ implementation; this is progressive isolation, not a claim that all adapters alr
 See [Launcher and recovery contract](LAUNCHER.md) for conditions, instance binding and host evidence.
 
 
+The TUI exposes local bilingual help and a session-only language switch independently of device operations. Installation observation binds a fresh router/path inventory, not historical logs or runtime presence. Existing project content defaults to diagnosis/reuse; only explicit `R` followed by `REPLACE` and `APPLY` authorizes a project refresh, rechecked under the writer lock. Project-only scope excludes runtime/core assets while allowing managed integration/config changes. Event-driven structure, physical identity and tool checks run at menu/action boundaries and around important work; they preserve help/language/exit under known degradation and are not a background fault detector.
+
 | Layer | Artifact | Portability | Notes |
 |---|---|---|---|
 | Policy | `config/policy.env`, `config/mihomo-overlay.yaml` | High | Region-neutral by default; provider-name tolerant with optional site-local candidate and region constraints |

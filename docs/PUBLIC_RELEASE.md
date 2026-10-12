@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.6`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.7`, they are:
 
-- `home-edge-bootstrap-v0.1.6-source.zip`
-- `home-edge-bootstrap-v0.1.6-source.tar.gz`
-- `home-edge-bootstrap-v0.1.6-offline.zip`
-- `home-edge-bootstrap-v0.1.6-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.7-source.zip`
+- `home-edge-bootstrap-v0.1.7-source.tar.gz`
+- `home-edge-bootstrap-v0.1.7-offline.zip`
+- `home-edge-bootstrap-v0.1.7-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -109,6 +109,21 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 `--version` selects the release tag against which repository links are validated. They are normally
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
+
+## v0.1.7 Limited Acceptance Contract
+
+v0.1.7 carries the current source and unchanged reviewed runtime within the existing limited personal/trusted-distribution scope. Publication requires:
+
+- Preserve every older tag, asset and historical release section; create nine newly verified and exactly labeled v0.1.7 assets.
+- Pass exact-commit Linux, macOS, Windows and subscription-behavior gates, then verify the matching concrete archives and bilingual rendered links.
+- Verify local help/session language switching, fresh router/path observation, existing-project diagnosis/reuse, positive-absence first-install gating, unknown/foreign/link refusal, `REPLACE` then `APPLY` refresh and writer-lock ownership rechecks.
+- Verify same-target/current-cache/correct-pointer desktop reuse, two-confirmation owned updates, unowned-content protection and known structure/directory/tool degradation at event boundaries; help/language/exit remain available.
+- Preserve runtime/core assets during project-only refresh while disclosing possible managed integration/configuration changes. Runtime-only replacement preserves the existing core unless independently explicit. Do not claim complete runtime rollback or exhaustive unknown-fault detection.
+- Rehash unchanged Mihomo v1.19.32/ShellCrash 1.9.4 payloads and complete sources against reviewed locks; retain licenses, SPDX, checksums, manifest, binary metadata, security review and v32 three-control source-regression boundaries.
+- Retain source-only yamlbridge preparation and explicit activation prerequisites, missing maintainer-signature/reproducible-build evidence, TUN adoption considerations and the broad-claim ceiling.
+- Verify anonymous README, Release page, checksum, manifest and one source-package download after publication.
+
+No live router access, deployment, restart, shipped-core execution or native GUI field acceptance is part of this release. Common, host and device observations remain distinct; Merlin is the only implemented real-device reference. Existing private field observations remain historical.
 
 ## v0.1.6 Limited Acceptance Contract
 
