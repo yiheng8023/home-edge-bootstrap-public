@@ -20,6 +20,12 @@
 内容、宿主机平台执行证据，以及发布专用 SBOM 与清单。这些检查针对具体发布物，不能由源码树
 就绪替代。
 
+## v0.1.11 有限分发合同
+
+当前发布门禁见 [v0.1.11 公开验收合同](PUBLIC_RELEASE.md#v0111-有限验收合同)。Linux／macOS／Windows／subscription CI 必须精确绑定最终提交，并核验匹配的具体九资产、标签、摘要及双语发行链接。部署、源码检查、归档验证与发布仍是分别成立的证据。
+
+同时核验[服务路由](SERVICE_ROUTING.md)中的每服务所有权、PLAN／APPLY 安装器、受控 reload 绑定、仅工具刷新保留边界及跨平台 fixture。明确保留 `frontend_only`、缺少认证 canary 和 controller 不具备原子 CAS 的限制。后端路线对齐后的单例 Gemini 浏览器人工生成成功，不构成自动账号／生成检测或广泛服务商／设备验收。离线 Mihomo v1.19.32、ShellCrash 1.9.4 锁保持不变；支持 v1.19.34 控制绑定不授权升级离线 core。保留下文历史合同。
+
 ## v0.1.9 有限分发合同
 
 Linux、macOS、Windows 与 subscription-behavior CI 必须精确绑定新源码提交，再验证公开九资产具体交付和双语发行链接。保留既有宿主、安装所有权、两次确认刷新、入口元数据、仅源码 parser、许可及固定运行时门禁。

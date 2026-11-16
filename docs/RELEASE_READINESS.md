@@ -21,6 +21,12 @@ data, third-party license materials, archive-content review, host-platform execu
 release-specific SBOM and manifest. Those checks apply to the concrete artifact, not to source-tree
 readiness alone.
 
+## v0.1.11 limited distribution contract
+
+The current publication gate is the [v0.1.11 public acceptance contract](PUBLIC_RELEASE.md#v0111-limited-acceptance-contract). Require exact-final-commit Linux/macOS/Windows/subscription CI and the matching concrete nine assets, labels, hashes and bilingual release links. Deployment, source checks, archive verification and publication remain separate evidence.
+
+Also verify the per-service ownership, PLAN/APPLY installer, controlled-reload binding, tools-only preservation and cross-platform fixture boundaries in [Service routing](SERVICE_ROUTING.md). Keep `frontend_only`, the absence of an authenticated canary and the controller's lack of atomic CAS explicit. The single manual Gemini browser-generation success after backend alignment does not establish automatic account/generation detection or broad provider/device acceptance. Offline Mihomo v1.19.32 and ShellCrash 1.9.4 locks remain unchanged; control-binding support for v1.19.34 does not authorize an offline-core upgrade. Preserve the historical contracts below.
+
 ## v0.1.9 limited distribution contract
 
 Require the exact new source commit across Linux, macOS, Windows and subscription-behavior CI, then verify the concrete public nine-asset set and bilingual release links. Retain all prior host, installation ownership, twice-confirmed refresh, entry metadata, source-only parser, licensing and locked-runtime gates.

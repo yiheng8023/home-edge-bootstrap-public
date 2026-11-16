@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.10`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.11`, they are:
 
-- `home-edge-bootstrap-v0.1.10-source.zip`
-- `home-edge-bootstrap-v0.1.10-source.tar.gz`
-- `home-edge-bootstrap-v0.1.10-offline.zip`
-- `home-edge-bootstrap-v0.1.10-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.11-source.zip`
+- `home-edge-bootstrap-v0.1.11-source.tar.gz`
+- `home-edge-bootstrap-v0.1.11-offline.zip`
+- `home-edge-bootstrap-v0.1.11-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -109,6 +109,16 @@ The renderer's `--source-ref` selects the reviewed commit/tag containing the Rel
 `--version` selects the release tag against which repository links are validated. They are normally
 the same new tag. A correction to an existing body must explicitly name a later reviewed
 `--source-ref`; it must not imply that old assets contain later fixes.
+
+## v0.1.11 Limited Acceptance Contract
+
+Retain v0.1.10 and earlier gates. Bind Linux, macOS, Windows and subscription-behavior CI to the final public source commit, then verify its concrete nine-asset set, labels, checksums and bilingual release links. Native deployment, source CI, archive verification and publication receipts are separate evidence; this document does not establish any of them.
+
+Verify the policy and driver/observer boundaries in [Service routing](SERVICE_ROUTING.md): per-service ownership, preservation of unrelated routes, unknown/manual/capability degradation and isolated-core cancellation/cleanup. For automatic Mihomo control, require the v1.19.34 inline-only controlled-reload binding, fresh configuration observations and continuous instance identity. Missing or drifted bindings, external reloads and proxy-provider targets do not authorize selection. The controller uses guarded reads, without atomic CAS.
+
+Verify that the host installer defaults to PLAN with Gemini as the only selected profile and requires explicit APPLY; other profiles require explicit selection. Verify parser hashes, native capability checks and one tools recovery generation. Tools-only refresh must preserve routes and opaque node names. Require native Windows temp-alias/jq-launcher and macOS Bash 3.2 fixture coverage without weakening production ownership checks. Unknown or failed effects retain their receipts rather than authorize replay.
+
+Keep the `frontend_only` probe scope and absence of an authenticated canary explicit. The single reference-site manual browser success after Gemini web-backend alignment is separate from automatic account/generation detection. No universal device, provider or security acceptance follows. The offline Mihomo v1.19.32 and ShellCrash 1.9.4 payload/source/license locks remain unchanged; v1.19.34 control-binding support does not authorize upgrading the offline core. Preserve all older release sections, tags and assets.
 
 ## v0.1.10 Limited Acceptance Contract
 

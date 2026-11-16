@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.10` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.11` 对应：
 
-- `home-edge-bootstrap-v0.1.10-source.zip`
-- `home-edge-bootstrap-v0.1.10-source.tar.gz`
-- `home-edge-bootstrap-v0.1.10-offline.zip`
-- `home-edge-bootstrap-v0.1.10-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.11-source.zip`
+- `home-edge-bootstrap-v0.1.11-source.tar.gz`
+- `home-edge-bootstrap-v0.1.11-offline.zip`
+- `home-edge-bootstrap-v0.1.11-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -97,6 +97,16 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 生成器的 `--source-ref` 选择包含 Release 正文的已审阅提交/tag，`--version` 选择用于校验
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
+
+## v0.1.11 有限验收合同
+
+保留 v0.1.10 及更早门禁。Linux、macOS、Windows 与 subscription-behavior CI 必须绑定最终公开源码提交，再核验其具体九资产、标签、摘要及双语发行链接。原生部署、源码 CI、归档验证与发布收据分别成立；本文不构成其中任何一项证据。
+
+核验[服务路由](SERVICE_ROUTING.md)中的策略与 driver／observer 边界：每服务所有权、保留无关路线、unknown／manual／能力降级及隔离 core 的取消与清理。自动 Mihomo 控制必须具备 v1.19.34 inline-only 受控 reload 绑定、新的配置观测与持续实例身份。绑定缺失或漂移、外部 reload 以及 proxy-provider 目标均不授权选择。controller 采用守卫读取，不具备原子 CAS。
+
+核验宿主安装器默认 PLAN 且默认仅选择 Gemini，须显式 APPLY，并支持显式选择其他 profile。验证 parser 摘要、原生能力检查和一代 tools 恢复材料。仅工具刷新须保留路线及不透明节点名称。原生 Windows 临时目录短名／jq launcher 与 macOS Bash 3.2 fixture 必须覆盖，且不得放宽生产所有权检查。未知或失败效果保留收据，不据此授权重放。
+
+明确保留 `frontend_only` 探测范围与缺少认证 canary 的限制。Gemini 网页后端路线对齐后，单个参考现场浏览器人工成功不等于自动账号／生成检测。不能推导通用设备、服务商或安全验收。离线 Mihomo v1.19.32、ShellCrash 1.9.4 载荷／源码／许可锁保持不变；支持 v1.19.34 控制绑定不授权升级离线 core。保留全部旧发行章节、标签与资产。
 
 ## v0.1.10 有限验收合同
 

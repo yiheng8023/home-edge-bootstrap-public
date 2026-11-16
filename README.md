@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-This guide targets v0.1.10. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
+This guide targets v0.1.11. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
 
 ## First use: obtain the project, open the guide, keep an entry
 
@@ -10,8 +10,8 @@ This guide targets v0.1.10. Download links require its published release; clone 
 
 | Your situation | Choose | Complete flow |
 |---|---|---|
-| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
-| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
+| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.11) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
+| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.11) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
 | Git already available; keep a local repository | Git clone | Use the commands below to choose a known location → open the same entry in that clone; no second project download is required |
 | Complete extracted folder or clone already present | Reuse that folder | Skip acquisition and continue at “Open and validate the project location” below; keep different copies separate |
 | Local desktop entry already created | Reuse the desktop entry | Open `Home Edge Bootstrap` → entry revalidates its registered folder, or asks you to select and validate a replacement → choose **1** to resume |
@@ -27,9 +27,9 @@ You do not need Git to use a release package, complete existing folder or deskto
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
-| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.zip) | Double-click `start.cmd` |
-| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | Double-click `start.command` |
-| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
 
 Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
 
@@ -53,7 +53,7 @@ Windows PowerShell:
 $GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($GitCommand) {
   $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-  & $GitCommand.Source clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  & $GitCommand.Source clone --branch v0.1.11 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
   if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") -Language en }
 } else {
   Write-Host "Git was not found; use the release-package route above."
@@ -64,11 +64,11 @@ macOS / Linux:
 
 ```sh
 project_dir="$HOME/home-edge-bootstrap"
-git clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+git clone --branch v0.1.11 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
   sh "$project_dir/start.sh" --lang en
 ```
 
-The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.10` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
+The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.11` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
 
 ### Keep an entry for later
 
@@ -93,7 +93,7 @@ Reported project/directory/tool degradation blocks affected actions while help, 
 Shortest path: [Quick start](QUICKSTART.md).
 
 Release downloads: [GitHub Releases](https://github.com/yiheng8023/home-edge-bootstrap-public/releases) ·
-[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) ·
+[what to download](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.11) ·
 [release contract](docs/PUBLIC_RELEASE.md).
 
 Home Edge Bootstrap is a capability-driven bootstrap, recovery, and resilience framework for home
@@ -144,6 +144,8 @@ flowchart TB
 Opening the guide does not deploy the router. Local help works without a router; selected diagnosis may contact it. Device writes use the operation's exact confirmation token. Automation runs only under its own enabled policy. The diagram describes responsibilities: some existing deploy, rollback and self-heal paths still contain Merlin integration; it does not claim complete adapter isolation or support for unimplemented devices. See [architecture](docs/ARCHITECTURE.md) and [launcher and recovery](docs/LAUNCHER.md).
 
 ## Automatic management and manual choices
+
+v0.1.11 adds [semantic service health](docs/SERVICE_ROUTING.md) with a shared product-independent policy and a read-only HTTP/S proxy observer. The separate Mihomo/Merlin control adapter preserves manual choices, defaults to Gemini only, and needs explicit auto settings plus a verified loaded binding. Anonymous login/challenge/rate-limit results remain unknown and do not trigger failover; one signed-in manual reply test does not certify automatic account or generation checks.
 
 Subscription refresh and route self-heal have separate authority. Refresh validates node changes, preserves the selected nodes, and cancels when those choices change during preparation; it does not decide which node is best for an application. A latency result or an `[AI]` label is not an application-availability guarantee.
 
@@ -434,7 +436,7 @@ activation and limits. This source feature is not retroactively present in the
 already published v0.1.4 download archives. Site results and offline fixture results
 are distinct; they do not establish broad firmware/provider support.
 
-v0.1.10 includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
+v0.1.11 includes this source and helpers, with Mihomo v1.19.32 in the offline runtime package.
 Node-only subscription automation still needs host compilation of yamlbridge through a trusted network
 or prepared module cache; no prebuilt parser is included. HTTPS subscription, controller key, local
 group filters and explicit site activation are separate prerequisites. See [release notes](docs/RELEASE_NOTES.md).

@@ -2,6 +2,46 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.11 (2026-11-17)
+
+Source verification, release assets and deployment on a specific device have separate evidence. Download links identify assets; they do not certify your own router or account. Older releases and assets are unchanged.
+
+v0.1.11 adds bounded semantic service health, with a product-independent `internal/healthpolicy` used by the runtime driver and the standard HTTP/S proxy observer. Observation without named-egress/control capabilities remains read-only. The separate Mihomo/Merlin path preserves manual choices, defaults to the Gemini profile only, and requires explicit service-auto plus engine-auto settings; unrelated vendor routes are retained. Host entries can build/verify/install the extended parser independently of subscription automation, defaulting to PLAN with an explicit APPLY boundary and one owned previous-tools generation.
+
+Automatic control additionally requires a controlled-reload `loaded_binding_file` receipt for **Mihomo v1.19.34 inline instances**, binding file/core identity, `GET /configs` and instance continuity. Missing or changed evidence degrades to observe-only/unknown; restart or external reload requires controlled rebind. Proxy providers do not authorize this automatic path; rule providers remain allowed under static-target/ownership checks. Instance IDs are not node-parameter hashes, and the controller still provides no atomic compare-and-set guarantee.
+
+Anonymous sign-in, challenge, rate-limit, hidden/template ambiguity and incomplete-response cases do not initiate failover. `frontend_only` evidence does not prove account eligibility or generation, and no authenticated canary is implemented. At one reference site, a signed-in browser could load history but not send messages while its web backend used another route; adding the exact Gemini backend rule restored replies in a user-performed check with the local client stopped. Anonymous probes on both routes still returned HTTP 200 sign-in pages, classified as unknown/authentication_required; that manual result does not certify automatic account-aware detection. FlClash is only an example of client-side priority; no additional router control kit is claimed.
+
+Runtime payload pins and source/license locks are unchanged: the offline package still carries Mihomo v1.19.32 and ShellCrash 1.9.4. A v0.1.11 helper does not upgrade that core or confer v1.19.34 binding support on it. Native results, cloud CI, concrete archives and final release receipts must be reported separately; broad support/security claims remain blocked.
+
+See [service routing and health](SERVICE_ROUTING.md) for capabilities, control prerequisites and observation limits.
+
+Public source packages/clones omit offline runtime payloads: use source with an existing runtime, or offline for fresh offline runtime preparation. Choose one package for the operator OS plus `SHA256SUMS`, verify, extract completely and reuse the normal launcher. Manifest, SBOM and complete corresponding-source assets are audit/source-availability material, not extra installation parts; GitHub automatic Source code archives are not the contracted packages.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.11-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.11-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.11-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.11-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.11-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.11-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.11-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.11-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.10 (2026-10-13)
 
 README now includes a bilingual Mermaid system overview that separates the operator computer, supported router, managed scripts and external runtime; it distinguishes the control workflow from the network path.

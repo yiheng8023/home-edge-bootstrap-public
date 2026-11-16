@@ -2,6 +2,46 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.11（2026-11-17）
+
+源码验证、发行资产及具体设备部署分别提供证据。下载链接标识资产，不为你的路由器或账号作可用性证明。旧发布与资产保持原样。
+
+v0.1.11 增加受限语义服务健康流程：运行时驱动与标准 HTTP/S 代理观察器使用同一产品中立 `internal/healthpolicy`。缺少具名出口／控制能力时保持只读。独立 Mihomo/梅林路径保留手动选择，默认仅选择 Gemini，须显式启用服务 auto 和引擎 auto；其他服务的现有分流保持。主机入口可独立于订阅自动化构建／验证／安装扩展解析工具，默认 PLAN，显式 APPLY 才应用，并保留一代自有旧工具。
+
+自动控制还须有 **Mihomo v1.19.34 inline 实例**的受控重载 `loaded_binding_file` 回执，绑定文件／core 身份、`GET /configs` 与实例连续性。证据缺失或改变时降为 observe-only／unknown；重启或外部 reload 后须受控 rebind。proxy providers 不为该自动流程授权；rule providers 可在静态目标／所有权检查通过时使用。实例 ID 不是节点参数哈希，controller 仍无原子比较交换保证。
+
+匿名登录、挑战、限流、隐藏／模板歧义和响应不完整不触发故障切换。`frontend_only` 不证明账户资格或模型生成，认证探针尚未实现。参考现场曾因网页后端走另一条路线，出现已登录浏览器能读历史却不能发送；补齐 Gemini 精确后端规则后，用户关闭本机客户端实测已恢复回复。两条路线的匿名探测仍返回 HTTP 200 登录页，分类为 unknown／authentication_required；这次人工验收不证明已实现依赖账号状态的自动检测。FlClash 仅是客户端优先关系的示例，不声明新增其他路由器控制 kit。
+
+运行时载荷固定版本与源码／许可锁不变：离线包仍携带 Mihomo v1.19.32、ShellCrash 1.9.4。v0.1.11 helper 不升级该 core，也不使它获得 v1.19.34 绑定支持。原生结果、云 CI、具体归档和最终发行回执须分别记录；广泛支持／安全声明仍保持 blocked。
+
+能力、控制前置与观察边界详见[服务分流与健康检测](SERVICE_ROUTING.md)。
+
+公仓 source 包／克隆不含离线运行时；已有运行时时可选 source 包，全新离线运行时准备选择 offline 包。只选适合操作电脑系统的一种包与 `SHA256SUMS`，校验后完整解压并使用原启动入口。manifest、SBOM 与完整对应源码用于审计／源码可用性，不是额外安装部件；GitHub 自动生成的 Source code 不是契约发行包。
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.11-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.11-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.11-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.11-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.11-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.11-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.11-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.11-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.10（2026-10-13）
 
 README 新增双语 Mermaid 系统总览，区分操作者电脑、受支持路由器、受管脚本与外部运行时，并区分操作管理流程与实际网络路径。

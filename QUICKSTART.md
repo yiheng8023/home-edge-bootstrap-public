@@ -11,7 +11,7 @@ preparation, deployment, and recovery vary by device, network, and offline-trans
 no fixed completion-time promise. The full local verification suite is optional for a first read-only
 probe and may take several minutes or substantially longer.
 
-This guide targets v0.1.10. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
+This guide targets v0.1.11. Download links require its published release; clone commands require its established tag. v0.1.8 remains an unpublished candidate.
 
 ## 1. Obtain the project and open the guide
 
@@ -19,8 +19,8 @@ This guide targets v0.1.10. Download links require its published release; clone 
 
 | Your situation | Choose | Complete flow |
 |---|---|---|
-| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
-| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.10) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
+| First use or offline runtime preparation (recommended) | [Release offline package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.11) | One archive for your system + `SHA256SUMS` → verify → extract all → open the entry below → choose **1** and follow the observed-state guidance |
+| Runtime already present; project scripts/docs only | [Release source package](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/tag/v0.1.11) | One `-source.zip` or `-source.tar.gz` + `SHA256SUMS` → verify and extract → open the same entry; runtime payloads are not included |
 | Git already available; keep a local repository | Git clone | Use the commands below to choose a known location → open the same entry in that clone; no second project download is required |
 | Complete extracted folder or clone already present | Reuse that folder | Skip acquisition and continue at “Open and validate the project location” below; keep different copies separate |
 | Local desktop entry already created | Reuse the desktop entry | Open `Home Edge Bootstrap` → entry revalidates its registered folder, or asks you to select and validate a replacement → choose **1** to resume |
@@ -36,9 +36,9 @@ You do not need Git to use a release package, complete existing folder or deskto
 
 | Operator computer | Download | Open after extraction |
 |---|---|---|
-| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.zip) | Double-click `start.cmd` |
-| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | Double-click `start.command` |
-| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.10/home-edge-bootstrap-v0.1.10-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
+| Windows | [Starter ZIP](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.zip) | Double-click `start.cmd` |
+| macOS | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.tar.gz) | Double-click `start.command` |
+| Linux | [Starter tar.gz](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.11/home-edge-bootstrap-v0.1.11-offline.tar.gz) | Open `start.sh`, using Run in Terminal when offered |
 
 Use your browser's download history and Show in folder (often **Ctrl+J** on Windows), then **extract the whole package**. Keep it under Documents or another convenient location; no drive, username or directory is prescribed. Do not run inside a compressed-folder window or download just one script. Choose one package for your system; checksums and copyable verification steps are in the [release notes](docs/RELEASE_NOTES.md).
 
@@ -62,7 +62,7 @@ Windows PowerShell:
 $GitCommand = Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($GitCommand) {
   $ProjectDirectory = Join-Path $env:USERPROFILE "home-edge-bootstrap"
-  & $GitCommand.Source clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
+  & $GitCommand.Source clone --branch v0.1.11 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git $ProjectDirectory
   if ($? -and $LASTEXITCODE -eq 0) { & (Join-Path $ProjectDirectory "start.cmd") -Language en }
 } else {
   Write-Host "Git was not found; use the release-package route above."
@@ -73,11 +73,11 @@ macOS / Linux:
 
 ```sh
 project_dir="$HOME/home-edge-bootstrap"
-git clone --branch v0.1.10 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
+git clone --branch v0.1.11 --single-branch https://github.com/yiheng8023/home-edge-bootstrap-public.git "$project_dir" &&
   sh "$project_dir/start.sh" --lang en
 ```
 
-The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.10` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
+The destination shown here is your project location; no prior `cd` is needed. These examples select release tag `v0.1.11` rather than automatically following development changes; later updates are deliberate. An existing computer folder does not prove router installation; the guide probes that separately.
 
 ### Keep an entry for later
 
