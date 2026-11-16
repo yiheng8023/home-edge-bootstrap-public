@@ -159,6 +159,9 @@ boot_hook_state() {
 write_canonical_block() {
   printf '%s\n' "$begin_marker"
   printf 'home_edge_recovery_ready=1\n'
+  printf 'if [ -x "%s/jffs/scripts/home-edge-configure-service-health.sh" ]; then\n' "$root"
+  printf '  "%s/jffs/scripts/home-edge-configure-service-health.sh" --recover || home_edge_recovery_ready=0\n' "$root"
+  printf 'fi\n'
   # Recover a pending node transaction before the ShellCrash starter runs.
   printf 'if [ -x "%s/jffs/scripts/home-edge-subscription-auto.sh" ]; then\n' "$root"
   printf '  "%s/jffs/scripts/home-edge-subscription-auto.sh" --boot || home_edge_recovery_ready=0\n' "$root"

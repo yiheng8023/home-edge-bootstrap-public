@@ -134,4 +134,27 @@ risk_count=0
 review_count=0
 monitor_count=1' monitor_live_managed
 
+for service_state in not_configured not_observed frontend_available needs_attention unknown stale private-marker; do
+  fixture="device_state=ssh_reachable
+admin_state=jffs_scripts_ready
+baseline_state=reviewed
+proxy_state=verified
+self_heal_registration_state=ready
+self_heal_boot_hook_state=ready
+automation_state=live_managed
+service_health_state=$service_state
+service_health_scope=private-marker"
+  expected=$service_state
+  [ "$service_state" != private-marker ] || expected=unknown
+  for format in --json text; do
+    if [ "$format" = text ]; then format=; fi
+    output=$(GUIDE_ROUTER_FIXTURE_AUDIT_OUTPUT="$fixture" sh "$repo/scripts/guide-router.sh" $format user@router)
+    printf '%s\n' "$output" | grep -q "$expected" || fail "service state did not pass through guide"
+    printf '%s\n' "$output" | grep -q frontend_only || fail "guide omitted service scope"
+    ! printf '%s\n' "$output" | grep -q private-marker || fail "guide leaked unsafe service field"
+    printf '%s\n' "$output" | grep -q store_subscription_for_managed_switching && fail "service state changed normal guidance"
+    printf '%s\n' "$output" | grep -q monitor_live_managed || fail "service state blocked ordinary network guidance"
+  done
+done
+
 echo "guide_router_fixture_tests=ok"

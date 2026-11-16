@@ -322,6 +322,24 @@ else
   runtime_state="unknown"
 fi
 print_kv "runtime_state" "$runtime_state"
+
+# Service status reads the last bounded report; it never starts a probe.
+service_health_state=not_configured
+service_health_scope=frontend_only
+service_health_helper=${HOME_EDGE_STATUS_SERVICE_HEALTH_SCRIPT:-/jffs/scripts/home-edge-service-health.sh}
+case "$service_health_helper" in /*) ;; *) service_health_helper=/jffs/scripts/home-edge-service-health.sh ;; esac
+if [ -x "$service_health_helper" ] && [ ! -L "$service_health_helper" ]; then
+  service_health_state=not_observed
+  service_health_output=$(sh "$service_health_helper" --status-env 2>/dev/null |
+    grep -E "^service_health_(state=(not_configured|not_observed|frontend_available|needs_attention|unknown|stale)|scope=frontend_only)$" || true)
+  service_health_candidate=$(printf "%s\\n" "$service_health_output" | sed -n "s/^service_health_state=//p" | head -n 1)
+  case "$service_health_candidate" in
+    not_configured|not_observed|frontend_available|needs_attention|unknown|stale) service_health_state=$service_health_candidate ;;
+  esac
+fi
+echo "service_health_state=$service_health_state"
+echo "service_health_scope=$service_health_scope"
+
 print_kv "runtime_process_state" "$runtime_process_state"
 print_kv "runtime_active_config_path" "$runtime_active_config_path"
 print_kv "controller_state" "$controller_state"

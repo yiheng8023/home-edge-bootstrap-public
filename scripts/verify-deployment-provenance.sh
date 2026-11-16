@@ -106,6 +106,17 @@ if [ -f "$install_dir/scripts/configure-shellcrash-service-rules.sh" ]; then
 fi
 
 # Old kits remain valid; a kit that includes the updater must verify all its active helpers.
+if [ -f "$install_dir/scripts/service-health.sh" ]; then
+  for mapping in \
+    'scripts/service-health.sh|home-edge-service-health.sh' \
+    'scripts/configure-service-health.sh|home-edge-configure-service-health.sh' \
+    'adapters/merlin/service-health-preflight.sh|home-edge-service-health-preflight.sh'; do
+    source_path=${mapping%%|*}; active_name=${mapping#*|}
+    [ -f "$script_dir/$active_name" ] || { emit drift; exit 0; }
+    [ "$(hash_file "$install_dir/$source_path")" = "$(hash_file "$script_dir/$active_name")" ] || { emit drift; exit 0; }
+  done
+fi
+
 if [ -f "$install_dir/scripts/subscription-auto.sh" ]; then
   for mapping in 'subscription-auto.sh|home-edge-subscription-auto.sh' 'subscription-tools.sh|home-edge-subscription-tools.sh' 'subscription-merge.jq|home-edge-subscription-merge.jq' 'configure-dashboard-defaults.sh|home-edge-configure-dashboard-defaults.sh' 'dashboard-defaults.js|home-edge-dashboard-defaults.js'; do
     source_path="scripts/${mapping%%|*}"; active_name=${mapping#*|}

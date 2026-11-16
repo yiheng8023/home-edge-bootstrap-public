@@ -48,6 +48,7 @@ if ($Summary.subscription_state -ne "cache_ready") { throw "expected subscriptio
 if ($Summary.client_topology_mode -ne "hybrid") { throw "expected client_topology_mode=hybrid got=$($Summary.client_topology_mode)" }
 if ($Summary.client_conflict_risk -ne "medium") { throw "expected client_conflict_risk=medium got=$($Summary.client_conflict_risk)" }
 if ($Summary.next_action -ne "none") { throw "expected next_action=none got=$($Summary.next_action)" }
+if ($Summary.service_health_state -ne "not_configured" -or $Summary.service_health_scope -ne "frontend_only") { throw "old guide fixture lost compatible service defaults" }
 
 $UnknownClientFixture = @"
 client_topology_mode=unknown
@@ -123,5 +124,25 @@ finally {
   Remove-Item Env:\EDGE_HEALTH_FIXTURE_CLIENT_OUTPUT -ErrorAction SilentlyContinue
 }
 if ($AuthSummary.edge_health_state -ne "controller_auth_blocked") { throw "expected controller_auth_blocked" }
+
+foreach ($ServiceState in @("not_configured", "not_observed", "frontend_available", "needs_attention", "unknown", "stale", "private-marker")) {
+  $env:EDGE_HEALTH_FIXTURE_GUIDE_OUTPUT = "$GuideFixture`nservice_health_state=$ServiceState`nservice_health_scope=private-marker"
+  $env:EDGE_HEALTH_FIXTURE_CLIENT_OUTPUT = $ClientFixture
+  $Expected = $ServiceState
+  if ($Expected -eq "private-marker") { $Expected = "unknown" }
+  try {
+    $ServiceOutput = powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo "scripts\check-edge-health.ps1") -Router user@router -Json | Out-String
+    $ServiceSummary = $ServiceOutput | ConvertFrom-Json
+    if ($ServiceSummary.service_health_state -ne $Expected -or $ServiceSummary.service_health_scope -ne "frontend_only" -or $ServiceSummary.edge_health_state -ne "router_managed" -or $ServiceOutput -match 'private-marker') { throw "unsafe or blocking service state: $ServiceState" }
+  }
+  finally { Remove-Item Env:\EDGE_HEALTH_FIXTURE_GUIDE_OUTPUT -ErrorAction SilentlyContinue; Remove-Item Env:\EDGE_HEALTH_FIXTURE_CLIENT_OUTPUT -ErrorAction SilentlyContinue }
+}
+$env:EDGE_HEALTH_FIXTURE_GUIDE_OUTPUT = "$GuideFixture`nservice_health_state=needs_attention"
+$env:EDGE_HEALTH_FIXTURE_CLIENT_OUTPUT = $ClientFixture
+try {
+  $TextOutput = powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Repo "scripts\check-edge-health.ps1") -Router user@router | Out-String
+  if ($TextOutput -notmatch '(?m)^service_health_state=needs_attention\s*$' -or $TextOutput -notmatch '(?m)^service_health_scope=frontend_only\s*$' -or $TextOutput -notmatch '(?m)^edge_health_state=router_managed\s*$') { throw 'service text output blocked ordinary network status' }
+}
+finally { Remove-Item Env:\EDGE_HEALTH_FIXTURE_GUIDE_OUTPUT -ErrorAction SilentlyContinue; Remove-Item Env:\EDGE_HEALTH_FIXTURE_CLIENT_OUTPUT -ErrorAction SilentlyContinue }
 
 Write-Host "edge_health_fixture_tests=ok"

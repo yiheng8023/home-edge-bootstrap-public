@@ -239,6 +239,23 @@ else
   echo "route_evidence_region_constraint=unknown"
   echo "route_evidence_verification_state=unavailable"
 fi
+# Service status reads the last bounded report; it never starts a probe.
+service_health_state=not_configured
+service_health_scope=frontend_only
+service_health_helper=${HOME_EDGE_STATUS_SERVICE_HEALTH_SCRIPT:-/jffs/scripts/home-edge-service-health.sh}
+case "$service_health_helper" in /*) ;; *) service_health_helper=/jffs/scripts/home-edge-service-health.sh ;; esac
+if [ -x "$service_health_helper" ] && [ ! -L "$service_health_helper" ]; then
+  service_health_state=not_observed
+  service_health_output=$(sh "$service_health_helper" --status-env 2>/dev/null |
+    grep -E "^service_health_(state=(not_configured|not_observed|frontend_available|needs_attention|unknown|stale)|scope=frontend_only)$" || true)
+  service_health_candidate=$(printf "%s\\n" "$service_health_output" | sed -n "s/^service_health_state=//p" | head -n 1)
+  case "$service_health_candidate" in
+    not_configured|not_observed|frontend_available|needs_attention|unknown|stale) service_health_state=$service_health_candidate ;;
+  esac
+fi
+echo "service_health_state=$service_health_state"
+echo "service_health_scope=$service_health_scope"
+
 echo "--- files ---"
 ls -l /jffs/scripts/home-edge-self-heal.sh /jffs/scripts/home-edge-update-sub.sh /jffs/scripts/home-edge-configure-dns.sh /jffs/scripts/home-edge-prefetch-shellcrash-data.sh /jffs/scripts/home-edge-start-shellcrash.sh /jffs/scripts/home-edge-self-heal-cron.sh /jffs/scripts/home-edge-reconcile-self-heal.sh /jffs/scripts/home-edge-policy.env /jffs/scripts/services-start 2>/dev/null || true
 echo "--- subscription ---"

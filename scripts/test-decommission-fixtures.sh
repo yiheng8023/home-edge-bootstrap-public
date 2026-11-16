@@ -96,11 +96,13 @@ stable_state_root=/jffs/home-edge-bootstrap-state
 EOF
 
   printf '%s\n' 'HEAL_CRON_DRY_RUN=1' >"$install/config/policy.env"
-  for name in self-heal.sh update-sub.sh subscription-runtime-evidence.sh verify-bundle.sh reconcile-self-heal-registration.sh home-edge-secure-temp.sh configure-shellcrash-dns.sh prefetch-shellcrash-data.sh start-shellcrash-at-boot.sh configure-shellcrash-service-rules.sh; do
+  for name in self-heal.sh update-sub.sh subscription-runtime-evidence.sh verify-bundle.sh reconcile-self-heal-registration.sh home-edge-secure-temp.sh configure-shellcrash-dns.sh prefetch-shellcrash-data.sh start-shellcrash-at-boot.sh configure-shellcrash-service-rules.sh service-health.sh configure-service-health.sh; do
     printf '%s\n' '#!/bin/sh' "echo $name" >"$install/scripts/$name"
   done
   cp "$repo/scripts/migrate-router-state.sh" "$install/scripts/migrate-router-state.sh"
   cp "$repo/scripts/verify-deployment-provenance.sh" "$install/scripts/verify-deployment-provenance.sh"
+  mkdir -p "$install/adapters/merlin"
+  printf '%s\n' '#!/bin/sh' 'echo service-health-preflight' >"$install/adapters/merlin/service-health-preflight.sh"
   sh "$repo/scripts/new-deployment-provenance.sh" "$install" "$source_root"
 
   cp "$install/config/policy.env" "$scripts/home-edge-policy.env"
@@ -114,6 +116,9 @@ EOF
   cp "$install/scripts/prefetch-shellcrash-data.sh" "$scripts/home-edge-prefetch-shellcrash-data.sh"
   cp "$install/scripts/start-shellcrash-at-boot.sh" "$scripts/home-edge-start-shellcrash.sh"
   cp "$install/scripts/configure-shellcrash-service-rules.sh" "$scripts/home-edge-configure-service-rules.sh"
+  cp "$install/scripts/service-health.sh" "$scripts/home-edge-service-health.sh"
+  cp "$install/scripts/configure-service-health.sh" "$scripts/home-edge-configure-service-health.sh"
+  cp "$install/adapters/merlin/service-health-preflight.sh" "$scripts/home-edge-service-health-preflight.sh"
   printf '%s\n' '#!/bin/sh' 'exit 0' >"$scripts/home-edge-self-heal-cron.sh"
   chmod 755 "$scripts"/home-edge-*.sh
   write_bridge "$scripts/home-edge-policy.local"
@@ -211,7 +216,7 @@ cmp "$tmp/policy.before" "$apply_root/jffs/home-edge-bootstrap-state/policy.loca
 [ ! -e "$apply_root/jffs/home-edge-bootstrap.rollback.1" ] || fail "rollback kit remained"
 [ ! -e "$apply_root/jffs/home-edge-bootstrap.failed.2" ] || fail "failed kit remained"
 [ ! -e "$apply_root/jffs/home-edge-bootstrap.tmp.3" ] || fail "temporary kit remained"
-for helper in home-edge-policy.env home-edge-policy.local home-edge-self-heal.sh home-edge-update-sub.sh home-edge-subscription-runtime-evidence.sh home-edge-verify-bundle.sh home-edge-reconcile-self-heal.sh home-edge-secure-temp.sh home-edge-configure-dns.sh home-edge-prefetch-shellcrash-data.sh home-edge-start-shellcrash.sh home-edge-configure-service-rules.sh home-edge-self-heal-cron.sh; do
+for helper in home-edge-policy.env home-edge-policy.local home-edge-self-heal.sh home-edge-update-sub.sh home-edge-subscription-runtime-evidence.sh home-edge-verify-bundle.sh home-edge-reconcile-self-heal.sh home-edge-secure-temp.sh home-edge-configure-dns.sh home-edge-prefetch-shellcrash-data.sh home-edge-start-shellcrash.sh home-edge-configure-service-rules.sh home-edge-self-heal-cron.sh home-edge-service-health.sh home-edge-configure-service-health.sh home-edge-service-health-preflight.sh; do
   [ ! -e "$apply_root/jffs/scripts/$helper" ] || fail "fixed helper remained: $helper"
 done
 [ ! -s "$apply_root/tmp/cru.state" ] || fail "cron registration remained"

@@ -151,4 +151,30 @@ grep -q '^route_evidence_classification=unknown$' "$tmp/observer-failure.out" ||
 grep -q '^route_evidence_identity_state=missing$' "$tmp/observer-failure.out" ||
   fail "verify failure did not preserve a redacted missing route identity state"
 
+# Exercise only the new cached-status fragment: no router or network commands.
+cat >"$tmp/service-health-helper" <<'EOF'
+#!/bin/sh
+[ "$#" = 1 ] && [ "$1" = --status-env ] || exit 61
+printf '%s\n' "$1" >"$SERVICE_STATUS_CALL_LOG"
+printf 'service_health_state=%s\n' "${SERVICE_STATUS_FIXTURE:-not_observed}"
+echo service_health_scope=frontend_only
+echo 'raw_profile=private-marker'
+EOF
+chmod 755 "$tmp/service-health-helper"
+for source in check-router-status.sh check-router-status.ps1 audit-router-baseline.sh audit-router-baseline.ps1; do
+  awk '/^# Service status reads the last bounded report/ { emit=1 } emit { print } /^echo "service_health_scope=/ { if (emit) exit }' "$repo/scripts/$source" >"$tmp/service.fragment"
+  [ -s "$tmp/service.fragment" ] || fail "$source omitted cached service status"
+  for value in not_configured not_observed frontend_available needs_attention unknown stale; do
+    HOME_EDGE_STATUS_SERVICE_HEALTH_SCRIPT="$tmp/service-health-helper" SERVICE_STATUS_CALL_LOG="$tmp/service.call" SERVICE_STATUS_FIXTURE="$value" sh "$tmp/service.fragment" >"$tmp/service.out"
+    grep -qx "service_health_state=$value" "$tmp/service.out" || fail "$source did not preserve $value"
+    grep -qx 'service_health_scope=frontend_only' "$tmp/service.out" || fail "$source omitted fixed frontend scope"
+    [ "$(cat "$tmp/service.call")" = --status-env ] || fail "$source invoked an active probe"
+    ! grep -q private-marker "$tmp/service.out" || fail "$source leaked extra helper output"
+  done
+  HOME_EDGE_STATUS_SERVICE_HEALTH_SCRIPT="$tmp/missing-service-helper" sh "$tmp/service.fragment" >"$tmp/service.out"
+  grep -qx 'service_health_state=not_configured' "$tmp/service.out" || fail "$source did not support missing old helper"
+  HOME_EDGE_STATUS_SERVICE_HEALTH_SCRIPT="$tmp/service-health-helper" SERVICE_STATUS_CALL_LOG="$tmp/service.call" SERVICE_STATUS_FIXTURE=private-marker sh "$tmp/service.fragment" >"$tmp/service.out"
+  grep -qx 'service_health_state=not_observed' "$tmp/service.out" || fail "$source forwarded an unrecognized helper value"
+done
+
 echo "router_status_fixture_tests=ok"

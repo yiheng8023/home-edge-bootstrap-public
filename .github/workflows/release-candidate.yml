@@ -6,7 +6,7 @@ on:
       version:
         description: Release version to verify
         required: true
-        default: v0.1.9
+        default: v0.1.11
   push:
     tags:
       - "v*"
@@ -38,6 +38,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
+
       - name: Verify
         shell: bash
         run: |
@@ -61,6 +68,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
+
       - name: Verify
         shell: bash
         run: |
@@ -84,6 +98,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
+
       - shell: powershell
         run: |
           $Log = Join-Path $env:RUNNER_TEMP "home-edge-verify-local.log"
@@ -143,6 +164,13 @@ jobs:
             --output "$RUNNER_TEMP/home-edge-prepared" \
             --payload-dir "$RUNNER_TEMP/home-edge-payload" \
             --go-archive "$RUNNER_TEMP/go1.26.8.linux-amd64.tar.gz"
+
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
 
       - name: Build and verify exact release set
         run: |

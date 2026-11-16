@@ -31,6 +31,9 @@ home-edge-configure-dns.sh
 home-edge-prefetch-shellcrash-data.sh
 home-edge-start-shellcrash.sh
 home-edge-configure-service-rules.sh
+home-edge-service-health.sh
+home-edge-configure-service-health.sh
+home-edge-service-health-preflight.sh
 home-edge-self-heal-cron.sh
 home-edge-subscription-auto.sh
 home-edge-subscription-tools.sh

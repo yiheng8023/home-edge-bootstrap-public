@@ -127,6 +127,61 @@ if ($HasSh) {
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+Write-Host ""
+Write-Host "## Service Health Fixture Tests"
+$ServiceHasSh = $null -ne (Get-Command sh -ErrorAction SilentlyContinue)
+$ServiceHasJq = $null -ne (Get-Command jq -ErrorAction SilentlyContinue)
+if ($ServiceHasSh -and $ServiceHasJq) {
+  foreach ($ServiceFixture in @("test-service-health-fixtures.sh", "test-service-health-setup-fixtures.sh")) {
+    $ServiceFixturePath = Join-Path $Repo "scripts\$ServiceFixture"
+    if (-not (Test-Path -LiteralPath $ServiceFixturePath -PathType Leaf)) { throw "missing required service fixture: $ServiceFixture" }
+    & sh $ServiceFixturePath
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  }
+}
+else { Write-Host "service_health_fixture_tests=skipped_missing_dependency" }
+
+Write-Host ""
+Write-Host "## Service Health Host Installer Fixture Tests"
+$ServiceInstallerFixture = Join-Path $Repo "scripts\test-enable-service-health-fixtures.ps1"
+if (-not (Test-Path -LiteralPath $ServiceInstallerFixture -PathType Leaf)) { throw "missing required service installer PowerShell fixture" }
+& powershell -NoProfile -ExecutionPolicy Bypass -File $ServiceInstallerFixture -Repo $Repo
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$ServiceInstallerShellReady = $false
+if ($ServiceHasSh) {
+  & sh -c 'which openssl >/dev/null 2>&1 && which gzip >/dev/null 2>&1 && python3 -c "import sys; sys.exit(sys.version_info[0] != 3)" >/dev/null 2>&1'
+  $ServiceInstallerShellReady = $LASTEXITCODE -eq 0
+}
+if ($ServiceInstallerShellReady) {
+  $ServiceInstallerShellFixture = Join-Path $Repo "scripts\test-enable-service-health-fixtures.sh"
+  if (-not (Test-Path -LiteralPath $ServiceInstallerShellFixture -PathType Leaf)) { throw "missing required service installer POSIX fixture" }
+  & sh $ServiceInstallerShellFixture
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+else { Write-Host "enable_service_health_shell_fixture_tests=skipped_missing_dependency" }
+
+Write-Host ""
+Write-Host "## Service Health Go Module Tests"
+if (Get-Command go -ErrorAction SilentlyContinue) {
+  $ServiceGoEnvironment = @{}
+  foreach ($ServiceGoName in @("GOPROXY", "GOSUMDB", "GOTOOLCHAIN")) { $ServiceGoEnvironment[$ServiceGoName] = [Environment]::GetEnvironmentVariable($ServiceGoName) }
+  $ServiceGoLocationEntered = $false
+  try {
+    $env:GOPROXY = "off"
+    $env:GOSUMDB = "off"
+    $env:GOTOOLCHAIN = "local"
+    Push-Location -LiteralPath (Join-Path $Repo "tools\yamlbridge")
+    $ServiceGoLocationEntered = $true
+    & go test ./...
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  }
+  finally {
+    if ($ServiceGoLocationEntered) { Pop-Location }
+    foreach ($ServiceGoName in @("GOPROXY", "GOSUMDB", "GOTOOLCHAIN")) { [Environment]::SetEnvironmentVariable($ServiceGoName, $ServiceGoEnvironment[$ServiceGoName]) }
+  }
+}
+else { Write-Host "service_health_go_tests=skipped_missing_dependency" }
+
 & $Python3Command (Join-Path $Repo "scripts\test-release-body-fixtures.py") "--repo-root" $Repo "--surface" "public"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

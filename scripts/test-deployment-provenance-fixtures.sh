@@ -16,7 +16,7 @@ fail() {
 source_root="$tmp/source"
 stage="$tmp/stage"
 active="$tmp/active"
-mkdir -p "$source_root" "$stage/scripts" "$stage/config" "$active"
+mkdir -p "$source_root" "$stage/scripts" "$stage/config" "$stage/adapters/merlin" "$active"
 printf '%s\n' '#!/bin/sh' 'echo managed' >"$stage/scripts/self-heal.sh"
 printf '%s\n' '#!/bin/sh' 'echo update' >"$stage/scripts/update-sub.sh"
 printf '%s\n' '#!/bin/sh' 'echo runtime-evidence' >"$stage/scripts/subscription-runtime-evidence.sh"
@@ -26,6 +26,9 @@ printf '%s\n' '#!/bin/sh' 'echo migrate-state' >"$stage/scripts/migrate-router-s
 printf '%s\n' '#!/bin/sh' 'echo secure-temp' >"$stage/scripts/home-edge-secure-temp.sh"
 printf '%s\n' '#!/bin/sh' 'echo configure-dns' >"$stage/scripts/configure-shellcrash-dns.sh"
 printf '%s\n' '#!/bin/sh' 'echo configure-service-rules' >"$stage/scripts/configure-shellcrash-service-rules.sh"
+printf '%s\n' '#!/bin/sh' 'echo service-health' >"$stage/scripts/service-health.sh"
+printf '%s\n' '#!/bin/sh' 'echo configure-service-health' >"$stage/scripts/configure-service-health.sh"
+printf '%s\n' '#!/bin/sh' 'echo service-health-preflight' >"$stage/adapters/merlin/service-health-preflight.sh"
 printf '%s\n' '#!/bin/sh' 'echo prefetch-data' >"$stage/scripts/prefetch-shellcrash-data.sh"
 printf '%s\n' '#!/bin/sh' 'echo start-shellcrash' >"$stage/scripts/start-shellcrash-at-boot.sh"
 printf '%s\n' 'HEAL_DRY_RUN=1' >"$stage/config/policy.env"
@@ -38,6 +41,9 @@ cp "$stage/scripts/reconcile-self-heal-registration.sh" "$active/home-edge-recon
 cp "$stage/scripts/home-edge-secure-temp.sh" "$active/home-edge-secure-temp.sh"
 cp "$stage/scripts/configure-shellcrash-dns.sh" "$active/home-edge-configure-dns.sh"
 cp "$stage/scripts/configure-shellcrash-service-rules.sh" "$active/home-edge-configure-service-rules.sh"
+cp "$stage/scripts/service-health.sh" "$active/home-edge-service-health.sh"
+cp "$stage/scripts/configure-service-health.sh" "$active/home-edge-configure-service-health.sh"
+cp "$stage/adapters/merlin/service-health-preflight.sh" "$active/home-edge-service-health-preflight.sh"
 cp "$stage/scripts/prefetch-shellcrash-data.sh" "$active/home-edge-prefetch-shellcrash-data.sh"
 cp "$stage/scripts/start-shellcrash-at-boot.sh" "$active/home-edge-start-shellcrash.sh"
 cp "$stage/config/policy.env" "$active/home-edge-policy.env"
@@ -148,6 +154,22 @@ rm -f "$active/home-edge-start-shellcrash.sh"
 missing_boot_helper_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
 printf '%s\n' "$missing_boot_helper_output" | grep -q '^deployment_provenance_state=drift$' || fail "missing deployed ShellCrash boot helper was not reported as drift"
 cp "$stage/scripts/start-shellcrash-at-boot.sh" "$active/home-edge-start-shellcrash.sh"
+
+for service_helper in service-health configure-service-health service-health-preflight; do
+  case "$service_helper" in
+    service-health-preflight) service_source="$stage/adapters/merlin/$service_helper.sh" ;;
+    *) service_source="$stage/scripts/$service_helper.sh" ;;
+  esac
+  service_active="$active/home-edge-$service_helper.sh"
+  rm -f "$service_active"
+  service_drift=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+  printf '%s\n' "$service_drift" | grep -q '^deployment_provenance_state=drift$' || fail "missing deployed service health helper was not reported as drift"
+  cp "$service_source" "$service_active"
+  printf '%s\n' '# changed service health helper' >>"$service_active"
+  service_drift=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")
+  printf '%s\n' "$service_drift" | grep -q '^deployment_provenance_state=drift$' || fail "changed deployed service health helper was not reported as drift"
+  cp "$service_source" "$service_active"
+done
 
 printf '%s\n' '# drift' >>"$active/home-edge-policy.local"
 bridge_drift_output=$(HOME_EDGE_INSTALL_DIR="$stage" HOME_EDGE_ROUTER_SCRIPT_DIR="$active" HOME_EDGE_EXPECTED_SOURCE_KIND=git HOME_EDGE_EXPECTED_SOURCE_COMMIT="$source_commit" sh "$repo/scripts/verify-deployment-provenance.sh")

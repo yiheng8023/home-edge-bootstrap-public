@@ -32,6 +32,9 @@ dns_config_src="$kit_root/scripts/configure-shellcrash-dns.sh"
 data_prefetch_src="$kit_root/scripts/prefetch-shellcrash-data.sh"
 shellcrash_boot_src="$kit_root/scripts/start-shellcrash-at-boot.sh"
 service_rules_src="$kit_root/scripts/configure-shellcrash-service-rules.sh"
+service_health_src="$kit_root/scripts/service-health.sh"
+service_health_setup_src="$kit_root/scripts/configure-service-health.sh"
+service_health_preflight_src="$adapter_dir/service-health-preflight.sh"
 self_heal_dst="$router_script_dir/home-edge-self-heal.sh"
 update_sub_dst="$router_script_dir/home-edge-update-sub.sh"
 runtime_evidence_dst="$router_script_dir/home-edge-subscription-runtime-evidence.sh"
@@ -43,6 +46,9 @@ dns_config_dst="$router_script_dir/home-edge-configure-dns.sh"
 data_prefetch_dst="$router_script_dir/home-edge-prefetch-shellcrash-data.sh"
 shellcrash_boot_dst="$router_script_dir/home-edge-start-shellcrash.sh"
 service_rules_dst="$router_script_dir/home-edge-configure-service-rules.sh"
+service_health_dst="$router_script_dir/home-edge-service-health.sh"
+service_health_setup_dst="$router_script_dir/home-edge-configure-service-health.sh"
+service_health_preflight_dst="$router_script_dir/home-edge-service-health-preflight.sh"
 bundle_dir="${BOOTSTRAP_BUNDLE_DIR:-$kit_root/bundle}"
 runtime_backup_dir="$state_dir/backups/runtime"
 protected_core_path="$state_dir/runtime/mihomo-linux-arm64.gz"
@@ -206,6 +212,9 @@ run() {
 [ -r "$data_prefetch_src" ] || die "missing $data_prefetch_src"
 [ -r "$shellcrash_boot_src" ] || die "missing $shellcrash_boot_src"
 [ -r "$service_rules_src" ] || die "missing $service_rules_src"
+[ -r "$service_health_src" ] || die "missing $service_health_src"
+[ -r "$service_health_setup_src" ] || die "missing $service_health_setup_src"
+[ -r "$service_health_preflight_src" ] || die "missing $service_health_preflight_src"
 
 which curl >/dev/null 2>&1 || log "WARN curl not found; ShellClash usually provides it"
 which jq >/dev/null 2>&1 || log "WARN jq not found; self-heal requires it"
@@ -271,12 +280,15 @@ run cp "$dns_config_src" "$dns_config_dst"
 run cp "$data_prefetch_src" "$data_prefetch_dst"
 run cp "$shellcrash_boot_src" "$shellcrash_boot_dst"
 run cp "$service_rules_src" "$service_rules_dst"
+run cp "$service_health_src" "$service_health_dst"
+run cp "$service_health_setup_src" "$service_health_setup_dst"
+run cp "$service_health_preflight_src" "$service_health_preflight_dst"
 for component in subscription-auto.sh subscription-tools.sh subscription-merge.jq configure-dashboard-defaults.sh dashboard-defaults.js; do
   run cp "$kit_root/scripts/$component" "$router_script_dir/home-edge-$component"
   run chmod 755 "$router_script_dir/home-edge-$component"
 done
 run chmod 600 "$policy_dst"
-run chmod 755 "$self_heal_dst" "$update_sub_dst" "$runtime_evidence_dst" "$verify_bundle_dst" "$reconcile_dst" "$secure_temp_dst" "$dns_config_dst" "$data_prefetch_dst" "$shellcrash_boot_dst" "$service_rules_dst"
+run chmod 755 "$self_heal_dst" "$update_sub_dst" "$runtime_evidence_dst" "$verify_bundle_dst" "$reconcile_dst" "$secure_temp_dst" "$dns_config_dst" "$data_prefetch_dst" "$shellcrash_boot_dst" "$service_rules_dst" "$service_health_dst" "$service_health_setup_dst" "$service_health_preflight_dst"
 
 
 set_shellcrash_config() {
@@ -576,7 +588,12 @@ if [ ! -s "\$self_heal_subscription" ] && [ ! -s "\$self_heal_yaml" ] && [ ! -s 
   exit 0
 fi
 self_heal="$self_heal_dst"
-HEAL_DRY_RUN="\${HEAL_CRON_DRY_RUN:-1}" exec sh "\$self_heal"
+HEAL_DRY_RUN="\${HEAL_CRON_DRY_RUN:-1}" sh "\$self_heal"
+self_heal_status=\$?
+if [ -x "$service_health_dst" ]; then
+  sh "$service_health_dst" --scheduled || true
+fi
+exit "\$self_heal_status"
 EOF
   chmod 755 "$wrapper_dst"
 else

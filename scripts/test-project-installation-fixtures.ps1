@@ -147,6 +147,13 @@ exit $?
   $Output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts -Apply -ReplaceProject -ProjectConfirmation REPLACE | Out-String
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $env:INSTALLATION_CAPTURE_FILE)) { throw 'Explicit project replacement was not forwarded' }
   $Remote = Get-Content -LiteralPath $env:INSTALLATION_CAPTURE_FILE -Raw
+  # Host parsing does not inspect the quoted remote shell body. Validate the
+  # actual captured payload before treating a later failure as an inventory bug.
+  $SyntaxFile = Join-Path $Fixture 'remote-deployment-syntax.sh'
+  [IO.File]::WriteAllText($SyntaxFile, $Remote.Replace("`r", ""), [Text.UTF8Encoding]::new($false))
+  $SyntaxPath = '/' + $SyntaxFile.Substring(0, 1).ToLowerInvariant() + $SyntaxFile.Substring(2).Replace('\', '/')
+  & $Dash -n $SyntaxPath 2>$null
+  if ($LASTEXITCODE -ne 0) { throw 'Captured remote deployment template is not valid POSIX shell' }
   if ($Remote -notmatch 'home_edge_require_project_replacement "1" "REPLACE"' -or $Remote.Contains('__INSTALLATION_LIBRARY__')) { throw 'Replacement permission or observer missing from actual locked template' }
   if ($Remote.IndexOf('home_edge_require_project_replacement "1" "REPLACE"') -lt $Remote.IndexOf("acquire_deploy_lock`n")) { throw 'Fresh guard is before the writer lock' }
   if ($Remote.IndexOf('home_edge_require_project_replacement "1" "REPLACE"') -gt $Remote.IndexOf('mkdir "$staging"', $Remote.IndexOf("acquire_deploy_lock`n"))) { throw 'Fresh guard is after staging mutation' }

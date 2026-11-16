@@ -97,6 +97,13 @@ runtime_process_state=$(get_state runtime_process_state)
 controller_state=$(get_state controller_state)
 controller_auth_state=$(get_state controller_auth_state)
 controller_observation_state=$(get_state controller_observation_state)
+service_health_state=$(get_state service_health_state)
+case "$service_health_state" in
+  "") service_health_state=not_configured ;;
+  not_configured|not_observed|frontend_available|needs_attention|unknown|stale) ;;
+  *) service_health_state=unknown ;;
+esac
+service_health_scope=frontend_only
 self_heal_registration_state=$(get_state self_heal_registration_state)
 self_heal_boot_hook_state=$(get_state self_heal_boot_hook_state)
 lifecycle_reconciler_state=$(get_state lifecycle_reconciler_state)
@@ -199,6 +206,8 @@ if [ "$json" -eq 1 ]; then
   json_pair controller_state "${controller_state:-unknown}" ,
   json_pair controller_auth_state "${controller_auth_state:-unknown}" ,
   json_pair controller_observation_state "${controller_observation_state:-unknown}" ,
+  json_pair service_health_state "$service_health_state" ,
+  json_pair service_health_scope "$service_health_scope" ,
   json_pair self_heal_registration_state "${self_heal_registration_state:-unknown}" ,
   json_pair self_heal_boot_hook_state "${self_heal_boot_hook_state:-unknown}" ,
   json_pair lifecycle_reconciler_state "${lifecycle_reconciler_state:-unknown}" ,
@@ -230,6 +239,8 @@ echo "runtime_process_state=${runtime_process_state:-unknown}"
 echo "controller_state=${controller_state:-unknown}"
 echo "controller_auth_state=${controller_auth_state:-unknown}"
 echo "controller_observation_state=${controller_observation_state:-unknown}"
+echo "service_health_state=$service_health_state"
+echo "service_health_scope=$service_health_scope"
 echo "self_heal_registration_state=${self_heal_registration_state:-unknown}"
 echo "self_heal_boot_hook_state=${self_heal_boot_hook_state:-unknown}"
 echo "lifecycle_reconciler_state=${lifecycle_reconciler_state:-unknown}"

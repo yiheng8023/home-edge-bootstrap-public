@@ -1,4 +1,6 @@
-// yamlbridge keeps YAML parsing off the router's shell and never prints source data.
+// yamlbridge provides bounded structured-data and service-health tools for the
+// router shell. The legacy executable name remains compatible; source data and
+// credentials are never printed.
 package main
 
 import (
@@ -86,6 +88,35 @@ func convert(mode string, raw []byte) ([]byte, error) {
 }
 
 func run(args []string) error {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
+		fmt.Println("yamlbridge decode|encode INPUT NEW_OUTPUT")
+		fmt.Println("yamlbridge service-probe REQUEST NEW_REPORT")
+		fmt.Println("yamlbridge service-health REQUEST NEW_REPORT")
+		fmt.Println("yamlbridge service-health-validate REQUEST NEW_VALIDATED_REQUEST")
+		fmt.Println("yamlbridge core-test REQUEST NEW_REPORT")
+		fmt.Println("yamlbridge service-bind-check REQUEST NEW_REPORT")
+		fmt.Println("yamlbridge service-bind-reload REQUEST NEW_BINDING")
+		fmt.Println("yamlbridge service-setup REQUEST NEW_OUTPUT_DIRECTORY")
+		return nil
+	}
+	if len(args) > 0 {
+		switch args[0] {
+		case "service-health":
+			return runServiceHealth(args[1:])
+		case "service-health-validate":
+			return runServiceHealthValidate(args[1:])
+		case "core-test":
+			return runCoreTest(args[1:])
+		case "service-bind-check":
+			return runServiceBindCheck(args[1:])
+		case "service-bind-reload":
+			return runServiceBindReload(args[1:])
+		case "service-setup":
+			return runServiceSetup(args[1:])
+		case "service-probe":
+			return runServiceProbe(args[1:])
+		}
+	}
 	if len(args) != 3 {
 		return errors.New("usage: yamlbridge decode|encode INPUT OUTPUT")
 	}

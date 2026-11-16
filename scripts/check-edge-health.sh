@@ -72,6 +72,13 @@ proxy_state=$(state_from proxy_state "$guide_output")
 runtime_state=$(state_from runtime_state "$guide_output")
 controller_state=$(state_from controller_state "$guide_output")
 controller_auth_state=$(state_from controller_auth_state "$guide_output")
+service_health_state=$(state_from service_health_state "$guide_output")
+case "$service_health_state" in
+  "") service_health_state=not_configured ;;
+  not_configured|not_observed|frontend_available|needs_attention|unknown|stale) ;;
+  *) service_health_state=unknown ;;
+esac
+service_health_scope=frontend_only
 self_heal_registration_state=$(state_from self_heal_registration_state "$guide_output")
 self_heal_boot_hook_state=$(state_from self_heal_boot_hook_state "$guide_output")
 subscription_state=$(state_from subscription_state "$guide_output")
@@ -166,6 +173,8 @@ if [ "$json" -eq 1 ]; then
   json_pair runtime_state "$runtime_state_out" ,
   json_pair controller_state "$controller_state_out" ,
   json_pair controller_auth_state "$controller_auth_state_out" ,
+  json_pair service_health_state "$service_health_state" ,
+  json_pair service_health_scope "$service_health_scope" ,
   json_pair self_heal_registration_state "$self_heal_registration_state_out" ,
   json_pair self_heal_boot_hook_state "$self_heal_boot_hook_state_out" ,
   json_pair subscription_state "$subscription_state_out" ,
@@ -193,6 +202,8 @@ echo "proxy_state=$proxy_state_out"
 echo "runtime_state=$runtime_state_out"
 echo "controller_state=$controller_state_out"
 echo "controller_auth_state=$controller_auth_state_out"
+echo "service_health_state=$service_health_state"
+echo "service_health_scope=$service_health_scope"
 echo "self_heal_registration_state=$self_heal_registration_state_out"
 echo "self_heal_boot_hook_state=$self_heal_boot_hook_state_out"
 echo "subscription_state=$subscription_state_out"

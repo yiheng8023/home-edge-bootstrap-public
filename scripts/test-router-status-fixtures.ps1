@@ -151,6 +151,11 @@ try {
   foreach ($Field in @("deployment_provenance_state", "deployment_source_commit", "deployment_content_id")) {
     if ($Source -notmatch $Field) { throw "PowerShell status helper lacks safe provenance field: $Field" }
   }
+  foreach ($CachedStatusSource in @($Source, $AuditSource)) {
+    foreach ($LeafText in @("--status-env", "service_health_state=not_configured", "service_health_state=not_observed", "service_health_scope=frontend_only", "HOME_EDGE_STATUS_SERVICE_HEALTH_SCRIPT")) {
+      if ($CachedStatusSource -notmatch [regex]::Escape($LeafText)) { throw "native cached service-status integration missing: $LeafText" }
+    }
+  }
 }
 finally {
   $env:PATH = $OldPath

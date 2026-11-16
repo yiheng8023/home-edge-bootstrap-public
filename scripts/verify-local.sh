@@ -95,6 +95,9 @@ for fixture in \
   test-host-ssh-fixtures.sh \
   test-project-installation-fixtures.sh \
   test-self-heal-fixtures.sh \
+  test-service-health-fixtures.sh \
+  test-service-health-setup-fixtures.sh \
+  test-enable-service-health-fixtures.sh \
   test-shellcrash-dns-fixtures.sh \
   test-shellcrash-data-fixtures.sh \
   test-shellcrash-boot-fixtures.sh \
@@ -129,6 +132,14 @@ done
 echo
 echo "## Self-Heal Strict Read-Only Fixture"
 sh "$repo/scripts/test-self-heal-fixtures.sh" --verify-readonly-only
+
+echo
+echo "## Service Health Go Module Tests"
+if command -v go >/dev/null 2>&1; then
+  (cd "$repo/tools/yamlbridge" && GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go test ./...)
+else
+  echo 'service_health_go_tests=skipped_missing_dependency'
+fi
 
 "$py" "$repo/scripts/test-release-body-fixtures.py" --repo-root "$repo" --surface public
 

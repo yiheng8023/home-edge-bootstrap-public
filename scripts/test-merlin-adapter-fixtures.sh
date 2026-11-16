@@ -71,6 +71,7 @@ mkdir -p \
   "$fixture_payload/libs" \
   "$fixture_payload/starts"
 cp "${MERLIN_ADAPTER_FIXTURE_SOURCE:-$repo/adapters/merlin/bootstrap.sh}" "$fixture_kit/adapters/merlin/bootstrap.sh"
+cp "$repo/adapters/merlin/service-health-preflight.sh" "$fixture_kit/adapters/merlin/service-health-preflight.sh"
 cp "$repo/config/policy.env" "$fixture_kit/config/policy.env"
 cp "$repo/scripts/self-heal.sh" "$fixture_kit/scripts/self-heal.sh"
 cp "$repo/scripts/update-sub.sh" "$fixture_kit/scripts/update-sub.sh"
@@ -83,7 +84,7 @@ cp "$repo/scripts/configure-shellcrash-dns.sh" "$fixture_kit/scripts/configure-s
 cp "$repo/scripts/prefetch-shellcrash-data.sh" "$fixture_kit/scripts/prefetch-shellcrash-data.sh"
 cp "$repo/scripts/start-shellcrash-at-boot.sh" "$fixture_kit/scripts/start-shellcrash-at-boot.sh"
 cp "$repo/scripts/configure-shellcrash-service-rules.sh" "$fixture_kit/scripts/configure-shellcrash-service-rules.sh"
-for component in subscription-auto.sh subscription-tools.sh subscription-merge.jq configure-dashboard-defaults.sh dashboard-defaults.js; do
+for component in subscription-auto.sh subscription-tools.sh subscription-merge.jq configure-dashboard-defaults.sh dashboard-defaults.js service-health.sh configure-service-health.sh; do
   cp "$repo/scripts/$component" "$fixture_kit/scripts/$component"
 done
 
@@ -336,6 +337,9 @@ grep -Fxq 'state_migration_state=ready' "$tmp/core.out" || fail "adapter did not
 [ -x "$core/jffs/scripts/home-edge-configure-dns.sh" ] || fail "ShellCrash DNS configuration helper was not deployed"
 [ -x "$core/jffs/scripts/home-edge-prefetch-shellcrash-data.sh" ] || fail "ShellCrash data prefetch helper was not deployed"
 [ -x "$core/jffs/scripts/home-edge-start-shellcrash.sh" ] || fail "ShellCrash boot starter was not deployed"
+[ -x "$core/jffs/scripts/home-edge-service-health.sh" ] || fail "service health observer was not deployed"
+[ -x "$core/jffs/scripts/home-edge-configure-service-health.sh" ] || fail "service health setup adapter was not deployed"
+[ -x "$core/jffs/scripts/home-edge-service-health-preflight.sh" ] || fail "service health egress preflight was not deployed"
 [ -x "$core/jffs/scripts/home-edge-configure-service-rules.sh" ] || fail "ShellCrash service-rule profile helper was not deployed"
 grep -Fq '# BEGIN home-edge-bootstrap self-heal lifecycle' "$core/jffs/scripts/services-start" || fail "persistent lifecycle hook was not installed"
 [ "$(grep -Ec 'home-edge-start-shellcrash\.sh" &$' "$core/jffs/scripts/services-start")" -eq 1 ] ||

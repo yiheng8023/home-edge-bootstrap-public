@@ -243,7 +243,10 @@ cleanup_first_install_active_state() {
     home-edge-configure-dns.sh \
     home-edge-prefetch-shellcrash-data.sh \
     home-edge-start-shellcrash.sh \
-    home-edge-configure-service-rules.sh
+    home-edge-configure-service-rules.sh \
+    home-edge-service-health.sh \
+    home-edge-configure-service-health.sh \
+    home-edge-service-health-preflight.sh
   do
     rm -f "/jffs/scripts/$active_file" 2>/dev/null || true
   done
@@ -537,7 +540,10 @@ cleanup_first_install_active_state() {
     home-edge-configure-dns.sh \
     home-edge-prefetch-shellcrash-data.sh \
     home-edge-start-shellcrash.sh \
-    home-edge-configure-service-rules.sh
+    home-edge-configure-service-rules.sh \
+    home-edge-service-health.sh \
+    home-edge-configure-service-health.sh \
+    home-edge-service-health-preflight.sh
   do
     rm -f "/jffs/scripts/$active_file" 2>/dev/null || true
   done

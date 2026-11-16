@@ -4,8 +4,9 @@ English source of truth. See `docs/zh-CN/ARCHITECTURE.md` for the Chinese readin
 
 The goal is not a single-router note. This repository is a capability-driven edge-proxy lifecycle
 coordinator, not an initialization-only script. It can re-enter from observed state after reboot or
-drift. Keep the valuable policy in Mihomo/Clash-compatible artifacts,
-and isolate firmware-specific work in thin adapters. The first implemented reference
+drift. Keep reusable decision policy independent of product configuration, REST APIs and device paths;
+adapters translate observations, capabilities and authorized effects. Mihomo/Clash artifacts are
+the current runtime adapter's format, not the framework's universal policy representation. The first implemented device reference
 adapter targets official Asuswrt-Merlin on supported ASUS routers; it does not pin the project to one
 router model, firmware family, provider, runtime, UI template, controller port, or proxy-group naming
 convention.
@@ -30,13 +31,72 @@ See [Launcher and recovery contract](LAUNCHER.md) for conditions, instance bindi
 
 The TUI exposes local bilingual help and a session-only language switch independently of device operations. Installation observation binds a fresh router/path inventory, not historical logs or runtime presence. Existing project content defaults to diagnosis/reuse; only maintenance `7 → 1` or the `R` shortcut followed by `REPLACE` and `APPLY` authorizes a project refresh, rechecked under the writer lock. Project-only scope excludes runtime/core assets while allowing managed integration/config changes. Structure, physical identity and required tools are checked at startup, before operations and around important work; local menu navigation, help and language switching do not run these probes; they preserve help/language/exit under known degradation and are not a background fault detector.
 
-| Layer | Artifact | Portability | Notes |
+| Layer | Artifact | Actual portability boundary | Notes |
 |---|---|---|---|
-| Policy | `config/policy.env`, `config/mihomo-overlay.yaml` | High | Region-neutral by default; provider-name tolerant with optional site-local candidate and region constraints |
-| Runtime scripts | `scripts/self-heal.sh`, `scripts/update-sub.sh` | High | BusyBox/POSIX shell; avoid desktop-only assumptions |
-| Adapter | `adapters/merlin/` | Medium | Asuswrt-Merlin paths, cron, `/jffs`, ShellCrash conventions |
-| Offline payload | `bundle/` | Medium | Kernel/plugin binaries are architecture and platform specific |
+| Pure service-health policy | `tools/yamlbridge/internal/healthpolicy` | Product-independent Go decisions; no I/O | Explicit facts, scope, manual hold, capabilities, failures, cooldown and write budget |
+| Protocol observation | `tools/yamlbridge/service_proxy_observer.go` | Standard local/private HTTP/S proxy on a host OS that runs the native helper | Observation only; cannot bind a named outbound or switch it |
+| Runtime control and configuration | `service_health.go`, `service_probe.go`, `config/policy.env`, `config/mihomo-overlay.yaml` | Current Mihomo/reference integration | REST graph, `Edge-*` groups, built-in `GLOBAL`, configuration formats and guarded writes remain adapter details |
+| Device lifecycle scripts | `scripts/self-heal.sh`, `scripts/update-sub.sh`, `adapters/merlin/` | Current Merlin/ShellCrash integration | POSIX/BusyBox syntax does not make their REST, paths, cron, firewall or lifecycle behavior runtime-neutral |
+| Offline payload | `bundle/` | Declared binary architecture and platform only | A compatible format or executable is not another adapter's admission evidence |
 | Physical setup | none | Manual | Flashing firmware, enabling SSH, and initial credentials remain human steps |
+
+### Product-neutral service-health decisions and concrete adapters
+
+The existing service-health driver and the HTTP proxy observer both call the same pure
+`healthpolicy.Decide` package. That package
+accepts service/route/version identifiers, observations, time, prior memory, required evidence scope
+and declared capabilities. It returns a decision and next memory; it has no network, filesystem,
+Mihomo, `Edge-*`, `GLOBAL` or router-path knowledge. It does not execute a selection or turn a caller's
+capability declaration into proof. The adapter remains responsible for fresh source observations,
+ownership/concurrency guards, persistence, execution, rollback and receipts. A missing named-egress,
+selection, manual-hold or recovery capability yields observe/hold behavior rather than invented
+control support or a demand to replace the user's product.
+
+```mermaid
+flowchart LR
+  HTTP["HTTP/S proxy observation adapter"] --> Facts["Observations + declared capabilities"]
+  Runtime["Mihomo / Merlin adapters"] --> Facts
+  Facts --> Policy["Pure healthpolicy.Decide"]
+  Policy --> Decision["Observe / hold / selection plan"]
+  Decision --> Guard["Adapter guards + permitted effects + receipts"]
+  Guard --> Facts
+```
+
+| Implemented probe adapter | Inputs and scope | Control boundary |
+|---|---|---|
+| `http-proxy-observe` | Profile plus an explicit loopback/private IP HTTP/S proxy URL; no core, runtime config, node graph or router needed | `route_binding=proxy_endpoint_only`, `egress_bound=false`, `frontend_only`; no automatic selection or recovery API |
+| `mihomo-isolated` (default for the legacy probe request) | Concrete node, source configuration, Linux core and verified bypass conditions | May provide bounded named-egress evidence; production control still belongs to the separately authorized Mihomo driver |
+
+That driver's automatic-control evidence has an additional concrete gate: a controlled-reload
+receipt referenced by `loaded_binding_file`. The current binding supports **Mihomo v1.19.34 inline
+proxy instances only**. It records the source-file digest, core identity, canonical `GET /configs`
+digest and live inline node instance IDs after one confirmed reload; later checks require their
+continuity. Instance IDs are continuity tokens, not hashes of node parameters. Missing/stale receipts,
+instance drift, source/core/general-setting changes or another core version reduce the driver to
+observe-only/unknown. Restart or external reload requires a new explicitly controlled binding, not
+automatic reconstruction from matching names or files. `proxy-providers` cannot authorize automatic
+control under this binding; `rule-providers` are permitted because their targets remain in static
+rules, subject to the other ownership checks. This is not a universal loaded-configuration API or an
+account-availability proof, and it does not upgrade the independently pinned offline core payload.
+
+The protocol observer is an actual standalone CLI observation path. It submits its result to the
+same policy with fixed observe mode and observation-only capabilities; `policy_action` and
+`policy_reason` expose that decision. Because it cannot bind a named egress, valid observations retain
+the `egress_unbound` policy reason. It does not invoke the Mihomo control loop or gain selection
+permission by sharing the policy implementation.
+The protocol observer can use an existing client, server or gateway that exposes the standard
+interface; a named client product is not required. Client-local proxy/TUN/DNS priority must still be
+observed. FlClash is one current client example, not a framework dependency or a special compatibility
+guarantee. Another device's observation endpoint does not imply a second router installation,
+firewall or control adapter has been implemented. See [Service routing](SERVICE_ROUTING.md) for the
+concrete observation request and reference-adapter setup.
+
+Implementation, fixture verification and target acceptance are distinct. Source contains the pure
+policy and both probe adapters; deterministic policy and protocol-observer fixtures exercise their
+declared boundaries. A fixture or local test result is not a deployment receipt, cross-host/device
+acceptance, or account/model-generation proof. A signed-in Gemini region failure remains outside the
+anonymous probe's established coverage; an authenticated canary is not implemented. Each actual
+runtime/client combination needs its own scoped evidence before broader claims.
 
 ### Merlin lifecycle ownership
 

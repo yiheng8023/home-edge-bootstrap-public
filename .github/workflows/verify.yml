@@ -29,6 +29,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
+
       - name: Verify
         shell: bash
         run: |
@@ -52,6 +59,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
+
       - name: Verify
         shell: bash
         run: |
@@ -75,6 +89,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Prepare Go dependencies for offline verification
+        shell: bash
+        run: |
+          if command -v go >/dev/null 2>&1; then
+            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
+          fi
+
       - name: Verify
         shell: powershell
         run: |

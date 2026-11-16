@@ -42,6 +42,21 @@ cp "$repo/scripts/subscription-merge.jq" "$installed/jffs/scripts/home-edge-subs
 before=$(sha256sum "$installed/jffs/scripts/home-edge-self-heal.sh")
 observe "$installed" installed
 
+# New optional service helpers are recognized by their existing project markers;
+# their filenames never authorize adopting foreign active bytes.
+cp "$repo/scripts/service-health.sh" "$installed/jffs/scripts/home-edge-service-health.sh"
+cp "$repo/scripts/configure-service-health.sh" "$installed/jffs/scripts/home-edge-configure-service-health.sh"
+cp "$repo/adapters/merlin/service-health-preflight.sh" "$installed/jffs/scripts/home-edge-service-health-preflight.sh"
+observe "$installed" installed
+printf 'operator-specific-active-helper\n' >"$installed/jffs/scripts/home-edge-service-health.sh"
+service_foreign_before=$(sha256sum "$installed/jffs/scripts/home-edge-service-health.sh")
+observe "$installed" unknown
+grep -Fxq 'project_install_reason=foreign_active_artifact' "$tmp/observation" || fail 'foreign service helper was adopted by filename'
+if home_edge_require_project_replacement 1 REPLACE 2>/dev/null; then fail 'foreign service helper bypassed replacement ownership'; fi
+[ "$service_foreign_before" = "$(sha256sum "$installed/jffs/scripts/home-edge-service-health.sh")" ] || fail 'foreign service helper bytes changed'
+cp "$repo/scripts/service-health.sh" "$installed/jffs/scripts/home-edge-service-health.sh"
+observe "$installed" installed
+
 # A historical empty policy backup is preserved, but is not an active script or
 # evidence of project ownership. Only the exact timestamped filename is exempt.
 policy_backup="$installed/jffs/scripts/home-edge-policy.local.bak.20260630102243"
@@ -171,6 +186,10 @@ cp "$tmp/bin/capture-ssh" "$tmp/bin/deploy-ssh"
 mkdir -p "$tmp/capture-bin"; cp "$tmp/bin/capture-ssh" "$tmp/capture-bin/ssh"
 PATH="$tmp/capture-bin:$PATH" APPLY=1 sh "$repo/scripts/deploy-merlin.sh" user@router >"$tmp/captured"
 test -s "$tmp/deploy-command" || fail 'actual deployment template was not captured'
+# The outer deploy script quotes its remote shell body, so checking the host
+# script's syntax cannot detect a broken remote continuation or loop.
+sh -n "$tmp/deploy-command" 2>"$tmp/deploy-template-syntax.err" ||
+  fail 'captured remote deployment template is not valid POSIX shell'
 
 # Only replace the known fixture paths in the captured code. The probe retains its
 # logical /jffs target; mutations are rooted in the isolated fixture after it passes.
@@ -184,7 +203,12 @@ sed -e "s#remote_dir=\"/jffs/home-edge-bootstrap\"#remote_dir=\"$race/jffs/home-
   -e "s#lock_dir=\"/tmp/home-edge-bootstrap-write.lock\"#lock_dir=\"$race/write.lock\"#" \
   "$tmp/deploy-command" >"$tmp/race-command"
 if HOME_EDGE_INSTALLATION_FIXTURE_ROOT="$race" sh "$tmp/race-command" </dev/null >"$tmp/race-out" 2>"$tmp/race-err"; then fail 'lock-time race allowed overwrite'; fi
-grep -Fxq 'project_install_state=installed' "$tmp/race-out" || fail 'lock-time probe did not observe new installation'
+grep -Fxq 'project_install_state=installed' "$tmp/race-out" || {
+  sed -n '/^project_install_\(state\|reason\|replace_allowed\)=/p' "$tmp/race-out" >&2
+  sed -n '/^deploy_guard_state=/p' "$tmp/race-err" >&2
+  sed -n '/^[^[:space:]]*:[[:space:]]*[0-9][0-9]*:/p; /^deploy-merlin:/p' "$tmp/race-err" >&2
+  fail 'lock-time probe did not observe new installation'
+}
 grep -Fxq 'deploy_guard_state=replacement_required' "$tmp/race-err" || fail 'race was not stopped by replacement guard'
 test -f "$race/jffs/home-edge-bootstrap/bootstrap.sh" || fail 'race mutated project kit'
 
@@ -252,6 +276,7 @@ custom_root="$tmp/custom-adapter"; custom_kit="$tmp/custom-kit"
 mkdir -p "$custom_root/jffs/scripts" "$custom_root/jffs/ShellCrash" "$custom_kit/adapters/merlin" "$custom_kit/config" "$custom_kit/scripts" "$tmp/adapter-bin"
 cp "$repo/bootstrap.sh" "$custom_kit/bootstrap.sh"
 cp "$repo/adapters/merlin/bootstrap.sh" "$custom_kit/adapters/merlin/bootstrap.sh"
+cp "$repo/adapters/merlin/service-health-preflight.sh" "$custom_kit/adapters/merlin/service-health-preflight.sh"
 cp "$repo/config/policy.env" "$custom_kit/config/policy.env"
 cp -a "$repo/scripts/." "$custom_kit/scripts/"
 printf '#!/bin/sh\n# HEAL_DRY_RUN fixture; no network observation.\nexit 0\n' >"$custom_kit/scripts/self-heal.sh"

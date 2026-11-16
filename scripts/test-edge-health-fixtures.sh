@@ -100,4 +100,21 @@ monitor_count=1' \
 )
 printf '%s\n' "$auth_output" | grep -q '"edge_health_state": "controller_auth_blocked"' || fail "missing controller auth blocked state"
 
+printf '%s\n' "$output" | grep -q '"service_health_state": "not_configured"' || fail "old guide fixture did not get compatible service default"
+for service_state in not_configured not_observed frontend_available needs_attention unknown stale private-marker; do
+  expected=$service_state
+  [ "$service_state" != private-marker ] || expected=unknown
+  service_guide="$guide_fixture
+service_health_state=$service_state
+service_health_scope=private-marker"
+  for format in --json text; do
+    if [ "$format" = text ]; then format=; fi
+    service_output=$(EDGE_HEALTH_FIXTURE_GUIDE_OUTPUT="$service_guide" EDGE_HEALTH_FIXTURE_CLIENT_OUTPUT="$client_fixture" sh "$repo/scripts/check-edge-health.sh" $format user@router)
+    printf '%s\n' "$service_output" | grep -q "$expected" || fail "edge summary lost service state"
+    printf '%s\n' "$service_output" | grep -q frontend_only || fail "edge summary lost service scope"
+    printf '%s\n' "$service_output" | grep -q router_managed || fail "service result blocked ordinary network status"
+    ! printf '%s\n' "$service_output" | grep -q private-marker || fail "edge summary leaked service data"
+  done
+done
+
 echo "edge_health_fixture_tests=ok"
