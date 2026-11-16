@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -11,6 +12,18 @@ import (
 
 func fixtureServiceGlobalGuard(t *testing.T, directory string) string {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		// Windows runners may expose TMP/TEMP through an 8.3 name. Our lock
+		// fixture is already canonical, so give the production lexical root
+		// check the same representation of that directory. Setenv is scoped to
+		// this serial test; production still rejects unnormalized aliases.
+		root, err := filepath.EvalSymlinks(os.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("TMP", root)
+		t.Setenv("TEMP", root)
+	}
 	path := filepath.Join(directory, "global.lock")
 	if err := os.Mkdir(path, 0700); err != nil {
 		t.Fatal(err)
@@ -28,6 +41,13 @@ func fixtureServiceGlobalGuard(t *testing.T, directory string) string {
 	return path
 }
 
+func requireServiceGlobalGuardPositivePlatform(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "darwin" {
+		t.Skip("router wrapper ownership requires a non-symlink /tmp; macOS /tmp is an alias, so positive router-wrapper support is not claimed")
+	}
+}
+
 func TestServiceGlobalGuardDirectCLIAndMalformedEnvironment(t *testing.T) {
 	for _, key := range []string{serviceGlobalLockEnv, serviceGlobalTokenEnv, serviceGlobalPIDEnv} {
 		t.Setenv(key, "")
@@ -42,19 +62,21 @@ func TestServiceGlobalGuardDirectCLIAndMalformedEnvironment(t *testing.T) {
 }
 
 func TestServiceGlobalGuardIdentityAndContents(t *testing.T) {
+	requireServiceGlobalGuardPositivePlatform(t)
 	for _, kind := range []string{"unchanged", "leaseID-content", "same-content-new-file", "directory-replaced", "foreign-entry", "owner-pid", "foreign-operation", "symlink"} {
 		t.Run(kind, func(t *testing.T) {
-			path := fixtureServiceGlobalGuard(t, t.TempDir())
+			path := fixtureServiceGlobalGuard(t, canonicalHealthTempDir(t))
 			owned, err := captureServiceGlobalGuard()
 			if err != nil || owned == nil || !owned() {
-				t.Fatalf("valid live wrapper ownership rejected: %v", err)
+				relative, relativeErr := filepath.Rel(os.TempDir(), path)
+				t.Fatalf("valid live wrapper ownership rejected: %v; temp_root=%q lock=%q relative=%q relative_error=%v parent_alive=%t", err, os.TempDir(), path, relative, relativeErr, serviceGlobalProcessAlive(os.Getppid()))
 			}
 			switch kind {
 			case "leaseID-content":
 				os.WriteFile(filepath.Join(path, "service-health.owner"), []byte("foreign\n"), 0600)
 			case "same-content-new-file":
 				file := filepath.Join(path, "operation")
-				os.Rename(file, filepath.Join(t.TempDir(), "old-operation"))
+				os.Rename(file, filepath.Join(canonicalHealthTempDir(t), "old-operation"))
 				os.WriteFile(file, []byte("service-health\n"), 0600)
 			case "directory-replaced":
 				os.Rename(path, path+"-old")
@@ -67,7 +89,7 @@ func TestServiceGlobalGuardIdentityAndContents(t *testing.T) {
 				os.WriteFile(filepath.Join(path, "operation"), []byte("subscription\n"), 0600)
 			case "symlink":
 				file := filepath.Join(path, "operation")
-				old := filepath.Join(t.TempDir(), "original-operation")
+				old := filepath.Join(canonicalHealthTempDir(t), "original-operation")
 				os.Rename(file, old)
 				if err := os.Symlink(old, file); err != nil {
 					t.Skip("symlinks unavailable")
@@ -81,7 +103,8 @@ func TestServiceGlobalGuardIdentityAndContents(t *testing.T) {
 }
 
 func TestServiceGlobalGuardRejectsForeignAndUnrelatedPID(t *testing.T) {
-	path := fixtureServiceGlobalGuard(t, t.TempDir())
+	requireServiceGlobalGuardPositivePlatform(t)
+	path := fixtureServiceGlobalGuard(t, canonicalHealthTempDir(t))
 	t.Setenv(serviceGlobalPIDEnv, strconv.Itoa(os.Getpid()))
 	if _, err := captureServiceGlobalGuard(); err == nil {
 		t.Fatal("an alive process other than the parent was accepted")
@@ -98,6 +121,7 @@ func TestServiceGlobalGuardRejectsForeignAndUnrelatedPID(t *testing.T) {
 }
 
 func TestServiceHealthGlobalOwnerChangeDuringProbeStopsWrites(t *testing.T) {
+	requireServiceGlobalGuardPositivePlatform(t)
 	f := newHealthFixture(t)
 	f.r.FailChecks = 1
 	path := fixtureServiceGlobalGuard(t, f.dir)
@@ -116,6 +140,20 @@ func TestServiceHealthGlobalOwnerChangeDuringProbeStopsWrites(t *testing.T) {
 	raw, _ := os.ReadFile(filepath.Join(path, "service-health.owner"))
 	if string(raw) != "new-owner\n" {
 		t.Fatal("engine removed/replaced another writer's marker")
+	}
+}
+
+func TestServiceGlobalGuardDarwinWrapperPathRemainsUnsupported(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS alias boundary")
+	}
+	f := newHealthFixture(t)
+	fixtureServiceGlobalGuard(t, f.dir)
+	if _, err := captureServiceGlobalGuard(); err == nil {
+		t.Fatal("macOS temporary directory unexpectedly authorized router wrapper ownership")
+	}
+	if got := f.tick().Services[0]; got.State != "global_writer_ownership_unverified" || len(f.puts) != 0 {
+		t.Fatalf("unsupported wrapper path did not preserve the hold: %+v", got)
 	}
 }
 

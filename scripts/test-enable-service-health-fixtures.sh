@@ -4,38 +4,65 @@ repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 python_bin=
 for candidate in python3 python; do if which "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys; assert sys.version_info.major == 3' >/dev/null 2>&1; then python_bin=$candidate; break; fi; done
 [ -n "$python_bin" ] || { echo 'service_health_enable_fixtures=missing_python'; exit 1; }
-F_PYTHON="$python_bin" "$python_bin" - "$repo" <<'PY'
-import gzip,hashlib,os,pathlib,shutil,subprocess,sys,tempfile
-repo=pathlib.Path(sys.argv[1]);entry=repo/'scripts/enable-service-health.sh'
+fixture_sh=$(which sh)
+fixture_cygpath=
+if "$python_bin" -c 'import os,sys; sys.exit(os.name != "nt")' >/dev/null 2>&1; then
+  fixture_cygpath=$(which cygpath)
+  fixture_sh=$(cygpath -w "$fixture_sh")
+  fixture_cygpath=$(cygpath -w "$fixture_cygpath")
+fi
+F_PYTHON="$python_bin" F_FIXTURE_SH="$fixture_sh" F_FIXTURE_CYGPATH="$fixture_cygpath" "$python_bin" - "$repo" <<'PY'
+import gzip,hashlib,os,pathlib,shutil,subprocess,sys,tempfile,shlex
+repo=pathlib.Path(sys.argv[1]).resolve();entry=repo/'scripts/enable-service-health.sh'
+shell=os.environ['F_FIXTURE_SH'];cygpath=os.environ['F_FIXTURE_CYGPATH']
+def posix(path):
+ return subprocess.check_output([cygpath,'-u',str(path)],text=True).strip() if os.name=='nt' else str(path)
 binary=b'#!/bin/sh\n[ "$1" = --help ] && { echo "yamlbridge service-health REQUEST NEW_REPORT"; exit 0; }; exit 2\n'
-def put(path,text,mode=0o700):path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text);path.chmod(mode)
+def put(path,text,mode=0o700):
+ path.parent.mkdir(parents=True,exist_ok=True)
+ with path.open('w',encoding='utf-8',newline='\n') as stream:stream.write(text)
+ path.chmod(mode)
 with tempfile.TemporaryDirectory(prefix='home-edge-enable-fixture.') as temp:
- root=pathlib.Path(temp);fake=root/'bin';fake.mkdir();remote=root/'remote';remote.mkdir();(remote/'tmp').mkdir()
+ # macOS /var and /tmp aliases must not look like unsafe production parents.
+ root=pathlib.Path(temp).resolve();fake=root/'bin';fake.mkdir();remote=root/'remote';remote.mkdir();(remote/'tmp').mkdir()
  calls=root/'calls'; payloads=root/'payloads'
  transport='''#!/usr/bin/env python3
 import os,pathlib,sys,subprocess,shutil,re
 r=pathlib.Path(os.environ['F_REMOTE']);a=sys.argv[1:];name=pathlib.Path(sys.argv[0]).name
 with open(os.environ['F_CALLS'],'a') as f:f.write(name+' '+('arch' if 'uname -m' in a[-1] else 'call')+'\\n')
-def translate(s):return re.sub(r'/(jffs|tmp|proc)',lambda m:str(r/m.group(1)),s)
+def native_path(s):
+ if os.name=='nt' and s.startswith('/'):
+  return subprocess.check_output([os.environ['F_FIXTURE_CYGPATH'],'-w',s],text=True).strip()
+ return s
+def translate_native(s):return re.sub(r'/(jffs|tmp|proc)',lambda m:str(r/m.group(1)),s)
+def translate_shell(s):
+ # MSYS may convert a POSIX-looking environment value back to C:/... when
+ # launching native Python. Derive this shell path here, not through env.
+ base=subprocess.check_output([os.environ['F_FIXTURE_CYGPATH'],'-u',str(r)],text=True).strip() if os.name=='nt' else str(r)
+ return re.sub(r'/(jffs|tmp|proc)',lambda m:base+'/'+m.group(1),s)
 if name=='scp':
- src=a[-2];dst=a[-1].split(':',1)[1];shutil.copyfile(src,translate(dst));sys.exit(0)
+ src=native_path(a[-2]);dst=a[-1].split(':',1)[1];shutil.copyfile(src,translate_native(dst));sys.exit(0)
 command=a[-1]
 if 'uname -m' in command:
  if os.environ.get('F_NO_HELPERS')=='1':sys.exit(1)
  print(os.environ.get('F_ARCH','aarch64'));sys.exit(0)
 body=sys.stdin.read() if command.startswith('tr -d') else command
 with open(os.environ['F_PAYLOADS'],'a') as f:f.write(body+'\\n')
-result=subprocess.run(['sh','-s'],input=translate(body).encode(),env=os.environ)
+result=subprocess.run([os.environ['F_FIXTURE_SH'],'-s'],input=translate_shell(body).encode(),env=os.environ)
 sys.exit(result.returncode)
 '''
  transport=transport.replace('/usr/bin/env python3','/usr/bin/env '+os.environ['F_PYTHON'])
  for name in ['ssh','scp']:put(fake/name,transport)
  put(fake/'pidof','#!/bin/sh\necho 123\n')
+ put(fake/'readlink','#!/bin/sh\n[ "$#" -eq 1 ] && [ "$1" = '+shlex.quote(posix(remote/'proc/123/exe'))+' ] || exit 2\nprintf "%s\\n" '+shlex.quote(posix(remote/'tmp/ShellCrash/CrashCore'))+'\n')
  put(fake/'go',('''#!/usr/bin/env python3
-import os,sys,pathlib
+import os,sys,pathlib,subprocess
 with open(os.environ['F_CALLS'],'a') as f:f.write('go '+' '.join(sys.argv[1:])+'\\n')
 if os.environ.get('F_GO_FAIL')=='1':sys.exit(1)
-if sys.argv[1]=='build':pathlib.Path(sys.argv[sys.argv.index('-o')+1]).write_bytes(bytes.fromhex(os.environ['F_BINARY_HEX']))
+if sys.argv[1]=='build':
+ path=sys.argv[sys.argv.index('-o')+1]
+ if os.name=='nt' and path.startswith('/'):path=subprocess.check_output([os.environ['F_FIXTURE_CYGPATH'],'-w',path],text=True).strip()
+ pathlib.Path(path).write_bytes(bytes.fromhex(os.environ['F_BINARY_HEX']))
 ''').replace('/usr/bin/env python3','/usr/bin/env '+os.environ['F_PYTHON']))
  scripts=remote/'jffs/scripts';scripts.mkdir(parents=True)
  for name in ['home-edge-service-health.sh','home-edge-service-health-preflight.sh']:put(scripts/name,'#!/bin/sh\nexit 0\n')
@@ -44,14 +71,15 @@ printf '%s:%s:%s:%s\\n' "$1" "${SERVICE_HEALTH_PROFILES:-}" "${SERVICE_HEALTH_GO
 [ "$1" != --apply ] || [ "${F_SETUP_FAIL:-0}" != 1 ]
 ''')
  (remote/'tmp/ShellCrash').mkdir();(remote/'tmp/ShellCrash/shellcrash.pid').write_text('123\n');put(remote/'tmp/ShellCrash/CrashCore','#!/bin/sh\nexit 0\n')
- proc=remote/'proc/123';proc.mkdir(parents=True);(proc/'exe').symlink_to(remote/'tmp/ShellCrash/CrashCore');(proc/'stat').write_text(' '.join(['123','(CrashCore)']+['1']*19+['999'])+'\n')
+ # /proc identity is mocked explicitly; Windows requires no symlink privilege.
+ proc=remote/'proc/123';proc.mkdir(parents=True);(proc/'exe').write_bytes(b'fixture proc executable');(proc/'stat').write_text(' '.join(['123','(CrashCore)']+['1']*19+['999'])+'\n')
  runtime=remote/'jffs/home-edge-bootstrap-state/runtime';runtime.mkdir(parents=True)
  old=b'old parser fixture';(runtime/'yamlbridge.gz').write_bytes(gzip.compress(old));(runtime/'yamlbridge.sha256').write_text(hashlib.sha256(old).hexdigest()+'\n')
  original={p.name:p.read_bytes() for p in runtime.iterdir()}
  prebuilt=root/'prebuilt';prebuilt.write_bytes(binary);prebuilt.chmod(0o700)
- env=dict(os.environ,PATH=str(fake)+os.pathsep+os.environ['PATH'],F_REMOTE=str(remote),F_CALLS=str(calls),F_PAYLOADS=str(payloads),F_SETUP=str(root/'setup'),F_BINARY_HEX=binary.hex())
+ env=dict(os.environ,PATH=str(fake)+os.pathsep+os.environ['PATH'],F_REMOTE=str(remote),F_REMOTE_POSIX=posix(remote),F_CORE_LINK=posix(proc/'exe'),F_CORE_EXE=posix(remote/'tmp/ShellCrash/CrashCore'),F_CALLS=str(calls),F_PAYLOADS=str(payloads),F_SETUP=posix(root/'setup'),F_BINARY_HEX=binary.hex())
  def run(extra=None,ok=True,router='user@router'):
-  e=dict(env);e.update(extra or {});p=subprocess.run(['sh',str(entry),router],env=e,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+  e=dict(env);e.update(extra or {});p=subprocess.run([shell,posix(entry),router],env=e,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
   assert (p.returncode==0)==ok,(p.returncode,p.stdout,p.stderr)
   assert not (remote/'tmp/home-edge-bootstrap-write.lock').exists(),'lock leaked'
   stages=list((remote/'tmp').glob('home-edge-service-enable.*'))

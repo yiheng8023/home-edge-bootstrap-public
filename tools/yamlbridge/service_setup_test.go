@@ -262,3 +262,169 @@ func TestRunServiceSetupPrivateOutputAndHashes(t *testing.T) {
 		t.Fatal("unknown request field accepted")
 	}
 }
+
+const setupLegacyGeminiBlock = `# BEGIN home-edge-service:v1:gemini
+  - DOMAIN,gemini.google.com,Edge-gemini
+  - DOMAIN,bard.google.com,Edge-gemini
+  - DOMAIN,aistudio.google.com,Edge-gemini
+  - DOMAIN,generativelanguage.googleapis.com,Edge-gemini
+  - DOMAIN,accounts.google.com,Edge-gemini
+  - DOMAIN,gemini.gstatic.com,Edge-gemini
+# END home-edge-service:v1:gemini
+`
+
+func setupLegacyGeminiFixture(t *testing.T) map[string][]byte {
+	t.Helper()
+	first, err := buildServiceSetup(setupRequest("gemini", "openai", "anthropic"), []byte(setupFixture), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backend := "DOMAIN,geminiweb-pa.clients6.google.com,Edge-gemini"
+	runtime, err := setupYAML(first["runtime.yaml"], yaml.MappingNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules := setupValue(runtime, "rules")
+	kept := []*yaml.Node{}
+	for _, rule := range rules.Content {
+		if rule.Value != backend {
+			kept = append(kept, rule)
+		}
+	}
+	rules.Content = kept
+	first["runtime.yaml"], err = yaml.Marshal(runtime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first["rules.yaml"] = bytes.Replace(first["rules.yaml"], []byte("  - "+backend+"\n"), nil, 1)
+	if !bytes.Contains(first["rules.yaml"], []byte(setupLegacyGeminiBlock)) {
+		t.Fatal("fixture does not contain the exact deployed six-rule block")
+	}
+	return first
+}
+
+func TestServiceSetupGeminiLegacyBackendMigration(t *testing.T) {
+	for _, stripped := range []bool{false, true} {
+		t.Run(map[bool]string{false: "marked", true: "comment-stripped"}[stripped], func(t *testing.T) {
+			old := setupLegacyGeminiFixture(t)
+			source := append([]byte(nil), old["runtime.yaml"]...)
+			if stripped {
+				decoded, err := convert("decode", source)
+				if err != nil {
+					t.Fatal(err)
+				}
+				source, err = convert("encode", decoded)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := append([]byte(nil), source...)
+			out, err := buildServiceSetup(setupRequest("gemini"), source, old["groups.yaml"], old["rules.yaml"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(source, before) {
+				t.Fatal("migration modified its input")
+			}
+			runtime, _ := setupYAML(out["runtime.yaml"], yaml.MappingNode)
+			oldRuntime, _ := setupYAML(old["runtime.yaml"], yaml.MappingNode)
+			backend, backendIndex, broadIndex, count := "DOMAIN,geminiweb-pa.clients6.google.com,Edge-gemini", -1, -1, 0
+			for i, rule := range setupValue(runtime, "rules").Content {
+				if rule.Value == backend {
+					backendIndex, count = i, count+1
+				}
+				if rule.Value == "DOMAIN-SUFFIX,google.com,Google" {
+					broadIndex = i
+				}
+			}
+			if count != 1 || backendIndex < 0 || broadIndex <= backendIndex || len(setupRules("gemini")) != 7 {
+				t.Fatal("backend did not receive one priority Gemini-specific rule")
+			}
+			for _, name := range []string{"openai", "anthropic"} {
+				begin, end := "# BEGIN "+setupGroupMarker(name), "# END "+setupGroupMarker(name)
+				start := bytes.Index(old["rules.yaml"], []byte(begin))
+				finish := bytes.Index(old["rules.yaml"], []byte(end)) + len(end)
+				if start < 0 || finish < start || !bytes.Contains(out["rules.yaml"], old["rules.yaml"][start:finish]) {
+					t.Fatal("unselected vendor overlay bytes changed")
+				}
+				for _, groupName := range []string{setupGroupName(name), setupGroupName(name) + "-Auto"} {
+					var beforeGroup, afterGroup any
+					for _, g := range setupValue(oldRuntime, "proxy-groups").Content {
+						if setupValue(g, "name").Value == groupName {
+							g.Decode(&beforeGroup)
+						}
+					}
+					for _, g := range setupValue(runtime, "proxy-groups").Content {
+						if setupValue(g, "name").Value == groupName {
+							g.Decode(&afterGroup)
+						}
+					}
+					if beforeGroup == nil || !reflect.DeepEqual(beforeGroup, afterGroup) {
+						t.Fatal("unselected vendor group changed")
+					}
+				}
+				for _, expected := range setupRules(name) {
+					n := 0
+					for _, actual := range setupValue(runtime, "rules").Content {
+						if actual.Value == expected {
+							n++
+						}
+					}
+					if n != 1 {
+						t.Fatal("unselected vendor rule changed or duplicated")
+					}
+				}
+			}
+			second, err := buildServiceSetup(setupRequest("gemini"), out["runtime.yaml"], out["groups.yaml"], out["rules.yaml"])
+			if err != nil || !reflect.DeepEqual(out, second) {
+				t.Fatalf("migrated output not idempotent: %v", err)
+			}
+		})
+	}
+}
+
+func TestServiceSetupGeminiLegacyBlockEditsRejected(t *testing.T) {
+	for _, kind := range []string{"target", "missing", "extra", "reordered", "broadened"} {
+		t.Run(kind, func(t *testing.T) {
+			old := setupLegacyGeminiFixture(t)
+			block := setupLegacyGeminiBlock
+			switch kind {
+			case "target":
+				block = strings.Replace(block, "DOMAIN,bard.google.com,Edge-gemini", "DOMAIN,bard.google.com,Shared AI", 1)
+			case "missing":
+				block = strings.Replace(block, "  - DOMAIN,bard.google.com,Edge-gemini\n", "", 1)
+			case "extra":
+				block = strings.Replace(block, "# END", "  - DOMAIN,signaler-pa.clients6.google.com,Edge-gemini\n# END", 1)
+			case "reordered":
+				block = strings.Replace(block, "DOMAIN,gemini.google.com,Edge-gemini", "swap", 1)
+				block = strings.Replace(block, "DOMAIN,bard.google.com,Edge-gemini", "DOMAIN,gemini.google.com,Edge-gemini", 1)
+				block = strings.Replace(block, "swap", "DOMAIN,bard.google.com,Edge-gemini", 1)
+			case "broadened":
+				block = strings.Replace(block, "DOMAIN,gemini.gstatic.com", "DOMAIN-SUFFIX,clients6.google.com", 1)
+			}
+			rules := bytes.Replace(old["rules.yaml"], []byte(setupLegacyGeminiBlock), []byte(block), 1)
+			if _, err := buildServiceSetup(setupRequest("gemini"), old["runtime.yaml"], old["groups.yaml"], rules); err == nil {
+				t.Fatal("modified legacy ownership was adopted")
+			}
+		})
+	}
+}
+
+func TestServiceSetupBackendScopeAndUnselectedLegacyPreserved(t *testing.T) {
+	backend := "DOMAIN,geminiweb-pa.clients6.google.com,Edge-gemini"
+	for _, vendor := range []string{"openai", "anthropic"} {
+		out, err := buildServiceSetup(setupRequest(vendor), []byte(setupFixture), nil, nil)
+		if err != nil || bytes.Contains(out["rules.yaml"], []byte("clients6.google.com")) {
+			t.Fatalf("backend adopted by another service: %s %v", vendor, err)
+		}
+	}
+	old := setupLegacyGeminiFixture(t)
+	out, err := buildServiceSetup(setupRequest("openai"), old["runtime.yaml"], old["groups.yaml"], old["rules.yaml"])
+	if err != nil || !bytes.Contains(out["rules.yaml"], []byte(setupLegacyGeminiBlock)) || bytes.Contains(out["rules.yaml"], []byte(backend)) {
+		t.Fatalf("unselected Gemini profile was silently migrated: %v", err)
+	}
+	gemini, err := buildServiceSetup(setupRequest("gemini"), []byte(setupFixture), nil, nil)
+	if err != nil || !bytes.Contains(gemini["rules.yaml"], []byte(backend)) || bytes.Contains(gemini["rules.yaml"], []byte("signaler-pa")) || bytes.Contains(gemini["rules.yaml"], []byte("DOMAIN-SUFFIX,clients6.google.com")) {
+		t.Fatalf("Gemini backend scope was broadened: %v", err)
+	}
+}

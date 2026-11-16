@@ -3,18 +3,70 @@
 # yamlbridge's actual transformation and collisions are tested in Go.
 set -eu
 umask 077
-repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
+repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd -P)
 tmp=$(mktemp -d /tmp/home-edge-service-setup-test.XXXXXX)
+tmp=$(CDPATH= cd "$tmp" && pwd -P)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 mkdir "$tmp/bin" "$tmp/state" "$tmp/runtime" "$tmp/yamls"
+jq_platform=$(uname -s)
+case "$jq_platform" in MINGW*|MSYS*)
+  # The fixture models POSIX router paths. MSYS otherwise rewrites native jq's
+  # --arg data as Windows paths, and jq.exe emits CRLF in raw shell values.
+  # Convert only jq's actual file arguments; keep JSON data and filters literal.
+  native_jq=${SERVICE_HEALTH_FIXTURE_JQ:-$(which jq 2>/dev/null)}
+  [ -n "$native_jq" ] || { echo 'fixture requires jq' >&2; exit 1; }
+  # Keep launchers beside their dependencies. Chocolatey's jq shim resolves its
+  # real executable relative to its original location, so copying it breaks jq.
+  export SERVICE_HEALTH_FIXTURE_NATIVE_JQ=$(cygpath -m "$native_jq")
+  cat >"$tmp/bin/jq" <<'EOF'
+#!/bin/sh
+data_left=0 file_next=0 file_variable_next=0 filter_seen=0
+for jq_arg in "$@"; do
+  shift
+  if [ "$data_left" -gt 0 ]; then data_left=$((data_left - 1))
+  elif [ "$file_variable_next" -eq 1 ]; then file_variable_next=0; file_next=1
+  elif [ "$file_next" -eq 1 ]; then
+    case "$jq_arg" in /*) jq_arg=$(cygpath -m "$jq_arg") || exit 1 ;; esac
+    file_next=0
+  else
+    case "$jq_arg" in
+      --arg|--argjson) data_left=2 ;;
+      --slurpfile|--rawfile) file_variable_next=1 ;;
+      -f|--from-file) file_next=1; filter_seen=1 ;;
+      -*) ;;
+      *)
+        if [ "$filter_seen" -eq 0 ]; then filter_seen=1
+        else case "$jq_arg" in /*) jq_arg=$(cygpath -m "$jq_arg") || exit 1 ;; esac; fi ;;
+    esac
+  fi
+  set -- "$@" "$jq_arg"
+done
+MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' exec "$SERVICE_HEALTH_FIXTURE_NATIVE_JQ" --binary "$@"
+EOF
+  chmod 700 "$tmp/bin/jq"
+  ;;
+*)
 if [ -n "${SERVICE_HEALTH_FIXTURE_JQ:-}" ]; then
   cp "$SERVICE_HEALTH_FIXTURE_JQ" "$tmp/bin/jq"
   chmod 700 "$tmp/bin/jq"
 fi
+;; esac
 PATH=$tmp/bin:$PATH
 export PATH
 which jq >/dev/null 2>&1 || { echo 'fixture requires jq' >&2; exit 1; }
 fail() { echo "service_health_setup_fixture_tests=failed: $*" >&2; exit 1; }
+if [ "$(jq -nr --arg path /tmp/router-path-proof '$path')" != /tmp/router-path-proof ]; then
+  # Probe only fixed input; never dump PATH, environment variables, or jq errors.
+  jq_probe=$(jq -nr --arg path /tmp/router-path-proof '$path' 2>/dev/null || true)
+  case "$jq_probe" in *router-path-proof*)
+    printf 'service_health_fixture_jq_proof_hex=%s\n' "$(printf '%s' "$jq_probe" | od -An -tx1 | tr -d ' \n')" >&2 ;;
+    *) printf 'service_health_fixture_jq_proof=unexpected_output\n' >&2 ;;
+  esac
+  jq_version=$(jq --version 2>/dev/null || true)
+  case "$jq_version" in jq-[0-9]*[!A-Za-z0-9._+-]*) jq_version=unknown ;; jq-[0-9]*) ;; *) jq_version=unknown ;; esac
+  printf 'service_health_fixture_jq_version=%s\n' "$jq_version" >&2
+  fail 'jq changed POSIX path data or raw line endings'
+fi
 export FIXTURE_ROOT=$tmp
 cat >"$tmp/bin/pidof" <<'EOF'
 #!/bin/sh
@@ -101,6 +153,24 @@ export SERVICE_HEALTH_YAMLBRIDGE=$tmp/bin/yamlbridge
 export SERVICE_HEALTH_SECRET_FILE=$tmp/state/CONTROLLER_SECRET.local
 export HOME_EDGE_WRITE_LOCK_DIR=$tmp/write.lock
 export HOME_EDGE_SECURE_TEMP_HELPER=$repo/scripts/home-edge-secure-temp.sh
+if [ "$jq_platform" = Darwin ]; then
+  # Model a Linux router's real /tmp, rather than macOS's /tmp symlink. Keep
+  # the production allocator body and canonicalize only its fixture templates.
+  sed 's/^home_edge_secure_temp()/home_edge_fixture_real_secure_temp()/' "$HOME_EDGE_SECURE_TEMP_HELPER" >"$tmp/secure-temp.sh"
+  cat >>"$tmp/secure-temp.sh" <<'EOF'
+home_edge_secure_temp() {
+  if [ "${1:-}" = -d ]; then
+    shift
+    home_edge_fixture_parent=$(CDPATH= cd "$(dirname "$1")" && pwd -P) || return 1
+    home_edge_fixture_real_secure_temp -d "$home_edge_fixture_parent/$(basename "$1")"
+  else
+    home_edge_fixture_parent=$(CDPATH= cd "$(dirname "$1")" && pwd -P) || return 1
+    home_edge_fixture_real_secure_temp "$home_edge_fixture_parent/$(basename "$1")"
+  fi
+}
+EOF
+  export HOME_EDGE_SECURE_TEMP_HELPER=$tmp/secure-temp.sh
+fi
 export SERVICE_HEALTH_API=http://127.0.0.1:9999
 export SERVICE_HEALTH_GOOGLE_MODE=auto
 export SERVICE_HEALTH_MODE=auto
@@ -115,6 +185,9 @@ reset_sources() {
   sha256sum "$SERVICE_HEALTH_RUNTIME_CONFIG" "$SERVICE_HEALTH_GROUPS_FILE" "$SERVICE_HEALTH_RULES_FILE" >"$tmp/before.sha"
 }
 run_setup() { sh "$repo/scripts/configure-service-health.sh" "$@"; }
+# Bash 3.2 in sh/POSIX mode retains assignments preceding a function call.
+# Isolate every per-case environment override in a subshell so negative cases
+# cannot poison later plans, apply confirmations or recovery checks.
 unchanged_sources() { sha256sum -c "$tmp/before.sha" >/dev/null 2>&1; }
 reset_sources
 run_setup --plan >"$tmp/plan.out" || fail 'plan failed'
@@ -122,24 +195,24 @@ grep -q '^service_health_setup_state=planned$' "$tmp/plan.out" || fail 'missing 
 unchanged_sources || fail 'plan changed sources'
 [ ! -e "$tmp/state/service-health.json" ] && [ ! -e "$tmp/state/service-health-setup.pending" ] || fail 'plan installed state'
 ! grep -q '^PUT$' "$tmp/api.calls" || fail 'plan called controller mutation'
-MOCK_HASH_FALLBACK=1 run_setup --plan >"$tmp/hash-fallback.out" || fail 'openssl SHA-256 fallback failed'
-if MOCK_WRONG_EXE=1 run_setup --plan >"$tmp/wrong-exe.out" 2>&1; then fail 'pidof accepted unrelated executable'; fi
-if MOCK_CORE_TEST_FAIL=1 run_setup --plan >"$tmp/core-fail.out" 2>&1; then fail 'failed bounded core validation accepted'; fi
-SERVICE_HEALTH_MODE=observe SERVICE_HEALTH_GOOGLE_MODE=manual run_setup --plan >"$tmp/manual-plan.out" || fail 'manual observe plan failed'
+(MOCK_HASH_FALLBACK=1 run_setup --plan) >"$tmp/hash-fallback.out" || fail 'openssl SHA-256 fallback failed'
+if (MOCK_WRONG_EXE=1 run_setup --plan) >"$tmp/wrong-exe.out" 2>&1; then fail 'pidof accepted unrelated executable'; fi
+if (MOCK_CORE_TEST_FAIL=1 run_setup --plan) >"$tmp/core-fail.out" 2>&1; then fail 'failed bounded core validation accepted'; fi
+(SERVICE_HEALTH_MODE=observe SERVICE_HEALTH_GOOGLE_MODE=manual run_setup --plan) >"$tmp/manual-plan.out" || fail 'manual observe plan failed'
 grep -q '^gemini_initial_mode=manual$' "$tmp/manual-plan.out" || fail 'manual plan mode lost'
-MOCK_VERSION=1.19.33 run_setup --plan >"$tmp/version-plan.out" || fail 'unsupported version observation plan rejected'
+(MOCK_VERSION=1.19.33 run_setup --plan) >"$tmp/version-plan.out" || fail 'unsupported version observation plan rejected'
 grep -q '^repair_capability=observe_only$' "$tmp/version-plan.out" || fail 'unsupported version claimed repair capability'
 if run_setup --apply >"$tmp/without-token.out" 2>&1; then fail 'apply accepted missing opt-in'; fi
 unchanged_sources || fail 'missing-token apply wrote sources'
 mkdir "$tmp/write.lock"
-if SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/lock.out" 2>&1; then fail 'active global lock ignored'; fi
+if (SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/lock.out" 2>&1; then fail 'active global lock ignored'; fi
 rmdir "$tmp/write.lock"
 reset_sources
-if MOCK_FRESH_DRIFT=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/drift.out" 2>&1; then fail 'fresh graph drift accepted'; fi
+if (MOCK_FRESH_DRIFT=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/drift.out" 2>&1; then fail 'fresh graph drift accepted'; fi
 unchanged_sources || fail 'fresh drift changed sources'
 [ ! -e "$tmp/state/service-health-setup.pending" ] || fail 'fresh drift created journal'
 reset_sources
-SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/apply.out" || fail 'apply failed'
+(SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/apply.out" || fail 'apply failed'
 grep -q '^service_health_setup_state=accepted$' "$tmp/apply.out" || fail 'missing accepted state'
 [ ! -e "$tmp/state/service-health-setup.pending" ] && [ -f "$tmp/state/service-health-setup.previous/receipt.json" ] || fail 'accepted backup not retained'
 jq -e '.mode=="auto" and (.services|length)==1 and .services[0].selector=="Edge-gemini" and (.loaded_binding_file|endswith("service-health.loaded.json"))' "$tmp/state/service-health.json" >/dev/null || fail 'health registration wrong'
@@ -149,7 +222,7 @@ jq -e '.status=="accepted" and (.files|length)==5 and any(.files[];.role=="bindi
 [ "$(grep -c '^BIND$' "$tmp/api.calls")" -eq 1 ] && ! grep -q '^PUT$' "$tmp/api.calls" || fail 'supported apply did not use exactly one binding reload'
 run_setup --status | grep -q '^service_health_setup_state=configured$' || fail 'status missing configuration'
 reset_sources
-MOCK_PROVIDER_UNSUPPORTED=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/observe-only.out" || fail 'unsupported provider observe installation failed'
+(MOCK_PROVIDER_UNSUPPORTED=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/observe-only.out" || fail 'unsupported provider observe installation failed'
 jq -e '.mode=="observe"' "$tmp/state/service-health.json" >/dev/null || fail 'unsupported provider did not force observation'
 [ ! -e "$tmp/state/service-health.loaded.json" ] || fail 'unsupported provider fabricated binding'
 ! grep -q '^BIND$' "$tmp/api.calls" && [ "$(grep -c '^PUT$' "$tmp/api.calls")" -eq 1 ] || fail 'observe-only reload count wrong'
@@ -163,36 +236,36 @@ printf '{"schema_version":1,"mode":"observe","services":[{"name":"openai","selec
 jq -e '.mode=="observe" and [.services[].name]==["gemini","openai"]' "$tmp/state/service-health.json" >/dev/null || fail 'existing health service or global mode lost'
 jq -e '.proxies["Edge-openai"].now=="Backup" and .proxies["Edge-openai-Auto"].now=="Backup"' "$tmp/graph.json" >/dev/null || fail 'unselected existing service was reselected'
 reset_sources
-if SERVICE_HEALTH_PROFILES=gemini,gemini run_setup --plan >"$tmp/duplicate-profile.out" 2>&1; then fail 'duplicate service profiles accepted'; fi
+if (SERVICE_HEALTH_PROFILES=gemini,gemini run_setup --plan) >"$tmp/duplicate-profile.out" 2>&1; then fail 'duplicate service profiles accepted'; fi
 jq '.proxies.GLOBAL.all += ["unrelated-new-member"]' "$tmp/graph.after.json" >"$tmp/graph.bad.json"
 mv "$tmp/graph.bad.json" "$tmp/graph.after.json"
-if SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/global-member.out" 2>&1; then fail 'unrelated GLOBAL member accepted'; fi
+if (SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/global-member.out" 2>&1; then fail 'unrelated GLOBAL member accepted'; fi
 unchanged_sources || fail 'unexpected GLOBAL member did not restore configuration'
-MOCK_CORE_STOPPED=1 run_setup --recover >"$tmp/global-member-recover.out" || fail 'GLOBAL member recovery failed'
+(MOCK_CORE_STOPPED=1 run_setup --recover) >"$tmp/global-member-recover.out" || fail 'GLOBAL member recovery failed'
 reset_sources
 jq '.proxies.GLOBAL.now="Backup"' "$tmp/graph.after.json" >"$tmp/graph.bad.json"
 mv "$tmp/graph.bad.json" "$tmp/graph.after.json"
 printf '{"previous":"private-binding"}\n' >"$tmp/state/service-health.loaded.json"
-if SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/global-change.out" 2>&1; then fail 'GLOBAL selection drift accepted'; fi
+if (SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/global-change.out" 2>&1; then fail 'GLOBAL selection drift accepted'; fi
 unchanged_sources || fail 'GLOBAL verification failure did not restore configuration'
 jq -e '.previous=="private-binding"' "$tmp/state/service-health.loaded.json" >/dev/null || fail 'failed verification lost prior binding'
-MOCK_CORE_STOPPED=1 run_setup --recover >"$tmp/global-recover.out" || fail 'GLOBAL failure preboot recovery failed'
+(MOCK_CORE_STOPPED=1 run_setup --recover) >"$tmp/global-recover.out" || fail 'GLOBAL failure preboot recovery failed'
 reset_sources
-if MOCK_BIND_POST_FAIL=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/binding-post-fail.out" 2>&1; then fail 'unverified reload binding accepted'; fi
+if (MOCK_BIND_POST_FAIL=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/binding-post-fail.out" 2>&1; then fail 'unverified reload binding accepted'; fi
 unchanged_sources || fail 'post-reload failure did not restore owned configuration'
 [ -f "$tmp/state/service-health-setup.pending/receipt.json" ] && [ ! -e "$tmp/state/service-health.loaded.json" ] || fail 'post-reload failure lost pending or fabricated binding'
-MOCK_CORE_STOPPED=1 run_setup --recover >"$tmp/binding-recover.out" || fail 'post-reload failure preboot recovery failed'
+(MOCK_CORE_STOPPED=1 run_setup --recover) >"$tmp/binding-recover.out" || fail 'post-reload failure preboot recovery failed'
 reset_sources
-if MOCK_RELOAD_FAIL=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/reload-fail.out" 2>&1; then fail 'reload failure accepted'; fi
+if (MOCK_RELOAD_FAIL=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/reload-fail.out" 2>&1; then fail 'reload failure accepted'; fi
 unchanged_sources || fail 'failed reload did not restore owned sources'
 [ -f "$tmp/state/service-health-setup.pending/receipt.json" ] || fail 'failed reload lost pending responsibility'
 if run_setup --recover >"$tmp/live-recover.out" 2>&1; then fail 'live file-only recovery cleared runtime responsibility'; fi
-MOCK_CORE_STOPPED=1 run_setup --recover >"$tmp/recover.out" || fail 'pre-boot recovery failed'
+(MOCK_CORE_STOPPED=1 run_setup --recover) >"$tmp/recover.out" || fail 'pre-boot recovery failed'
 [ ! -e "$tmp/state/service-health-setup.pending" ] || fail 'recovered journal remained'
 reset_sources
-if MOCK_RELOAD_FAIL=1 MOCK_LATER_EDIT=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply >"$tmp/later-edit.out" 2>&1; then fail 'later-edit failure accepted'; fi
+if (MOCK_RELOAD_FAIL=1 MOCK_LATER_EDIT=1 SERVICE_HEALTH_CONFIRM=APPLY run_setup --apply) >"$tmp/later-edit.out" 2>&1; then fail 'later-edit failure accepted'; fi
 grep -q '^# later user edit$' "$SERVICE_HEALTH_RULES_FILE" || fail 'rollback overwrote later user edit'
-if MOCK_CORE_STOPPED=1 run_setup --recover >"$tmp/unresolved.out" 2>&1; then fail 'recovery overwrote later user edit'; fi
+if (MOCK_CORE_STOPPED=1 run_setup --recover) >"$tmp/unresolved.out" 2>&1; then fail 'recovery overwrote later user edit'; fi
 grep -q '^# later user edit$' "$SERVICE_HEALTH_RULES_FILE" || fail 'recovery changed later edit'
 [ -f "$tmp/state/service-health-setup.pending/receipt.json" ] || fail 'unresolved receipt disappeared'
 if grep -l 'fixture-private-token' "$tmp"/*.out >/dev/null 2>&1; then fail 'controller secret leaked to output'; fi

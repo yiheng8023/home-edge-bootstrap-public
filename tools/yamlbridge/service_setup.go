@@ -34,7 +34,7 @@ type serviceSetupRequest struct {
 // Exact Gemini hosts deliberately do not claim all of Google. The shared auth
 // host affects Google sign-in, a documented scope consequence of this profile.
 var setupDomains = map[string][]string{
-	"gemini":    {"DOMAIN,gemini.google.com", "DOMAIN,bard.google.com", "DOMAIN,aistudio.google.com", "DOMAIN,generativelanguage.googleapis.com", "DOMAIN,accounts.google.com", "DOMAIN,gemini.gstatic.com"},
+	"gemini":    {"DOMAIN,gemini.google.com", "DOMAIN,bard.google.com", "DOMAIN,aistudio.google.com", "DOMAIN,generativelanguage.googleapis.com", "DOMAIN,accounts.google.com", "DOMAIN,gemini.gstatic.com", "DOMAIN,geminiweb-pa.clients6.google.com"},
 	"openai":    {"DOMAIN-SUFFIX,chatgpt.com", "DOMAIN-SUFFIX,openai.com", "DOMAIN-SUFFIX,oaistatic.com", "DOMAIN-SUFFIX,oaiusercontent.com", "DOMAIN-SUFFIX,auth0.openai.com"},
 	"anthropic": {"DOMAIN-SUFFIX,claude.ai", "DOMAIN-SUFFIX,anthropic.com", "DOMAIN-SUFFIX,claude.com"},
 }
@@ -48,6 +48,23 @@ func setupRules(service string) []string {
 		r = append(r, domain+","+setupGroupName(service))
 	}
 	return r
+}
+
+// The first deployed v1 Gemini profile had exactly these six ordered rules.
+// Only this complete legacy block may migrate to the current profile; accepting
+// subsets or arbitrary additions would silently adopt user-modified ownership.
+func setupKnownRuleBlock(service string, actual []string) bool {
+	if reflect.DeepEqual(actual, setupRules(service)) {
+		return true
+	}
+	return service == "gemini" && reflect.DeepEqual(actual, []string{
+		"DOMAIN,gemini.google.com,Edge-gemini",
+		"DOMAIN,bard.google.com,Edge-gemini",
+		"DOMAIN,aistudio.google.com,Edge-gemini",
+		"DOMAIN,generativelanguage.googleapis.com,Edge-gemini",
+		"DOMAIN,accounts.google.com,Edge-gemini",
+		"DOMAIN,gemini.gstatic.com,Edge-gemini",
+	})
 }
 func setupHasLine(comment, line string) bool {
 	for _, c := range strings.Split(comment, "\n") {
@@ -291,14 +308,12 @@ func setupOverlayRules(raw []byte, services []setupService, selected map[string]
 			if owner == "" || trim != "# END "+setupGroupMarker(owner) {
 				return nil, errors.New("unbalanced managed rule block")
 			}
-			expected := setupRules(owner)
-			if len(block) != len(expected)+1 {
-				return nil, errors.New("modified managed rule block")
+			actual := make([]string, 0, len(block)-1)
+			for _, rule := range block[1:] {
+				actual = append(actual, ruleText(rule))
 			}
-			for i, r := range expected {
-				if ruleText(block[i+1]) != r {
-					return nil, errors.New("modified managed rule block")
-				}
+			if !setupKnownRuleBlock(owner, actual) {
+				return nil, errors.New("modified managed rule block")
 			}
 			if !selected[owner] {
 				kept = append(kept, block...)

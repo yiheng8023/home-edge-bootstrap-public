@@ -50,6 +50,10 @@ sh /jffs/scripts/home-edge-configure-service-rules.sh
 
 各服务独立管理，Gemini 失败不授权修改 OpenAI、Anthropic 或其他选择器。Gemini 配置使用精确服务端点，不接管全部 Google 流量；其中共享的 `accounts.google.com` 规则也影响 Google 登录。其前端探测不验证 Gemini API、AI Studio 或 Antigravity。配置期间核对并保留原有选择器值。初始化路线发现有歧义时停止，不把一个公共出口自动赋给所有服务；有意共用初始化组须由操作者另行明确选择。
 
+Gemini 配置包含网页后端 `geminiweb-pa.clients6.google.com`，使页面与该后端走同一专用路线。安装流程支持完整已知六条旧规则块迁移到七条规则配置；修改过或不完整的旧块会被拒绝，不会因同属 `clients6.google.com` 而接管其他服务。
+
+2026-11-17，参考现场用户在停止本机代理客户端后，已实测浏览器正常生成回复；路由器连接记录也确认页面与网页后端走专用路线。这只是一例人工终端验收，匿名探测仍返回 `authentication_required`，依赖账号／生成状态的自动检测尚未实现。
+
 安装扩展解析工具不需要启用订阅自动化，可在任意工作目录使用主机入口。设备须已部署当前项目 helper；缺少时停止并提示先部署／刷新对应层。主机需要 SSH/SCP，以及用于模块验证、测试和按路由器 arm64/amd64 架构构建静态 Linux 工具的 Go；不会自动安装 Go 或盲目下载预编译工具：
 
 ```sh

@@ -63,6 +63,10 @@ Available profiles are listed below. The default `SERVICE_HEALTH_PROFILES=gemini
 
 These are separate policies, so a Gemini failure does not authorize changing an OpenAI, Anthropic or unrelated selector. The Gemini profile uses exact service endpoints rather than all Google traffic; its shared `accounts.google.com` rule also affects Google sign-in. Its frontend probe does not verify the Gemini API, AI Studio or Antigravity. Existing selector values are checked and preserved during setup. Ambiguous seed discovery stops instead of assigning one common route to every vendor; a deliberate common seed override is a separate operator choice.
 
+The Gemini profile includes its web backend, `geminiweb-pa.clients6.google.com`, so the page and that backend use the same dedicated route. Setup can migrate the complete known six-rule legacy block to the seven-rule profile; edited or incomplete blocks are refused. Other `clients6.google.com` services are not included merely because they share that suffix.
+
+On 2026-11-17, one reference-site browser successfully generated replies with the local proxy client stopped after this backend alignment. Router flow observations confirmed that the page and web backend used the dedicated route. This is one manual client acceptance result; anonymous probes still returned `authentication_required`, and automated account/generation checks remain unimplemented.
+
 To install the extended parser without enabling subscription automation, use the host entry from any working directory. Current project helpers must already be deployed; missing helpers stop with instructions to deploy/refresh that layer first. The host needs SSH/SCP and Go for module verification, tests and a static Linux build for the detected arm64/amd64 router. It does not install Go or download a prebuilt helper automatically:
 
 ```sh

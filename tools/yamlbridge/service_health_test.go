@@ -75,9 +75,21 @@ proxy-groups:
     proxies: [bad, good]
 `
 
+// macOS exposes its temporary directory through /var -> /private/var. Tests
+// exercise real private directories, while production deliberately rejects
+// symlink ancestors in caller-supplied state paths.
+func canonicalHealthTempDir(t *testing.T) string {
+	t.Helper()
+	path, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 func newHealthFixture(t *testing.T) *healthFixture {
 	t.Helper()
-	f := &healthFixture{t: t, dir: t.TempDir(), g: serviceHealthGraph{}, mode: "rule", version: loadedBindingVersion}
+	f := &healthFixture{t: t, dir: canonicalHealthTempDir(t), g: serviceHealthGraph{}, mode: "rule", version: loadedBindingVersion}
 	for _, name := range []string{"gemini", "openai", "anthropic"} {
 		outer, auto := "Edge-"+name, "Edge-"+name+"-Auto"
 		f.g[outer] = serviceHealthProxy{Type: "Selector", Now: auto, All: []string{auto, "Manual"}}
@@ -1162,7 +1174,7 @@ func startHealthLeaseChild(t *testing.T, dir string) *exec.Cmd {
 }
 
 func TestServiceHealthKernelLeaseRejectsLiveAndRecoversKilledOwner(t *testing.T) {
-	dir := t.TempDir()
+	dir := canonicalHealthTempDir(t)
 	child := startHealthLeaseChild(t, dir)
 	if _, release, err := acquireServiceHealthLock(dir); err == nil {
 		release()
@@ -1203,7 +1215,7 @@ func TestServiceHealthKernelLeaseRejectsLiveAndRecoversKilledOwner(t *testing.T)
 func TestServiceHealthKernelLeasePreservesForeignAndLegacyLocks(t *testing.T) {
 	for _, kind := range []string{"foreign-file", "legacy-directory"} {
 		t.Run(kind, func(t *testing.T) {
-			dir := t.TempDir()
+			dir := canonicalHealthTempDir(t)
 			path := filepath.Join(dir, "service-health.lock")
 			if kind == "foreign-file" {
 				os.WriteFile(path, []byte("foreign-owned"), 0600)
