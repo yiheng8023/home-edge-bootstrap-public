@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.11` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.12` 对应：
 
-- `home-edge-bootstrap-v0.1.11-source.zip`
-- `home-edge-bootstrap-v0.1.11-source.tar.gz`
-- `home-edge-bootstrap-v0.1.11-offline.zip`
-- `home-edge-bootstrap-v0.1.11-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.12-source.zip`
+- `home-edge-bootstrap-v0.1.12-source.tar.gz`
+- `home-edge-bootstrap-v0.1.12-offline.zip`
+- `home-edge-bootstrap-v0.1.12-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`
@@ -98,7 +98,7 @@ Release 正文，历史下载矩阵会混入当前发布，相对链接也可能
 仓库链接的发布 tag。正常新版本中两者应是同一个新 tag。勘误现有正文时必须显式指定后续
 已审阅 `--source-ref`，且不得暗示旧资源包含后续修复。
 
-## v0.1.11 有限验收合同
+## v0.1.12 有限验收合同
 
 保留 v0.1.10 及更早门禁。Linux、macOS、Windows 与 subscription-behavior CI 必须绑定最终公开源码提交，再核验其具体九资产、标签、摘要及双语发行链接。原生部署、源码 CI、归档验证与发布收据分别成立；本文不构成其中任何一项证据。
 

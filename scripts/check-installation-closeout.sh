@@ -185,7 +185,10 @@ elif [ "$run_client_check" -eq 1 ]; then
   client_evidence="topology=${client_topology_mode:-unknown} runtime_present=${client_runtime_present:-unknown} gateway_matches_router=${gateway_matches_router:-unknown} http=${client_http_state:-unknown} conflict_risk=${client_conflict_risk:-unknown}"
 
   if [ "${client_runtime_present:-0}" = "1" ]; then
-    if [ "$accept_client_runtime" -eq 1 ]; then
+    if ! { { [ "$client_topology_mode" = hybrid ] && [ "$gateway_matches_router" = yes ]; } ||
+           { [ "$client_topology_mode" = client_fallback ] && [ "$gateway_matches_router" = no ]; }; }; then
+      client_gate=client_runtime_unknown
+    elif [ "$accept_client_runtime" -eq 1 ]; then
       client_gate=accepted_client_runtime
     else
       client_gate=client_runtime_present
@@ -196,7 +199,7 @@ elif [ "$run_client_check" -eq 1 ]; then
     client_gate=fail
   else
     case "$client_http_state" in
-      ok:*) client_gate=pass ;;
+      ok|ok:*) client_gate=pass ;;
       *) client_gate=fail ;;
     esac
   fi

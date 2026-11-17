@@ -71,10 +71,10 @@ case "$runtime" in
   1) mode=hybrid; risk=medium ;;
   *) mode=unknown; risk=unknown ;;
 esac
-echo "client_topology_mode=$mode"
+echo "client_topology_mode=${INSTALLATION_CLOSEOUT_CLIENT_MODE:-$mode}"
 echo "client_runtime_present=$runtime"
-echo 'gateway_matches_router=yes'
-echo 'client_http_state=ok:204'
+echo "gateway_matches_router=${INSTALLATION_CLOSEOUT_GATEWAY_MATCH:-yes}"
+echo "client_http_state=${INSTALLATION_CLOSEOUT_HTTP_STATE:-ok:204}"
 echo "client_conflict_risk=$risk"
 EOF
 
@@ -131,7 +131,24 @@ file_match_output=$(INSTALLATION_CLOSEOUT_CLIENT_RUNTIME=0 INSTALLATION_CLOSEOUT
 [ "$(state_from subscription_gate "$file_match_output")" = "consumption_unverified" ] || fail "file equality satisfied strong subscription gate"
 
 run_case router_primary 0 pass pass
+(
+  INSTALLATION_CLOSEOUT_HTTP_STATE=ok
+  export INSTALLATION_CLOSEOUT_HTTP_STATE
+  run_case wget_success_without_status_code 0 pass pass
+)
+(
+  INSTALLATION_CLOSEOUT_HTTP_STATE=fail
+  export INSTALLATION_CLOSEOUT_HTTP_STATE
+  run_case wget_failure_without_status_code 0 fail partial
+)
 run_case known_runtime 1 client_runtime_present partial
+(
+  INSTALLATION_CLOSEOUT_CLIENT_MODE=unknown
+  INSTALLATION_CLOSEOUT_GATEWAY_MATCH=unknown
+  export INSTALLATION_CLOSEOUT_CLIENT_MODE INSTALLATION_CLOSEOUT_GATEWAY_MATCH
+  run_case unknown_gateway_with_client 1 client_runtime_unknown partial
+  run_case unknown_gateway_cannot_be_accepted 1 client_runtime_unknown partial runtime_profile_matches_cache pass not_configured unverified '--accept-client-runtime'
+)
 run_case unknown_runtime unknown client_runtime_unknown partial
 run_case cache_not_consumed 0 pass partial cache_only_unverified consumption_unverified
 run_case accepted_subscription_boundary 0 pass accepted_boundary cache_only_unverified accepted_manual_boundary not_configured unverified '--accept-runtime-imported-subscription'

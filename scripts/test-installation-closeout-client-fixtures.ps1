@@ -31,6 +31,7 @@ function Invoke-Case {
     [string]$DashboardReachability = "unverified",
     [switch]$DashboardConfirmed,
     [switch]$AcceptRuntimeImportedSubscription,
+    [switch]$AcceptClientRuntime,
     [string]$ExpectedDashboardGate = "not_applicable",
     [string]$ExpectedDashboardEvidence = "not_applicable"
   )
@@ -43,6 +44,7 @@ function Invoke-Case {
     $Args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $Repo "scripts\check-installation-closeout.ps1"), "-Router", "user@192.168.50.1", "-RunClientCheck", "-Repo", $FixtureRoot)
     if ($DashboardConfirmed) { $Args += "-DashboardConfirmed" }
     if ($AcceptRuntimeImportedSubscription) { $Args += "-AcceptRuntimeImportedSubscription" }
+    if ($AcceptClientRuntime) { $Args += "-AcceptClientRuntime" }
     $Output = powershell @Args | Out-String
   }
   finally {
@@ -110,11 +112,12 @@ Write-Host "route_evidence_verification_state=$($env:INSTALLATION_CLOSEOUT_ROUTE
 param([string]$Router, [string]$ClientCheckUrl)
 $Runtime = $env:INSTALLATION_CLOSEOUT_CLIENT_RUNTIME
 $Mode = if ($Runtime -eq "0") { "router_primary" } elseif ($Runtime -eq "1") { "hybrid" } else { "unknown" }
+if ($env:INSTALLATION_CLOSEOUT_CLIENT_MODE) { $Mode = $env:INSTALLATION_CLOSEOUT_CLIENT_MODE }
 $Risk = if ($Runtime -eq "0") { "low" } elseif ($Runtime -eq "1") { "medium" } else { "unknown" }
 Write-Host "client_topology_mode=$Mode"
 Write-Host "client_runtime_present=$Runtime"
-Write-Host "gateway_matches_router=yes"
-Write-Host "client_http_state=ok:204"
+Write-Host "gateway_matches_router=$(if ($env:INSTALLATION_CLOSEOUT_GATEWAY_MATCH) { $env:INSTALLATION_CLOSEOUT_GATEWAY_MATCH } else { 'yes' })"
+Write-Host "client_http_state=$(if ($env:INSTALLATION_CLOSEOUT_HTTP_STATE) { $env:INSTALLATION_CLOSEOUT_HTTP_STATE } else { 'ok:204' })"
 Write-Host "client_conflict_risk=$Risk"
 '@
 
@@ -123,7 +126,26 @@ Write-Host "client_conflict_risk=$Risk"
   $env:INSTALLATION_CLOSEOUT_ROUTE_STATE = "pass"
 
   Invoke-Case router_primary 0 pass pass
+  try {
+    $env:INSTALLATION_CLOSEOUT_HTTP_STATE = "ok"
+    Invoke-Case statusless_http_success 0 pass pass
+    $env:INSTALLATION_CLOSEOUT_HTTP_STATE = "fail"
+    Invoke-Case statusless_http_failure 0 fail partial
+  }
+  finally {
+    Remove-Item Env:\INSTALLATION_CLOSEOUT_HTTP_STATE -ErrorAction SilentlyContinue
+  }
   Invoke-Case known_runtime 1 client_runtime_present partial
+  try {
+    $env:INSTALLATION_CLOSEOUT_CLIENT_MODE = "unknown"
+    $env:INSTALLATION_CLOSEOUT_GATEWAY_MATCH = "unknown"
+    Invoke-Case unknown_gateway_with_client 1 client_runtime_unknown partial
+    Invoke-Case unknown_gateway_cannot_be_accepted 1 client_runtime_unknown partial -AcceptClientRuntime
+  }
+  finally {
+    Remove-Item Env:\INSTALLATION_CLOSEOUT_CLIENT_MODE -ErrorAction SilentlyContinue
+    Remove-Item Env:\INSTALLATION_CLOSEOUT_GATEWAY_MATCH -ErrorAction SilentlyContinue
+  }
   Invoke-Case unknown_runtime unknown client_runtime_unknown partial
   Invoke-Case cache_not_consumed 0 pass partial cache_only_unverified consumption_unverified
   Invoke-Case accepted_subscription_boundary 0 pass accepted_boundary cache_only_unverified accepted_manual_boundary not_configured unverified -AcceptRuntimeImportedSubscription

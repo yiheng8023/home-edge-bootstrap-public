@@ -2,6 +2,40 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.12 (2026-11-17)
+
+v0.1.12 strengthens product-independent client/gateway coexistence without adding a client-control adapter. Topology classification follows observable proxy, DNS and route capabilities; a device may intentionally prefer an independent client. FlClash remains an example, not a required product or a special control path.
+
+The read-only inspectors now select gateway commands by host OS, retain unknown when Linux proxy inspection is unavailable, parse Windows On-link routes in English and Simplified Chinese, and check successful DNS answers instead of resolver headers. A Linux `default dev ...` route is not a next-hop address. Missing or unknown gateways cannot certify a low-risk fallback or be accepted through the intentional-client-runtime flag. A wget-only success without a numeric HTTP status uses the same topology gates as other reachability observations.
+
+Windows PowerShell and POSIX fixtures exercise the real inspector branches with offline mocks and preserve the caller environment. Route inspection remains an IPv4 DNS-host sample; it does not prove the separate HTTP sample, all application traffic or IPv6 routing. The scripts do not start/stop clients, clear proxy settings, switch nodes or promise automatic fallback. Existing service policies, manual choices, runtime/source pins and earlier assets retain their boundaries.
+
+Choose one archive for your system plus its matching checksums. Source/host CI, concrete archives and adoption on a device are separate evidence; this diagnostic correction does not itself reload a router or upgrade its core.
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.12-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.12-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.12-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.12-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.12-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.12-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.12-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.12-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.11 (2026-11-17)
 
 Source verification, release assets and deployment on a specific device have separate evidence. Download links identify assets; they do not certify your own router or account. Older releases and assets are unchanged.

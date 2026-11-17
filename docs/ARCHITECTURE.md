@@ -91,6 +91,32 @@ guarantee. Another device's observation endpoint does not imply a second router 
 firewall or control adapter has been implemented. See [Service routing](SERVICE_ROUTING.md) for the
 concrete observation request and reference-adapter setup.
 
+### Independent client proxies and gateway coexistence
+
+An independent client proxy is an observable role, not a required product. The common layer uses
+proxy configuration, DNS answers, sampled effective routes, reachability and declared capabilities.
+It does not identify ownership by a client executable, interface name or familiar listening port.
+FlClash is one reference example; replacing it does not require changing the pure policy.
+
+| Responsibility | Existing implementation | Limit |
+|---|---|---|
+| Host topology observation | PowerShell Windows inspection; shell platform-specific inspectors | Read-only, sampled IPv4 evidence; unavailable inspection remains unknown |
+| Service observation through a standard endpoint | `http-proxy-observe` | HTTP/S proxy transport; no client configuration, node selection or named-egress proof |
+| Guarded runtime changes | Mihomo/Merlin reference adapter | Its explicit version, ownership, loaded-binding and recovery requirements still apply |
+
+A device may intentionally prefer its independent client while retaining the managed gateway.
+Topology detection reports that choice; it does not override a healthy manual selection or enforce
+router-first routing. Process existence, a configured proxy and a successful HTTP request are
+separate facts. A stopped or failed client may leave proxy settings behind, so automatic gateway
+fallback is not established by coexistence alone. Client control needs its own verified adapter;
+missing control capabilities remain observe-only.
+
+The route inspector uses a DNS-host IPv4 sample, while reachability can use a different HTTP host.
+Neither proves all application traffic or the HTTP request's egress. Failed DNS queries, missing
+inspectors and unreadable gateways stay unknown. An unknown gateway cannot certify a low-risk
+client-fallback topology. Compatibility evidence belongs to each host/protocol/control adapter,
+not to a product name or an assertion that every client combination works.
+
 Implementation, fixture verification and target acceptance are distinct. Source contains the pure
 policy and both probe adapters; deterministic policy and protocol-observer fixtures exercise their
 declared boundaries. A fixture or local test result is not a deployment receipt, cross-host/device

@@ -21,6 +21,10 @@ data, third-party license materials, archive-content review, host-platform execu
 release-specific SBOM and manifest. Those checks apply to the concrete artifact, not to source-tree
 readiness alone.
 
+## v0.1.12 limited distribution contract
+
+Retain v0.1.11 and earlier gates. Require the actual client-inspector branches and closeout consumers to cover unavailable proxy inspection, DNS failures and valid answers, platform-specific gateway dispatch, Linux on-link defaults, Windows localized On-link routes, unknown gateway acceptance rejection, and statusless wget reachability. Verify exact-source Windows, Linux and macOS CI, bilingual capability/priority limits and matching private/public archives. No new client-control, network takeover or IPv6 path guarantee is claimed.
+
 ## v0.1.11 limited distribution contract
 
 The current publication gate is the [v0.1.11 public acceptance contract](PUBLIC_RELEASE.md#v0111-limited-acceptance-contract). Require exact-final-commit Linux/macOS/Windows/subscription CI and the matching concrete nine assets, labels, hashes and bilingual release links. Deployment, source checks, archive verification and publication remain separate evidence.

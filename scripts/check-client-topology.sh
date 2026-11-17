@@ -33,15 +33,20 @@ detect_os() {
 
 default_gateway() {
   [ -n "${CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY:-}" ] && { printf '%s\n' "$CLIENT_TOPOLOGY_FIXTURE_DEFAULT_GATEWAY"; return; }
-  if command -v ip >/dev/null 2>&1; then
-    ip route 2>/dev/null | awk '$1 == "default" { print $3; exit }'
+  os=$(detect_os)
+  if [ "$os" = linux ] && command -v ip >/dev/null 2>&1; then
+    ip route 2>/dev/null | awk '$1 == "default" { for (i=2; i<NF; i++) if ($i == "via") { print $(i+1); break } exit }' | first_ipv4
     return
   fi
-  if command -v route >/dev/null 2>&1; then
-    route -n get default 2>/dev/null | awk '/gateway:/ { print $2; exit }'
+  if [ "$os" = linux ] && command -v route >/dev/null 2>&1; then
+    route -n 2>/dev/null | awk '$1 == "0.0.0.0" { print $2; exit }' | first_ipv4
     return
   fi
-  if command -v powershell.exe >/dev/null 2>&1; then
+  if [ "$os" = macos ] && command -v route >/dev/null 2>&1; then
+    route -n get default 2>/dev/null | awk '/gateway:/ { print $2; exit }' | first_ipv4
+    return
+  fi
+  if [ "$os" = windows ] && command -v powershell.exe >/dev/null 2>&1; then
     powershell.exe -NoProfile -Command 'Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Sort-Object { [long]$_.RouteMetric + [long]$_.InterfaceMetric } | Select-Object -First 1 -ExpandProperty NextHop' 2>/dev/null |
       tr -d '\r' | awk 'NF { print; exit }'
   fi
@@ -84,7 +89,7 @@ proxy_state() {
     return
   fi
 
-  printf none
+  printf unknown
 }
 
 tun_state() {
@@ -138,24 +143,45 @@ tun_state() {
   fi
 }
 
+first_ipv4() {
+  awk -F. 'NF == 4 {
+    valid=1
+    for (i=1; i<=4; i++) if ($i !~ /^[0-9]+$/ || $i+0 > 255) valid=0
+    if (valid) { print; exit }
+  }'
+}
+
 classify_dns_address() {
-  case "$1" in
-    28.*|198.18.*|198.19.*) printf "fake_ip:%s" "$1" ;;
-    "") printf unknown ;;
-    *) printf "ordinary:%s" "$1" ;;
+  address=$(printf '%s\n' "$1" | first_ipv4)
+  [ -n "$address" ] || { printf unknown; return; }
+  case "$address" in
+    28.*|198.18.*|198.19.*) printf "fake_ip:%s" "$address" ;;
+    *) printf "ordinary:%s" "$address" ;;
   esac
+}
+
+nslookup_address() {
+  # Resolver headers are not answers. Preserve failed lookup status before
+  # parsing, including tools which print the DNS server before NXDOMAIN.
+  answer=$(nslookup "$@" 2>/dev/null) || return 0
+  printf '%s\n' "$answer" | awk '
+    /^[[:space:]]*Name:/ { in_answer=1; next }
+    in_answer && /^[[:space:]]*Address([[:space:]][0-9]+)?:[[:space:]]/ {
+      sub(/^[[:space:]]*Address([[:space:]][0-9]+)?:[[:space:]]*/, "")
+      print $1
+    }' | first_ipv4
 }
 
 dns_state() {
   [ -n "${CLIENT_TOPOLOGY_FIXTURE_DNS_STATE:-}" ] && { printf '%s\n' "$CLIENT_TOPOLOGY_FIXTURE_DNS_STATE"; return; }
   sample_host="$1"
   resolved=""
-  if command -v getent >/dev/null 2>&1; then
+  if [ "$(detect_os)" = windows ] && command -v powershell.exe >/dev/null 2>&1; then
+    resolved=$(CLIENT_DNS_SAMPLE_HOST="$sample_host" powershell.exe -NoProfile -Command 'try { (Resolve-DnsName $env:CLIENT_DNS_SAMPLE_HOST -Type A -ErrorAction Stop | Select-Object -First 1 -ExpandProperty IPAddress) } catch { "" }' 2>/dev/null | tr -d '\r' | first_ipv4)
+  elif command -v getent >/dev/null 2>&1; then
     resolved=$(getent ahostsv4 "$sample_host" 2>/dev/null | awk '{ print $1; exit }')
   elif command -v nslookup >/dev/null 2>&1; then
-    resolved=$(nslookup "$sample_host" 2>/dev/null | awk '/^Address: / { value=$2 } END { print value }')
-  elif command -v powershell.exe >/dev/null 2>&1; then
-    resolved=$(powershell.exe -NoProfile -Command "try { (Resolve-DnsName '$sample_host' -Type A -ErrorAction Stop | Select-Object -First 1 -ExpandProperty IPAddress) } catch { '' }" 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')
+    resolved=$(nslookup_address "$sample_host")
   fi
 
   classify_dns_address "$resolved"
@@ -170,15 +196,14 @@ router_dns_state() {
   }
   [ -n "$server" ] || { printf unknown; return; }
   resolved=""
-  if command -v dig >/dev/null 2>&1; then
-    resolved=$(dig +time=2 +tries=1 +short A "$sample_host" "@$server" 2>/dev/null | awk 'NF { print; exit }')
-  elif command -v nslookup >/dev/null 2>&1; then
-    resolved=$(nslookup "$sample_host" "$server" 2>/dev/null |
-      awk '/^Address: / { value=$2 } /^Address [0-9]+: / { value=$3 } END { print value }')
-  elif command -v powershell.exe >/dev/null 2>&1; then
+  if [ "$(detect_os)" = windows ] && command -v powershell.exe >/dev/null 2>&1; then
     resolved=$(CLIENT_DNS_SAMPLE_HOST="$sample_host" CLIENT_DNS_SERVER="$server" \
       powershell.exe -NoProfile -Command 'try { (Resolve-DnsName $env:CLIENT_DNS_SAMPLE_HOST -Server $env:CLIENT_DNS_SERVER -DnsOnly -QuickTimeout -Type A -ErrorAction Stop | Select-Object -First 1 -ExpandProperty IPAddress) } catch { "" }' \
-      2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')
+      2>/dev/null | tr -d '\r' | first_ipv4)
+  elif command -v dig >/dev/null 2>&1; then
+    resolved=$(dig +time=2 +tries=1 +short A "$sample_host" "@$server" 2>/dev/null | first_ipv4)
+  elif command -v nslookup >/dev/null 2>&1; then
+    resolved=$(nslookup_address "$sample_host" "$server")
   fi
   classify_dns_address "$resolved"
 }
@@ -252,7 +277,8 @@ if [ "$client_runtime_present" = "0" ] &&
 fi
 
 gateway_matches_router=unknown
-if [ -n "$expected_router" ]; then
+gateway_ip=$(printf '%s\n' "$gateway" | first_ipv4)
+if [ -n "$expected_router" ] && [ -n "$gateway_ip" ] && [ "$gateway_ip" != 0.0.0.0 ]; then
   if [ "$gateway" = "$expected_router" ]; then
     gateway_matches_router=yes
   else
@@ -268,7 +294,7 @@ if [ "$client_runtime_present" = "0" ] && [ "$gateway_matches_router" = "yes" ];
 elif [ "$client_runtime_present" = "1" ] && [ "$gateway_matches_router" = "yes" ]; then
   topology_mode=hybrid
   conflict_risk=medium
-elif [ "$client_runtime_present" = "1" ]; then
+elif [ "$client_runtime_present" = "1" ] && [ "$gateway_matches_router" = no ]; then
   topology_mode=client_fallback
   conflict_risk=low
 elif [ "$client_runtime_present" = "0" ] && [ "$gateway_matches_router" = "no" ]; then

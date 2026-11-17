@@ -2,6 +2,40 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.12（2026-11-17）
+
+v0.1.12 加强产品中立的客户端／网关共存，不增加客户端控制适配器。拓扑分类依据可观察的代理、DNS 和路由能力，设备可以有意优先使用独立客户端。FlClash 仍只是示例，不是必需产品，也不享有特殊控制路径。
+
+只读检查现按宿主系统选择网关命令；Linux 无法检查代理时保持 unknown；解析 Windows 英文及简体中文 On-link 路由；检查 DNS 查询是否成功并只读取回答，不再把解析器头部当成结果。Linux `default dev ...` 不代表下一跳地址。网关缺失或未知时不能判为低风险兜底，也不能靠接受客户端运行时参数转为通过。仅有 wget、没有数字 HTTP 状态的成功观测与其他可达性结果使用相同拓扑门禁。
+
+Windows PowerShell 与 POSIX 夹具通过离线命令模拟覆盖真实检查分支，并保留调用者环境。路由检查仍是 DNS 主机的 IPv4 样本，不证明另一 HTTP 样本、全部应用流量或 IPv6 路由。脚本不启动／停止客户端、不清代理设置、不切节点、不保证自动回退。已有业务策略、手动选择、运行时／源码锁及旧发行资产保留原边界。
+
+选择对应系统的一个包及校验文件。源码／宿主 CI、具体归档和设备实际采用分别验收；本次诊断修正本身不重载路由器或升级内核。
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.12-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.12-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.12-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.12-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/home-edge-bootstrap-v0.1.12-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.12/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.12-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.12-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.12-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.12-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.11（2026-11-17）
 
 源码验证、发行资产及具体设备部署分别提供证据。下载链接标识资产，不为你的路由器或账号作可用性证明。旧发布与资产保持原样。

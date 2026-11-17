@@ -46,14 +46,23 @@ function Get-WindowsRouteRows {
       @(& route.exe print -4 2>$null)
     }
     foreach ($Line in $Lines) {
-      if ([string]$Line -match "^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s*$") {
+      if ([string]$Line -match "^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\S+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s*$") {
+        $Destination = $Matches[1]
+        $InterfaceAddress = $Matches[4]
+        $Metric = $Matches[5]
+        $NextHop = $Matches[3]
         $PrefixLength = ConvertTo-PrefixLength $Matches[2]
         if ($PrefixLength -lt 0) { continue }
+        # Build the localized token without depending on PowerShell 5's
+        # source-file encoding for non-ASCII string literals.
+        $LocalizedOnLink = [string]::Join('', [char[]]@(0x5728, 0x94FE, 0x8DEF, 0x4E0A))
+        if ($NextHop -in @('On-link', $LocalizedOnLink)) { $NextHop = '0.0.0.0' }
+        elseif ($NextHop -notmatch '^\d+\.\d+\.\d+\.\d+$') { $NextHop = 'unknown' }
         [pscustomobject]@{
-          DestinationPrefix = "$($Matches[1])/$PrefixLength"
-          NextHop = $Matches[3]
-          InterfaceIndex = $Matches[4]
-          RouteMetric = [int]$Matches[5]
+          DestinationPrefix = "$Destination/$PrefixLength"
+          NextHop = $NextHop
+          InterfaceIndex = $InterfaceAddress
+          RouteMetric = [int]$Metric
           InterfaceMetric = 0
         }
       }
@@ -215,10 +224,12 @@ function Get-LocalTunState {
       Sort-Object { [long]$_.RouteMetric + [long]$_.InterfaceMetric } |
       Select-Object -First 1
     if (-not $DefaultRoute) { return "unknown" }
+    if ($DefaultRoute.NextHop -eq 'unknown') { return 'unknown' }
     if (Test-IPv4BenchmarkRange ([string]$DefaultRoute.NextHop)) { return "present" }
     if (-not $ProbeAddress -or $ProbeAddress -notmatch "^\d+\.\d+\.\d+\.\d+$") { return "unknown" }
     $EffectiveRoute = Get-BestIPv4Route -Address $ProbeAddress -Routes $Routes
     if (-not $EffectiveRoute) { return "unknown" }
+    if ($EffectiveRoute.NextHop -eq 'unknown') { return 'unknown' }
     if ([string]$EffectiveRoute.InterfaceIndex -ne [string]$DefaultRoute.InterfaceIndex) { return "present" }
 
     $EffectiveNextHop = [string]$EffectiveRoute.NextHop
@@ -340,7 +351,10 @@ elseif ($SystemProxyState -eq "unknown" -or
 }
 
 $GatewayMatchesRouter = "unknown"
-if ($ExpectedRouter) {
+$GatewayAddress = $null
+if ($ExpectedRouter -and [System.Net.IPAddress]::TryParse($DefaultGateway, [ref]$GatewayAddress) -and
+  $GatewayAddress.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and
+  -not $GatewayAddress.Equals([System.Net.IPAddress]::Any)) {
   if ($DefaultGateway -eq $ExpectedRouter) {
     $GatewayMatchesRouter = "yes"
   }
@@ -359,7 +373,7 @@ elseif ($ClientRuntimePresent -eq "1" -and $GatewayMatchesRouter -eq "yes") {
   $TopologyMode = "hybrid"
   $ConflictRisk = "medium"
 }
-elseif ($ClientRuntimePresent -eq "1") {
+elseif ($ClientRuntimePresent -eq "1" -and $GatewayMatchesRouter -eq 'no') {
   $TopologyMode = "client_fallback"
   $ConflictRisk = "low"
 }

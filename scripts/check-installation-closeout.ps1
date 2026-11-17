@@ -166,7 +166,11 @@ elseif ($RunClientCheck) {
   $ClientEvidence = "topology=$ClientTopologyMode runtime_present=$ClientRuntimePresent gateway_matches_router=$GatewayMatchesRouter http=$ClientHttpState conflict_risk=$ClientConflictRisk"
 
   if ($ClientRuntimePresent -eq "1") {
-    if ($AcceptClientRuntime) {
+    if (-not (($ClientTopologyMode -eq 'hybrid' -and $GatewayMatchesRouter -eq 'yes') -or
+      ($ClientTopologyMode -eq 'client_fallback' -and $GatewayMatchesRouter -eq 'no'))) {
+      $ClientGate = "client_runtime_unknown"
+    }
+    elseif ($AcceptClientRuntime) {
       $ClientGate = "accepted_client_runtime"
     }
     else {
@@ -181,7 +185,7 @@ elseif ($RunClientCheck) {
   }
   else {
     switch -Regex ($ClientHttpState) {
-      "^ok:" { $ClientGate = "pass"; break }
+      "^ok(?::|$)" { $ClientGate = "pass"; break }
       default { $ClientGate = "fail" }
     }
   }
