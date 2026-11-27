@@ -1,7 +1,7 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$LogPath = "C:\tmp\home-edge-router-status.log",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [string]$SshCommand = $(if ($env:HOME_EDGE_SSH_COMMAND) { $env:HOME_EDGE_SSH_COMMAND } else { "ssh" }),
   [switch]$NoPause,
   [switch]$NoLog
@@ -13,7 +13,7 @@ if (-not $Router) {
 }
 New-Item -ItemType Directory -Force (Split-Path -Parent $LogPath) | Out-Null
 New-Item -ItemType Directory -Force (Split-Path -Parent $KnownHostsFile) | Out-Null
-$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router)
+$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router)
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $ExpectedSourceKind = "unknown"
 $ExpectedSourceCommit = "unknown"

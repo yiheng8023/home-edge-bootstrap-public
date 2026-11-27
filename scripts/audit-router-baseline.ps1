@@ -1,7 +1,7 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$LogPath = "C:\tmp\home-edge-router-baseline-audit.log",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [int]$SshConnectTimeoutSec = 8,
   [switch]$NoPause
 )
@@ -17,7 +17,7 @@ $SshArgs = @(
   "-o", "BatchMode=yes",
   "-o", "ConnectTimeout=$SshConnectTimeoutSec",
   "-o", "ConnectionAttempts=1",
-  "-o", "StrictHostKeyChecking=accept-new",
+  "-o", "StrictHostKeyChecking=yes",
   "-o", "UserKnownHostsFile=$KnownHostsFile",
   "--",
   $Router

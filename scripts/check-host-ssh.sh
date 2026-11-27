@@ -3,7 +3,7 @@
 set -u
 
 router="${1:-${ROUTER:-}}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 timeout_sec="${HOST_SSH_TIMEOUT_SEC:-5}"
 
 print_kv() {
@@ -34,6 +34,8 @@ agent_state() {
 
 failure_hint() {
   text="$1"
+  printf '%s\n' "$text" | grep -Eiq 'REMOTE HOST IDENTIFICATION HAS CHANGED' && { printf host_key_changed_verify_fingerprint; return; }
+  printf '%s\n' "$text" | grep -Eiq 'No .* host key is known|Host key verification failed' && { printf host_key_unverified_verify_fingerprint; return; }
   printf '%s\n' "$text" | grep -Eiq 'Permission denied' && { printf auth_failed_or_identity_not_loaded; return; }
   printf '%s\n' "$text" | grep -Eiq 'Connection timed out|Operation timed out|No route to host|Network is unreachable' && { printf router_unreachable; return; }
   printf '%s\n' "$text" | grep -Eiq 'Connection refused' && { printf router_ssh_disabled_or_wrong_port; return; }
@@ -61,7 +63,7 @@ elif [ -n "$router" ]; then
   output=$(ssh \
     -o BatchMode=yes \
     -o ConnectTimeout="$timeout_sec" \
-    -o StrictHostKeyChecking=accept-new \
+    -o StrictHostKeyChecking=yes \
     -o UserKnownHostsFile="$known_hosts_file" \
     -- "$router" 'echo router-ssh-ok' 2>&1)
   code=$?

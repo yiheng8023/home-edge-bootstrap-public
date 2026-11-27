@@ -184,6 +184,13 @@ grep -Fxq 'sh -s' "$plan_log.argv" || fail "plan mode did not perform the read-o
 grep -Fxq 'installation_probe=read_only' "$tmp_root/deploy-plan.out" || fail "plan mode did not disclose the probe"
 [ ! -e "$plan_archive" ] || fail "plan mode streamed an archive"
 
+invalid_attempt="$tmp_root/invalid-target.log"
+invalid_target=$(printf 'user@router\ninvalid target')
+if PATH="$fake_bin:$PATH" DEPLOY_FAKE_SSH_LOG="$invalid_attempt" sh "$deploy" "$invalid_target" >/dev/null 2>&1; then
+  fail 'deploy accepted a multiline target'
+fi
+[ ! -e "$invalid_attempt" ] || fail 'deploy contacted SSH for a malformed target'
+
 PATH="$fake_bin:$PATH" BOOTSTRAP_INSTALL_RUNTIME=1 BOOTSTRAP_REPLACE_RUNTIME=1 BOOTSTRAP_REPLACE_CORE=1 INCLUDE_BUNDLE=1 \
   sh "$deploy" --project-only user@router >"$tmp_root/project-only.out"
 for expected in 'install_runtime=0' 'replace_runtime=0' 'replace_core=0' 'include_bundle=0' 'runtime_assets_effect=preserve' 'integration_effect=project_managed_configuration_may_change'; do
@@ -202,6 +209,24 @@ if ! PATH="$fake_bin:$PATH" \
 fi
 grep -q "BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0 sh bootstrap.sh" "$apply_log" || fail "apply remote command missing BOOTSTRAP_APPLY"
 grep -Fxq 'sh -s' "$apply_log.argv" || fail "apply did not use fixed short SSH command"
+grep -Fxq "HOME_EDGE_INSTALLATION_ROUTER='user@router'" "$apply_log" || fail 'deployment target was not passed as data'
+
+# Exercise only the deployed lock acquisition function against an owned temp dir.
+lock_fixture="$tmp_root/router-write.lock"
+mkdir "$lock_fixture"
+awk '/^acquire_deploy_lock\(\) \{/ { f=1 } f { print } f && /^\}$/ { exit }' "$apply_log" >"$tmp_root/acquire.sh"
+printf '\nlock_dir=$1\nacquire_deploy_lock\n' >>"$tmp_root/acquire.sh"
+if sh "$tmp_root/acquire.sh" "$lock_fixture" >"$tmp_root/busy.out" 2>&1; then
+  fail 'deployment replaced an initializing lock'
+fi
+[ -d "$lock_fixture" ] && [ ! -e "$lock_fixture/pid" ] || fail 'deployment altered an initializing lock'
+printf '%s\n' service-health >"$lock_fixture/operation"
+printf '%s\n' owned-fixture >"$lock_fixture/service-health.owner"
+if sh "$tmp_root/acquire.sh" "$lock_fixture" >>"$tmp_root/busy.out" 2>&1; then
+  fail 'deployment assumed ownership of another transaction'
+fi
+grep -Fxq service-health "$lock_fixture/operation" || fail 'deployment removed recovery metadata'
+grep -Fxq owned-fixture "$lock_fixture/service-health.owner" || fail 'deployment removed the owner marker'
 awk '/^decode_payload <<.* | tar -xzf/ { payload=1; next } /^HOME_EDGE_ARCHIVE_BASE64$/ { payload=0 } payload && length($0)>76 { exit 1 }' "$apply_log" || fail "archive base64 lines exceed 76 columns"
 grep -q "preserve_local_state" "$apply_log" || fail "apply remote command missing local-state preservation"
 grep -q "deploy.lock" "$apply_log" || fail "apply remote command missing deployment lock"

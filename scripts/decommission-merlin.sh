@@ -6,7 +6,7 @@ repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 router=${ROUTER:-}
 apply=0
 confirmation=
-known_hosts_file=${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}
+known_hosts_file=${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}
 ssh_timeout=${SSH_CONNECT_TIMEOUT_SEC:-8}
 
 usage() {
@@ -51,7 +51,7 @@ if [ "$apply" = 0 ] && [ -n "$confirmation" ]; then
   die_usage "--confirm is valid only with --apply"
 fi
 case "$known_hosts_file" in /*) ;; *) die_usage "known-hosts file must be an absolute path" ;; esac
-case "$known_hosts_file" in *[!A-Za-z0-9_./-]*|*'/../'*|*/..|*'/./'*|*/.|*'//'*) die_usage "known-hosts file contains an unsafe path" ;; esac
+case "$known_hosts_file" in *'/../'*|*/..|*'/./'*|*/.|*'//'*) die_usage "known-hosts file contains an unsafe path" ;; esac
 case "$ssh_timeout" in ''|*[!0-9]*|0) die_usage "SSH_CONNECT_TIMEOUT_SEC must be a positive integer" ;; esac
 
 for source in "$repo/scripts/migrate-router-state.sh" "$repo/scripts/decommission-router-state.sh"; do
@@ -61,7 +61,7 @@ command -v tar >/dev/null 2>&1 || { echo "decommission-merlin: ERROR: tar is req
 command -v ssh >/dev/null 2>&1 || { echo "decommission-merlin: ERROR: ssh is required" >&2; exit 1; }
 mkdir -p "$(dirname "$known_hosts_file")" || exit 1
 
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 remote_script='set -eu
 work=/tmp/home-edge-decommission.$$
 cleanup() { rm -rf "$work"; }
@@ -79,5 +79,5 @@ sh "$work/decommission-router-state.sh"'
 remote_script=$(printf '%s' "$remote_script" | sed "s/__APPLY__/$apply/g; s/__CONFIRMATION__/$confirmation/g")
 
 tar -C "$repo/scripts" -czf - migrate-router-state.sh decommission-router-state.sh |
-  ssh $ssh_opts -- "$router" "$remote_script"
+  ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" "$remote_script"
 exit $?

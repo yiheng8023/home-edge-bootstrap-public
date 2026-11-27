@@ -14,12 +14,12 @@
 
 ## 精确发布表面
 
-每个版本化发布恰好包含九个契约文件。`v0.1.12` 对应：
+每个版本化发布恰好包含九个契约文件。`v0.1.13` 对应：
 
-- `home-edge-bootstrap-v0.1.12-source.zip`
-- `home-edge-bootstrap-v0.1.12-source.tar.gz`
-- `home-edge-bootstrap-v0.1.12-offline.zip`
-- `home-edge-bootstrap-v0.1.12-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.13-source.zip`
+- `home-edge-bootstrap-v0.1.13-source.tar.gz`
+- `home-edge-bootstrap-v0.1.13-offline.zip`
+- `home-edge-bootstrap-v0.1.13-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`

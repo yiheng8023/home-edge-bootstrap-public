@@ -14,20 +14,21 @@ build=${SUBSCRIPTION_PARSER_BUILD_DIR:-$repo/.tmp/subscription-parser}
 [ -s "$build/yamlbridge-linux-arm64.gz" ] || sh "$repo/scripts/build-subscription-parser.sh" "$build"
 digest=$(openssl dgst -sha256 "$build/yamlbridge-linux-arm64" | awk '{print $NF}')
 opts=${SSH_OPTS:-'-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=yes'}
+known_hosts=${KNOWN_HOSTS_FILE:-"${HOME:?HOME is required}/.ssh/known_hosts"}
 token="$$-$(date +%s)"
 stage="/tmp/home-edge-subscription-enable.$token"
 stage_owned=0
 cleanup_host() {
   if [ "$stage_owned" = 1 ]; then
-    ssh $opts -- "$router" "test ! -L '$stage' && test \"\$(cat '$stage/owner' 2>/dev/null)\" = '$token' && rm -rf '$stage'" >/dev/null 2>&1 || true
+    ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" "test ! -L '$stage' && test \"\$(cat '$stage/owner' 2>/dev/null)\" = '$token' && rm -rf '$stage'" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup_host EXIT
 trap 'exit 130' HUP INT TERM
-ssh $opts -- "$router" "set -eu; umask 077; test ! -e '$stage'; mkdir '$stage'; printf '%s\\n' '$token' >'$stage/owner'"
+ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" "set -eu; umask 077; test ! -e '$stage'; mkdir '$stage'; printf '%s\\n' '$token' >'$stage/owner'"
 stage_owned=1
-scp -O $opts -- "$build/yamlbridge-linux-arm64.gz" "$router:$stage/parser.gz"
-scp -O $opts -- "$filters" "$router:$stage/filters.json"
+scp -O $opts -o "UserKnownHostsFile=$known_hosts" -- "$build/yamlbridge-linux-arm64.gz" "$router:$stage/parser.gz"
+scp -O $opts -o "UserKnownHostsFile=$known_hosts" -- "$filters" "$router:$stage/filters.json"
 {
   printf "digest='%s'\n" "$digest"
   printf "stage='%s'\n" "$stage"
@@ -78,4 +79,4 @@ cleanup; trap - EXIT HUP INT TERM
 rm -rf "$stage"
 echo subscription_enable=ready
 EOF
-} | ssh $opts -- "$router" 'tr -d "\r" | sh -s'
+} | ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" 'tr -d "\r" | sh -s'

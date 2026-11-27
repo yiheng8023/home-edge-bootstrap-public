@@ -11,6 +11,8 @@ if ($Router -notmatch '^[A-Za-z0-9_][A-Za-z0-9_.-]*@([A-Za-z0-9][A-Za-z0-9_.:-]*
 $Repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $SshOptions) {
   $SshOptions=if ($env:SSH_OPTS) { @($env:SSH_OPTS -split '\s+' | Where-Object {$_}) } else { @('-o','BatchMode=yes','-o','ConnectTimeout=8','-o','StrictHostKeyChecking=yes') }
+  $KnownHosts = if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }
+  $SshOptions += @('-o', "UserKnownHostsFile=$KnownHosts")
 }
 foreach ($Tool in @('ssh','scp')) { if (-not (Get-Command $Tool -ErrorAction SilentlyContinue)) {throw "Missing host tool: $Tool"} }
 $Source=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'enable-service-health.sh'))

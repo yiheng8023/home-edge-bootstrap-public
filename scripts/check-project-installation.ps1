@@ -1,12 +1,12 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$RemoteDir = "/jffs/home-edge-bootstrap",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [string]$SshCommand = $(if ($env:HOME_EDGE_SSH_COMMAND) { $env:HOME_EDGE_SSH_COMMAND } else { "ssh" })
 )
 $ErrorActionPreference = "Stop"
-if ($Router -notmatch '^[A-Za-z0-9_.-]+@[A-Za-z0-9][A-Za-z0-9.-]*$' -or $Router -match '@\.|\.\.|\.$') { throw "Invalid router target." }
-if ($RemoteDir -notmatch '^/jffs/[A-Za-z0-9_.-]+$' -or $RemoteDir -in @('/jffs/.', '/jffs/..')) { throw "Invalid remote directory." }
+if ($Router -cnotmatch '\A[A-Za-z0-9_.][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9.-]*\z' -or ($Router.Split('@')[1] -match '\.\.|\.$')) { throw "Invalid router target." }
+if ($RemoteDir -cnotmatch '\A/jffs/[A-Za-z0-9_.-]+\z' -or $RemoteDir -in @('/jffs/.', '/jffs/..')) { throw "Invalid remote directory." }
 function Write-Unknown([string]$Reason) {
   Write-Output "project_install_schema=1"
   Write-Output "project_install_router=$Router"
@@ -16,14 +16,14 @@ function Write-Unknown([string]$Reason) {
   Write-Output "project_install_replace_allowed=0"
 }
 try {
-  # Keep the project's selected-target trust history; never modify global .ssh.
+  # Strict checking reads persistent user trust or the caller's explicit file.
   $KnownHostsDirectory = Split-Path -Parent $KnownHostsFile
   if ($KnownHostsDirectory) { New-Item -ItemType Directory -Force -Path $KnownHostsDirectory | Out-Null }
   $Library = Get-Content -LiteralPath (Join-Path $PSScriptRoot "../adapters/merlin/lib/installation-state.sh") -Raw -Encoding UTF8
   # Native Windows pipelines append CRLF. Exit before the trailing bare CR is
   # interpreted by sh, preserving the observer's status and validation below.
   $Payload = ($Library + "`nHOME_EDGE_INSTALLATION_DIR='$RemoteDir'`nHOME_EDGE_INSTALLATION_ROUTER='$Router'`nHOME_EDGE_INSTALLATION_FIXTURE_ROOT=''`nhome_edge_inspect_installation`nexit `$?`n").Replace("`r", "")
-  $SshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ConnectionAttempts=1', '-o', 'StrictHostKeyChecking=accept-new', '-o', "UserKnownHostsFile=$KnownHostsFile", '--', $Router, 'sh -s')
+  $SshArgs = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'ConnectionAttempts=1', '-o', 'StrictHostKeyChecking=yes', '-o', "UserKnownHostsFile=$KnownHostsFile", '--', $Router, 'sh -s')
   $global:LASTEXITCODE = 0
   $PreviousOutputEncoding = $OutputEncoding
   try {

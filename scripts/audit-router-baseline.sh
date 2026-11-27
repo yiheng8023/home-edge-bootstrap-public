@@ -10,9 +10,9 @@ if [ -z "$router" ]; then
 fi
 
 log_path="${LOG_PATH:-/tmp/home-edge-router-baseline-audit.log}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 ssh_timeout="${SSH_CONNECT_TIMEOUT_SEC:-8}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 
 mkdir -p "$(dirname "$log_path")" "$(dirname "$known_hosts_file")"
 
@@ -515,7 +515,7 @@ $remote_script"
 
 printf '%s\n' "Router baseline audit log: $log_path"
 # shellcheck disable=SC2086
-if printf '%s' "$remote_script" | ssh $ssh_opts -- "$router" 'sh -s' >"$log_path" 2>&1; then
+if printf '%s' "$remote_script" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'sh -s' >"$log_path" 2>&1; then
   if grep -q '^device_state=' "$log_path"; then
     cat "$log_path"
     exit 0

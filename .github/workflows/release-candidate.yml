@@ -6,7 +6,7 @@ on:
       version:
         description: Release version to verify
         required: true
-        default: v0.1.12
+        default: v0.1.13
   push:
     tags:
       - "v*"
@@ -29,6 +29,7 @@ jobs:
           cache-dependency-path: tools/yamlbridge/go.sum
       - name: Parser and transaction regression checks
         run: |
+          (cd tools/yamlbridge && GOTOOLCHAIN=local go vet ./...)
           sh scripts/build-subscription-parser.sh "$RUNNER_TEMP/subscription-parser"
           python3 scripts/test-subscription-auto.py --parser "$RUNNER_TEMP/subscription-parser/yamlbridge-linux-amd64"
           node scripts/test-dashboard-defaults.cjs
@@ -38,12 +39,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.8'
+          cache-dependency-path: tools/yamlbridge/go.sum
+
       - name: Prepare Go dependencies for offline verification
         shell: bash
-        run: |
-          if command -v go >/dev/null 2>&1; then
-            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
-          fi
+        working-directory: tools/yamlbridge
+        run: GOTOOLCHAIN=local go mod download
 
       - name: Verify
         shell: bash
@@ -68,12 +72,15 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.8'
+          cache-dependency-path: tools/yamlbridge/go.sum
+
       - name: Prepare Go dependencies for offline verification
         shell: bash
-        run: |
-          if command -v go >/dev/null 2>&1; then
-            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
-          fi
+        working-directory: tools/yamlbridge
+        run: GOTOOLCHAIN=local go mod download
 
       - name: Verify
         shell: bash
@@ -98,18 +105,25 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.8'
+          cache-dependency-path: tools/yamlbridge/go.sum
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
       - name: Prepare Go dependencies for offline verification
         shell: bash
-        run: |
-          if command -v go >/dev/null 2>&1; then
-            (cd tools/yamlbridge && GOTOOLCHAIN=local go mod download)
-          fi
+        working-directory: tools/yamlbridge
+        run: GOTOOLCHAIN=local go mod download
 
       - shell: powershell
         run: |
           $Log = Join-Path $env:RUNNER_TEMP "home-edge-verify-local.log"
           $ErrorActionPreference = "Continue"
-          & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1 2>&1 |
+          & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-local.ps1 -RequireServiceInstallerShell 2>&1 |
             Tee-Object -FilePath $Log
           $Status = $LASTEXITCODE
           if ($Status -ne 0) {

@@ -39,7 +39,7 @@ run_case() {
   fi
   [ -f "$session/logs/bootstrap.log" ] || fail "$name missing bootstrap log"
   [ -f "$session/state.env" ] || fail "$name missing state.env"
-  grep -Fq "known_hosts_file=$session/known_hosts" "$session/state.env" || fail "$name state does not retain the session known_hosts path"
+  grep -Fxq "known_hosts_file=${KNOWN_HOSTS_FILE:-$HOME/.ssh/known_hosts}" "$session/state.env" || fail "$name state does not record persistent SSH trust"
   [ ! -e "$session/state.env.tmp" ] || fail "$name left an atomic state temp file"
   [ ! -d "$session/.bootstrap.lock" ] || fail "$name left a bootstrap lock"
   { [ "$expected_state" != pass ] && [ "$expected_state" != accepted_boundary ]; } || [ ! -d "$session/scratch" ] || fail "$name did not clean scratch after terminal result"

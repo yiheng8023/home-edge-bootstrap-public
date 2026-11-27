@@ -1,7 +1,7 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$AuditLogPath = "C:\tmp\home-edge-router-guide-audit.log",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [switch]$Json,
   [switch]$NoPause
 )

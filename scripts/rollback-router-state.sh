@@ -79,21 +79,10 @@ acquire_lock() {
     log "PLAN: acquire rollback lock $lock_dir"
     return 0
   fi
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$lock_dir" 2>/dev/null; then
-    owner_pid=$(cat "$lock_dir/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$lock_dir/operation" 2>/dev/null || echo unknown)
-      die "global write lock held by pid=$owner_pid operation=$operation"
-    fi
-    started=$(cat "$lock_dir/started_at" 2>/dev/null || true)
-    now=$(date +%s)
-    case "$started:$now" in *[!0-9:]*|:*|*:) age=0 ;; *) age=$((now - started)) ;; esac
-    if [ -z "$owner_pid" ] && [ "$age" -le 1800 ]; then
-      die "global write lock has no verifiable owner and lease has not expired"
-    fi
-    rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
-    rmdir "$lock_dir" 2>/dev/null || die "cannot clear stale global write lock: $lock_dir"
-    mkdir "$lock_dir" 2>/dev/null || die "global write lock was reacquired: $lock_dir"
+    die "global write lock held or unavailable; inspect the existing owner before recovery"
   fi
   date +%s >"$lock_dir/started_at" || die "cannot record rollback lock start"
   printf '%s\n' "$$" >"$lock_dir/pid" || die "cannot record rollback lock owner"

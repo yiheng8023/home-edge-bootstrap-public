@@ -61,9 +61,9 @@ function Invoke-BootstrapFixture {
   }
   $StatePath = Join-Path $Session "state.json"
   $State = Get-Content -LiteralPath $StatePath -Raw | ConvertFrom-Json
-  $ExpectedKnownHosts = Join-Path $Session "known_hosts"
+  $ExpectedKnownHosts = if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }
   if ($State.known_hosts_file -ne $ExpectedKnownHosts) {
-    throw "$Name state does not retain the session known_hosts path"
+    throw "$Name state does not record persistent SSH trust"
   }
   if (Test-Path -LiteralPath "$StatePath.tmp") {
     throw "$Name left an atomic state temp file"

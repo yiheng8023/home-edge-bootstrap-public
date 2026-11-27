@@ -1,6 +1,6 @@
 param(
   [string]$Router = $env:ROUTER,
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [string]$FetchProxy = "",
   [string]$ConverterBaseUrl = "",
   [string]$ConverterTarget = "",
@@ -17,7 +17,7 @@ if (-not $Router) {
 }
 
 New-Item -ItemType Directory -Force (Split-Path -Parent $KnownHostsFile) | Out-Null
-$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router)
+$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router)
 
 function Quote-Sh {
   param([string]$Value)

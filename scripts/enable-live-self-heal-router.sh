@@ -6,7 +6,6 @@ umask 077
 root="${HOME_EDGE_ENABLE_ROOT:-}"
 max_backups="${ENABLE_LIVE_MAX_BACKUPS:-5}"
 lock_dir="${HOME_EDGE_WRITE_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
-lock_stale_sec="${HOME_EDGE_WRITE_LOCK_STALE_SEC:-1800}"
 lock_acquired=0
 
 path_in_root() {
@@ -58,7 +57,6 @@ fi
 
 case "$lock_dir" in /tmp/?*) ;; *) die "HOME_EDGE_WRITE_LOCK_DIR must remain below /tmp" ;; esac
 case "$lock_dir" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "unsafe HOME_EDGE_WRITE_LOCK_DIR" ;; esac
-case "$lock_stale_sec" in ""|*[!0-9]*|0) lock_stale_sec=1800 ;; esac
 
 release_lock() {
   if [ "$lock_acquired" = "1" ]; then
@@ -68,21 +66,10 @@ release_lock() {
 }
 
 acquire_lock() {
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$lock_dir" 2>/dev/null; then
-    owner_pid=$(cat "$lock_dir/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$lock_dir/operation" 2>/dev/null || echo unknown)
-      die "global write lock held by pid=$owner_pid operation=$operation"
-    fi
-    started=$(cat "$lock_dir/started_at" 2>/dev/null || true)
-    now=$(date +%s)
-    case "$started:$now" in *[!0-9:]*|:*|*:) age=0 ;; *) age=$((now - started)) ;; esac
-    if [ -z "$owner_pid" ] && [ "$age" -le "$lock_stale_sec" ]; then
-      die "global write lock has no verifiable owner and lease has not expired"
-    fi
-    rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
-    rmdir "$lock_dir" 2>/dev/null || die "stale global write lock cannot be cleared"
-    mkdir "$lock_dir" 2>/dev/null || die "global write lock was reacquired"
+    die "global write lock held or unavailable; inspect the existing owner before recovery"
   fi
   lock_acquired=1
   date +%s >"$lock_dir/started_at" || die "cannot record write lock start"

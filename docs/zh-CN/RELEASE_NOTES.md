@@ -2,6 +2,39 @@
 
 [English](../RELEASE_NOTES.md) · [首页](../../README.zh-CN.md)
 
+## v0.1.13（2026-11-28）
+
+v0.1.13 加固路由器写锁。参与写入的入口会保留已有锁及事务元数据，不能仅根据 PID 缺失、时间经过或父进程退出自动接管。异常退出后先检查写入者和事务日志，再安排恢复。刷新或回滚时请用与当前版本相符的宿主机入口，旧版部署命令仍可能移除尚未初始化完成的锁。
+
+宿主机 SSH 默认使用持久的用户 known_hosts 严格核验。首次连接前先验证指纹，也可显式沿用已经核实的旧记录。部署在连接前校验目标，并把目标作为独立的带引号赋值传递。宿主机 CI 固定 Go 版本，并运行 go vet。
+
+本更新修改宿主机和路由器项目脚本。设备采用需要单独执行仅项目刷新。离线载荷版本和现有自动分流能力门槛保持原有契约。
+
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.13-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.13-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.13-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.13-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.13-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.13-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.13-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.13-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.12（2026-11-17）
 
 v0.1.12 加强产品中立的客户端／网关共存，不增加客户端控制适配器。拓扑分类依据可观察的代理、DNS 和路由能力，设备可以有意优先使用独立客户端。FlClash 仍只是示例，不是必需产品，也不享有特殊控制路径。

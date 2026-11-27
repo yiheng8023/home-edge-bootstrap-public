@@ -1,6 +1,6 @@
 param(
   [string]$Router = $env:ROUTER,
-  [string]$KnownHostsFile = 'C:\tmp\home-edge-bootstrap-known-hosts',
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [int]$SshConnectTimeoutSec = 8,
   [switch]$Apply,
   [string]$Confirmation = '',
@@ -78,7 +78,7 @@ $SshArgs = @(
   "-o", "BatchMode=yes",
   "-o", "ConnectTimeout=$SshConnectTimeoutSec",
   "-o", "ConnectionAttempts=1",
-  "-o", "StrictHostKeyChecking=accept-new",
+  "-o", "StrictHostKeyChecking=yes",
   "-o", "UserKnownHostsFile=$KnownHostsFile",
   "--", $Router, $Remote
 )

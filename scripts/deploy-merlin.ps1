@@ -1,7 +1,7 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$RemoteDir = "/jffs/home-edge-bootstrap",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [int]$SshConnectTimeoutSec = 8,
   [switch]$IncludeBundle,
   [switch]$InstallRuntime,
@@ -41,7 +41,11 @@ function Invoke-RemoteScript {
 if (-not $Router) {
   throw "Router is required. Pass -Router <ssh-user>@<router-ip> or set ROUTER."
 }
-if ($RemoteDir -notmatch '^/jffs/[A-Za-z0-9_.-]+$') {
+if ($Router -cnotmatch '\A[A-Za-z0-9_.][A-Za-z0-9_.-]*@[A-Za-z0-9][A-Za-z0-9.-]*\z' -or
+    ($Router.Split('@')[1] -match '\.\.|\.$')) {
+  throw 'Expected a safe SSH target USER@HOST.'
+}
+if ($RemoteDir -cnotmatch '\A/jffs/[A-Za-z0-9_.-]+\z' -or $RemoteDir -in @('/jffs/.', '/jffs/..')) {
   throw "RemoteDir must be one concrete directory below /jffs without traversal or unsupported characters: $RemoteDir"
 }
 
@@ -176,17 +180,11 @@ trap cleanup_deploy EXIT
 trap handle_deploy_signal HUP INT TERM
 
 acquire_deploy_lock() {
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$lock_dir" 2>/dev/null; then
-    owner_pid=$(cat "$lock_dir/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$lock_dir/operation" 2>/dev/null || echo unknown)
-      echo "deploy-merlin: global write lock held by pid=$owner_pid operation=$operation" >&2
-      exit 1
-    fi
-    rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
-    rmdir "$lock_dir" 2>/dev/null || { echo "deploy-merlin: stale deployment lock cannot be cleared" >&2; exit 1; }
-    mkdir "$lock_dir" 2>/dev/null || { echo "deploy-merlin: deployment lock was reacquired" >&2; exit 1; }
-    echo "deploy-merlin: recovered stale deployment lock" >&2
+    echo "deploy-merlin: global write lock held or unavailable; inspect the existing owner before recovery" >&2
+    exit 1
   fi
   lock_held=1
   date +%s >"$lock_dir/started_at" || { echo "deploy-merlin: cannot record write lock start" >&2; exit 1; }
@@ -275,7 +273,6 @@ rollback_deploy() {
 acquire_deploy_lock
 __INSTALLATION_LIBRARY__
 HOME_EDGE_INSTALLATION_DIR="$remote_dir"
-HOME_EDGE_INSTALLATION_ROUTER="__ROUTER__"
 HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''
 home_edge_inspect_installation
 home_edge_require_project_replacement "__REPLACE_PROJECT__" "__PROJECT_CONFIRMATION__" || exit 1
@@ -334,10 +331,10 @@ echo "deploy_state=applied"
 echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 '@
 
-$Remote = ConvertTo-PosixRemoteCommand ($RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
+$RouterAssignment = "HOME_EDGE_INSTALLATION_ROUTER='$Router'`n"
+$Remote = ConvertTo-PosixRemoteCommand ($RouterAssignment + $RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).
   Replace("__MODE__", $Mode).
   Replace("__RUNTIME_FOLLOWS__", [int]$RuntimeRequested).
-  Replace("__ROUTER__", $Router).
   Replace("__REPLACE_PROJECT__", [int]$ReplaceProjectRequested).
   Replace("__PROJECT_CONFIRMATION__", $ProjectConfirmation).
   Replace("__INSTALLATION_LIBRARY__", $InstallationLibrary))
@@ -355,7 +352,7 @@ $SshArgs = @(
   "-o", "BatchMode=yes",
   "-o", "ConnectTimeout=$SshConnectTimeoutSec",
   "-o", "ConnectionAttempts=1",
-  "-o", "StrictHostKeyChecking=accept-new",
+  "-o", "StrictHostKeyChecking=yes",
   "-o", "UserKnownHostsFile=$KnownHostsFile",
   "--",
   $Router

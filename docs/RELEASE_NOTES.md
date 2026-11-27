@@ -2,6 +2,39 @@
 
 [简体中文](zh-CN/RELEASE_NOTES.md) · [Home](../README.md)
 
+## v0.1.13 (2026-11-28)
+
+v0.1.13 hardens router write-lock ownership. The participating writer entry points preserve an occupied lock and its transaction metadata. A missing PID, elapsed time or dead parent alone never permits automatic recovery. After a crash, check active writers and the transaction journal before a maintenance recovery. Use matching host entry points during project refresh or rollback, because older deployment scripts can still remove an initializing lock.
+
+Host SSH defaults to strict validation against the persistent user known-hosts file. Verify a new router fingerprint before trusting it, or carry forward a verified earlier pin explicitly. Deployment validates the target before any connection and passes it as a separate quoted assignment. Go is pinned in host CI and verification includes go vet.
+
+This update changes host and router project scripts. Device adoption is a separate project-only refresh. Offline payload versions and the existing automatic routing capability gates remain unchanged.
+
+
+| Download | Purpose / GitHub label |
+|---|---|
+| [`home-edge-bootstrap-v0.1.13-offline.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-offline.zip) | Windows offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.13-offline.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-offline.tar.gz) | macOS/Linux offline package - runtime included |
+| [`home-edge-bootstrap-v0.1.13-source.zip`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-source.zip) | Windows source-only package - runtime not included |
+| [`home-edge-bootstrap-v0.1.13-source.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/home-edge-bootstrap-v0.1.13-source.tar.gz) | macOS/Linux source-only package - runtime not included |
+| [`SHA256SUMS`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/SHA256SUMS) | Checksums - download with one selected package |
+| [`RELEASE-MANIFEST.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/RELEASE-MANIFEST.json) | Release manifest - provenance and audit |
+| [`SBOM.spdx.json`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/SBOM.spdx.json) | SPDX SBOM - audit |
+| [`mihomo-v1.19.32-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/mihomo-v1.19.32-source-complete.tar.gz) | Mihomo complete source - not required for installation |
+| [`shellcrash-1.9.4-source-complete.tar.gz`](https://github.com/yiheng8023/home-edge-bootstrap-public/releases/download/v0.1.13/shellcrash-1.9.4-source-complete.tar.gz) | ShellCrash complete source - not required for installation |
+
+| Filename | GitHub label |
+|---|---|
+| `home-edge-bootstrap-v0.1.13-offline.zip` | `Windows offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.13-offline.tar.gz` | `macOS/Linux offline package - runtime included` |
+| `home-edge-bootstrap-v0.1.13-source.zip` | `Windows source-only package - runtime not included` |
+| `home-edge-bootstrap-v0.1.13-source.tar.gz` | `macOS/Linux source-only package - runtime not included` |
+| `SHA256SUMS` | `Checksums - download with one selected package` |
+| `RELEASE-MANIFEST.json` | `Release manifest - provenance and audit` |
+| `SBOM.spdx.json` | `SPDX SBOM - audit` |
+| `mihomo-v1.19.32-source-complete.tar.gz` | `Mihomo complete source - not required for installation` |
+| `shellcrash-1.9.4-source-complete.tar.gz` | `ShellCrash complete source - not required for installation` |
+
 ## v0.1.12 (2026-11-17)
 
 v0.1.12 strengthens product-independent client/gateway coexistence without adding a client-control adapter. Topology classification follows observable proxy, DNS and route capabilities; a device may intentionally prefer an independent client. FlClash remains an example, not a required product or a special control path.

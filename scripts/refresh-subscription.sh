@@ -9,8 +9,8 @@ if [ -z "$router" ]; then
   exit 2
 fi
 
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 apply="${APPLY:-0}"
 
 mkdir -p "$(dirname "$known_hosts_file")"
@@ -66,4 +66,4 @@ fi
   fi
   printf '%s sh /jffs/scripts/home-edge-update-sub.sh\n' "$mode"
   echo "tail -n 8 /tmp/update-sub.log 2>/dev/null || true"
-} | ssh $ssh_opts -- "$router" 'tr -d "\r" | sh -s'
+} | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'tr -d "\r" | sh -s'

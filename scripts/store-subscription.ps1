@@ -1,7 +1,7 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$RemotePath = "/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [string]$SubscriptionUrl = ""
 )
 
@@ -36,7 +36,7 @@ if ($RemotePath -notmatch '^/jffs/[A-Za-z0-9_./-]+$' -or $RemotePath -match '(^|
 }
 
 New-Item -ItemType Directory -Force (Split-Path -Parent $KnownHostsFile) | Out-Null
-$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router)
+$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router)
 $RemoteTemplate = @'
 set -eu
 decode_payload() {

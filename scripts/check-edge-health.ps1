@@ -2,7 +2,7 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$Router,
   [string]$AuditLogPath = "C:\tmp\home-edge-health-audit.log",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [switch]$Json
 )
 

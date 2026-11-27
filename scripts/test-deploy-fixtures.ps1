@@ -29,6 +29,13 @@ $global:LASTEXITCODE = 0
   $KnownHosts = Join-Path $FixtureRoot 'known_hosts'
   $Plan = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router user@router -KnownHostsFile $KnownHosts 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0 -or $Plan -notmatch 'deploy_state=plan' -or $Plan -notmatch 'installation_probe=read_only') { throw "PowerShell read-only deploy plan failed" }
+  $BadTarget = "user@router`ninvalid target"
+  $SavedErrorPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $BadResult = & powershell -NoProfile -ExecutionPolicy Bypass -File $Deploy -Router $BadTarget -KnownHostsFile $KnownHosts 2>&1 | Out-String
+  } finally { $ErrorActionPreference = $SavedErrorPreference }
+  if ($LASTEXITCODE -eq 0 -or $BadResult -notmatch 'Expected a safe SSH target' -or $BadResult -match 'project_install_schema') { throw 'Malformed SSH target reached the observer' }
   New-Item -ItemType Directory -Force -Path $FixtureBundle | Out-Null
   [System.IO.File]::WriteAllBytes(
     (Join-Path $FixtureBundle "mihomo-linux-arm64"),

@@ -36,7 +36,6 @@ MIHOMO_DATA_DIR="${SUBSCRIPTION_MIHOMO_DATA_DIR:-}"
 CURL_BIN="${CURL_BIN:-}"
 JQ_BIN="${JQ_BIN:-}"
 LOCK_DIR="${SUBSCRIPTION_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
-LOCK_STALE_SEC="${SUBSCRIPTION_LOCK_STALE_SEC:-600}"
 WRITE_LOCK_ALREADY_HELD="${HOME_EDGE_WRITE_LOCK_HELD:-0}"
 MAX_BACKUPS="${SUBSCRIPTION_MAX_BACKUPS:-5}"
 LOG_MAX_BYTES="${SUBSCRIPTION_LOG_MAX_BYTES:-262144}"
@@ -123,25 +122,12 @@ trap handle_signal HUP INT TERM
 acquire_lock() {
   [ "$WRITE_LOCK_ALREADY_HELD" != "1" ] || { log "inherited global write lock"; return 0; }
   [ -n "$LOCK_DIR" ] && [ "$LOCK_DIR" != "/" ] || die "invalid subscription lock directory"
-  case "$LOCK_STALE_SEC" in ""|*[!0-9]*|0) LOCK_STALE_SEC=600 ;; esac
   mkdir -p "$(dirname "$LOCK_DIR")" 2>/dev/null || die "cannot prepare subscription lock parent"
 
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    owner_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$LOCK_DIR/operation" 2>/dev/null || echo unknown)
-      die "global write lock held by pid=$owner_pid operation=$operation"
-    fi
-    started=$(cat "$LOCK_DIR/started_at" 2>/dev/null || true)
-    now=$(date +%s)
-    case "$started:$now" in *[!0-9:]*|:*|*:) age=0 ;; *) age=$((now - started)) ;; esac
-    if [ -z "$owner_pid" ] && [ "$age" -le "$LOCK_STALE_SEC" ]; then
-      die "global write lock has no verifiable owner and lease has not expired"
-    fi
-    rm -f "$LOCK_DIR/started_at" "$LOCK_DIR/pid" "$LOCK_DIR/operation" 2>/dev/null || true
-    rmdir "$LOCK_DIR" 2>/dev/null || die "stale global write lock could not be cleared: $LOCK_DIR"
-    mkdir "$LOCK_DIR" 2>/dev/null || die "global write lock was reacquired by another process"
-    log "recovered stale global write lock"
+    die "global write lock held or unavailable; inspect the existing owner before recovery"
   fi
 
   lock_held=1

@@ -17,7 +17,6 @@ legacy_begin_marker='# BEGIN home-edge-bootstrap shellcrash lifecycle'
 legacy_end_marker='# END home-edge-bootstrap shellcrash lifecycle'
 tmp_hook=""
 lock_dir="${HOME_EDGE_WRITE_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
-lock_stale_sec="${HOME_EDGE_WRITE_LOCK_STALE_SEC:-1800}"
 write_lock_already_held="${HOME_EDGE_WRITE_LOCK_HELD:-0}"
 lock_acquired=0
 
@@ -52,7 +51,6 @@ case "$job_name" in ""|*[!A-Za-z0-9_-]*) die "unsafe cron job name" ;; esac
 case "$write_lock_already_held" in 0|1) ;; *) die "HOME_EDGE_WRITE_LOCK_HELD must be 0 or 1" ;; esac
 case "$lock_dir" in /tmp/?*) ;; *) die "HOME_EDGE_WRITE_LOCK_DIR must remain below /tmp" ;; esac
 case "$lock_dir" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "unsafe HOME_EDGE_WRITE_LOCK_DIR" ;; esac
-case "$lock_stale_sec" in ""|*[!0-9]*|0) lock_stale_sec=1800 ;; esac
 
 policy=$(path_in_root "$policy_rel")
 local_policy=$(path_in_root "$local_policy_rel")
@@ -74,21 +72,10 @@ trap 'cleanup; exit 130' HUP INT TERM
 acquire_lock() {
   [ "$write_lock_already_held" != "1" ] || { log "inherited global write lock"; return 0; }
   mkdir -p "$(dirname "$lock_dir")" 2>/dev/null || die "cannot prepare global write lock parent"
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$lock_dir" 2>/dev/null; then
-    owner_pid=$(cat "$lock_dir/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$lock_dir/operation" 2>/dev/null || echo unknown)
-      die "global write lock held by pid=$owner_pid operation=$operation"
-    fi
-    started=$(cat "$lock_dir/started_at" 2>/dev/null || true)
-    now=$(date +%s)
-    case "$started:$now" in *[!0-9:]*|:*|*:) age=0 ;; *) age=$((now - started)) ;; esac
-    if [ -z "$owner_pid" ] && [ "$age" -le "$lock_stale_sec" ]; then
-      die "global write lock has no verifiable owner and lease has not expired"
-    fi
-    rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
-    rmdir "$lock_dir" 2>/dev/null || die "stale global write lock cannot be cleared"
-    mkdir "$lock_dir" 2>/dev/null || die "global write lock was reacquired"
+    die "global write lock held or unavailable; inspect the existing owner before recovery"
   fi
   lock_acquired=1
   date +%s >"$lock_dir/started_at" || die "cannot record write lock start"

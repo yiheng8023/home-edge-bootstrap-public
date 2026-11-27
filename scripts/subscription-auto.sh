@@ -221,14 +221,9 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
 acquire() {
-  if ! mkdir "$lock" 2>/dev/null; then
-    owner=$(cat "$lock/pid" 2>/dev/null || true)
-    case "$owner" in ''|*[!0-9]*) fail busy;; esac
-    # Unknown ownership is preserved, never recovered merely because a timeout elapsed.
-    if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null && [ -f "$lock/operation" ]; then
-      rm -f "$lock/pid" "$lock/operation" "$lock/started_at"; rmdir "$lock"; mkdir "$lock" || fail busy
-    else fail busy; fi
-  fi
+  # The watchdog can outlive the scheduler. This entry point must never break
+  # an existing lock based on a missing or dead recorded PID.
+  mkdir "$lock" 2>/dev/null || fail busy
   lock_held=1
   lock_token="subscription-auto.$$.$(birth $$)"
   echo $$ >"$lock/pid"; echo "$lock_token" >"$lock/operation"; echo "$now" >"$lock/started_at"

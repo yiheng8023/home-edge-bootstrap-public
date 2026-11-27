@@ -2,7 +2,7 @@ param(
   [string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
   [string]$Router = $env:ROUTER,
   [string]$OutputDir = "C:\tmp\home-edge-support-bundles",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [string]$SshCommand = $(if ($env:HOME_EDGE_SSH_COMMAND) { $env:HOME_EDGE_SSH_COMMAND } else { "ssh" })
 )
 

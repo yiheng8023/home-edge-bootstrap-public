@@ -1,6 +1,6 @@
 param(
   [string]$Router = $env:ROUTER,
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [int]$TimeoutSec = 5
 )
 
@@ -36,6 +36,8 @@ function Get-AgentState {
 
 function Get-FailureHint {
   param([string]$Text)
+  if ($Text -match 'REMOTE HOST IDENTIFICATION HAS CHANGED') { return 'host_key_changed_verify_fingerprint' }
+  if ($Text -match 'No .* host key is known|Host key verification failed') { return 'host_key_unverified_verify_fingerprint' }
   if ($Text -match "Permission denied") { return "auth_failed_or_identity_not_loaded" }
   if ($Text -match "Connection timed out|Operation timed out|No route to host|Network is unreachable") { return "router_unreachable" }
   if ($Text -match "Connection refused") { return "router_ssh_disabled_or_wrong_port" }
@@ -67,7 +69,7 @@ elseif ($Router) {
   $SshArgs = @(
     "-o", "BatchMode=yes",
     "-o", "ConnectTimeout=$TimeoutSec",
-    "-o", "StrictHostKeyChecking=accept-new",
+    "-o", "StrictHostKeyChecking=yes",
     "-o", "UserKnownHostsFile=$KnownHostsFile",
     "--",
     $Router,

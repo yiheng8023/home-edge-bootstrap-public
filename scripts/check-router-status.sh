@@ -10,9 +10,9 @@ if [ -z "$router" ]; then
 fi
 
 log_path="${LOG_PATH:-/tmp/home-edge-router-status.log}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 no_log="${NO_LOG:-0}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 
 expected_source_kind=unknown
@@ -314,7 +314,7 @@ tail -n 20 /tmp/self-heal.log 2>/dev/null || true'
 remote_script=$(printf '%s' "$remote_script" | sed "s/__EXPECTED_KIND__/$expected_source_kind/g; s/__EXPECTED_COMMIT__/$expected_source_commit/g; s/__EXPECTED_VERSION__/$expected_source_version/g")
 
 if [ "$no_log" = "1" ]; then
-  if output=$(printf '%s' "$remote_script" | ssh $ssh_opts -- "$router" 'tr -d "\r" | sh -s'); then
+  if output=$(printf '%s' "$remote_script" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'tr -d "\r" | sh -s'); then
     printf '%s\n' "$output"
     exit 0
   else
@@ -325,7 +325,7 @@ if [ "$no_log" = "1" ]; then
 fi
 
 printf '%s\n' "Router status log: $log_path"
-if printf '%s' "$remote_script" | ssh $ssh_opts -- "$router" 'tr -d "\r" | sh -s' > "$log_path"; then
+if printf '%s' "$remote_script" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'tr -d "\r" | sh -s' > "$log_path"; then
   cat "$log_path"
   exit 0
 fi

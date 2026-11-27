@@ -6,7 +6,7 @@ router=""
 apply=0
 runtime=0
 remote_dir="${REMOTE_DIR:-/jffs/home-edge-bootstrap}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -43,7 +43,7 @@ rollback_script="$script_dir/rollback-router-state.sh"
 [ -r "$rollback_script" ] || { echo "ERROR: missing $rollback_script" >&2; exit 1; }
 
 mkdir -p "$(dirname "$known_hosts_file")"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 remote="
 set -eu
 decode_payload() {
@@ -60,4 +60,4 @@ decode_payload | ROLLBACK_INSTALL_DIR='$remote_dir' ROLLBACK_APPLY='$apply' ROLL
 "
 
 # shellcheck disable=SC2086
-base64 < "$rollback_script" | ssh $ssh_opts -- "$router" "$remote"
+base64 < "$rollback_script" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" "$remote"

@@ -9,6 +9,7 @@ case ${APPLY:-0} in 0|1) apply=${APPLY:-0} ;; *) exit 2 ;; esac
 case ${TOOLS_ONLY:-0} in 0|1) tools_only=${TOOLS_ONLY:-0} ;; *) exit 2 ;; esac
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 opts=${SSH_OPTS:-'-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=yes'}
+known_hosts=${KNOWN_HOSTS_FILE:-"${HOME:?HOME is required}/.ssh/known_hosts"}
 for tool in ssh scp openssl gzip mktemp; do which "$tool" >/dev/null 2>&1 || { echo "service_health_enable=missing_$tool" >&2; exit 1; }; done
 local_stage=$(mktemp -d "${TMPDIR:-/tmp}/home-edge-service-host.XXXXXX")
 stage_id=$(openssl rand -hex 16)
@@ -18,7 +19,7 @@ remote_owned=0
 remote_active=0
 cleanup() {
   if [ "$remote_owned" = 1 ] && [ "$remote_active" = 0 ]; then
-    ssh $opts -- "$router" "stage='$stage'; stage_id='$stage_id'; $(sed -n '/^# BEGIN SERVICE_HEALTH_CLEANUP$/,/^# END SERVICE_HEALTH_CLEANUP$/p' "$repo/scripts/enable-service-health.sh")" >/dev/null 2>&1 || echo 'service_health_enable=private_stage_cleanup_unconfirmed' >&2
+    ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" "stage='$stage'; stage_id='$stage_id'; $(sed -n '/^# BEGIN SERVICE_HEALTH_CLEANUP$/,/^# END SERVICE_HEALTH_CLEANUP$/p' "$repo/scripts/enable-service-health.sh")" >/dev/null 2>&1 || echo 'service_health_enable=private_stage_cleanup_unconfirmed' >&2
   fi
   [ "$remote_active" = 0 ] || echo 'service_health_enable=remote_outcome_unknown; private stage retained for inspection' >&2
   for file in yamlbridge yamlbridge.gz yamlbridge.sha256 remote.sh; do rm -f "$local_stage/$file"; done
@@ -26,7 +27,7 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
-arch=$(ssh $opts -- "$router" 'set -eu; for f in /jffs/scripts/home-edge-configure-service-health.sh /jffs/scripts/home-edge-service-health.sh /jffs/scripts/home-edge-service-health-preflight.sh; do [ -f "$f" ] && [ ! -L "$f" ] || { echo "service_health_enable=deploy_project_helpers_first" >&2; exit 1; }; done; uname -m')
+arch=$(ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" 'set -eu; for f in /jffs/scripts/home-edge-configure-service-health.sh /jffs/scripts/home-edge-service-health.sh /jffs/scripts/home-edge-service-health-preflight.sh; do [ -f "$f" ] && [ ! -L "$f" ] || { echo "service_health_enable=deploy_project_helpers_first" >&2; exit 1; }; done; uname -m')
 case "$arch" in aarch64|arm64) arch=arm64 ;; x86_64|amd64) arch=amd64 ;; *) echo 'service_health_enable=unsupported_router_arch' >&2; exit 1 ;; esac
 prebuilt=${SERVICE_HEALTH_PREBUILT:-}
 if [ -n "$prebuilt" ]; then
@@ -43,16 +44,16 @@ else
 fi
 gzip -n -c "$local_stage/yamlbridge" >"$local_stage/yamlbridge.gz"
 printf '%s\n' "$digest" >"$local_stage/yamlbridge.sha256"
-ssh $opts -- "$router" "set -eu; umask 077; [ ! -e '$stage' ] && [ ! -L '$stage' ]; mkdir '$stage'; printf '%s\\n' '$stage_id' >'$stage/owner'"
+ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" "set -eu; umask 077; [ ! -e '$stage' ] && [ ! -L '$stage' ]; mkdir '$stage'; printf '%s\\n' '$stage_id' >'$stage/owner'"
 remote_owned=1
-scp -O $opts -- "$local_stage/yamlbridge.gz" "$router:$stage/yamlbridge.gz"
-scp -O $opts -- "$local_stage/yamlbridge.sha256" "$router:$stage/yamlbridge.sha256"
+scp -O $opts -o "UserKnownHostsFile=$known_hosts" -- "$local_stage/yamlbridge.gz" "$router:$stage/yamlbridge.gz"
+scp -O $opts -o "UserKnownHostsFile=$known_hosts" -- "$local_stage/yamlbridge.sha256" "$router:$stage/yamlbridge.sha256"
 {
   printf "stage='%s'\nstage_id='%s'\napply='%s'\ntools_only='%s'\n" "$stage" "$stage_id" "$apply" "$tools_only"
   sed -n '/^# BEGIN SERVICE_HEALTH_REMOTE$/,/^# END SERVICE_HEALTH_REMOTE$/p' "$repo/scripts/enable-service-health.sh"
 } >"$local_stage/remote.sh"
 remote_active=1
-ssh $opts -- "$router" 'tr -d "\r" | sh -s' <"$local_stage/remote.sh"
+ssh $opts -o "UserKnownHostsFile=$known_hosts" -- "$router" 'tr -d "\r" | sh -s' <"$local_stage/remote.sh"
 remote_active=0
 exit 0
 

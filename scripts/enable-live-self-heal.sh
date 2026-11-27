@@ -10,9 +10,9 @@ if [ -z "$router" ]; then
 fi
 
 log_path="${LOG_PATH:-/tmp/home-edge-enable-live-self-heal.log}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 ssh_timeout="${SSH_CONNECT_TIMEOUT_SEC:-8}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 
 mkdir -p "$(dirname "$log_path")" "$(dirname "$known_hosts_file")"
 
@@ -42,7 +42,7 @@ decode_payload() {
 decode_payload | sh -s
 '
 # shellcheck disable=SC2086
-if printf '%s' "$payload" | ssh $ssh_opts -- "$router" "$remote" >"$log_path" 2>&1; then
+if printf '%s' "$payload" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" "$remote" >"$log_path" 2>&1; then
   cat "$log_path"
   exit 0
 fi

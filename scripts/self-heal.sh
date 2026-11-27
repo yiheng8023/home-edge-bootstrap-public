@@ -76,7 +76,6 @@ STATE_DIR="${HEAL_STATE_DIR:-/tmp/home-edge-bootstrap}"
 SWITCH_JOURNAL="$STATE_DIR/self-heal-switches.log"
 MAX_SWITCHES_PER_HOUR="${HEAL_MAX_SWITCHES_PER_HOUR:-6}"
 LOCK_DIR="${HEAL_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
-LOCK_STALE_SEC="${HEAL_LOCK_STALE_SEC:-1800}"
 WRITE_LOCK_ALREADY_HELD="${HOME_EDGE_WRITE_LOCK_HELD:-0}"
 LOG_MAX_BYTES="${HEAL_LOG_MAX_BYTES:-262144}"
 ALLOW_REMOTE_API="${HEAL_ALLOW_REMOTE_API:-0}"
@@ -207,27 +206,13 @@ acquire_lock() {
   [ -n "$LOCK_DIR" ] && [ "$LOCK_DIR" != "/" ] || { log "ERROR invalid self-heal lock directory"; return 1; }
   case "$LOCK_DIR" in /tmp/?*) ;; *) log "ERROR self-heal lock must remain below /tmp"; return 1 ;; esac
   case "$LOCK_DIR" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) log "ERROR unsafe self-heal lock directory"; return 1 ;; esac
-  case "$LOCK_STALE_SEC" in ""|*[!0-9]*|0) LOCK_STALE_SEC=1800 ;; esac
   mkdir -p "$(dirname "$LOCK_DIR")" 2>/dev/null || { log "ERROR cannot prepare self-heal lock parent"; return 1; }
 
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    owner_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$LOCK_DIR/operation" 2>/dev/null || echo unknown)
-      log "SKIP global write lock held by pid=$owner_pid operation=$operation"
-      return 2
-    fi
-    started=$(cat "$LOCK_DIR/started_at" 2>/dev/null || true)
-    now=$(date +%s)
-    case "$started:$now" in *[!0-9:]*|:*|*:) age=0 ;; *) age=$((now - started)) ;; esac
-    if [ -z "$owner_pid" ] && [ "$age" -le "$LOCK_STALE_SEC" ]; then
-      log "SKIP global write lock has no verifiable owner and lease has not expired"
-      return 2
-    fi
-    rm -f "$LOCK_DIR/started_at" "$LOCK_DIR/pid" "$LOCK_DIR/operation" 2>/dev/null || true
-    rmdir "$LOCK_DIR" 2>/dev/null || { log "ERROR stale global write lock could not be cleared"; return 1; }
-    mkdir "$LOCK_DIR" 2>/dev/null || { log "SKIP global write lock was reacquired by another process"; return 2; }
-    log "INFO recovered stale global write lock"
+    log "SKIP global write lock held or unavailable; inspect the existing owner before recovery"
+    return 2
   fi
 
   lock_held=1

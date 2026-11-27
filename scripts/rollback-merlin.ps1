@@ -1,7 +1,7 @@
 param(
   [string]$Router = $env:ROUTER,
   [string]$RemoteDir = "/jffs/home-edge-bootstrap",
-  [string]$KnownHostsFile = "C:\tmp\home-edge-bootstrap-known-hosts",
+  [string]$KnownHostsFile = $(if ($env:KNOWN_HOSTS_FILE) { $env:KNOWN_HOSTS_FILE } else { Join-Path $HOME ".ssh/known_hosts" }),
   [switch]$Apply,
   [switch]$Runtime
 )
@@ -40,7 +40,7 @@ decode_payload() {
 decode_payload | ROLLBACK_INSTALL_DIR='__REMOTE_DIR__' ROLLBACK_APPLY='__APPLY__' ROLLBACK_RUNTIME='__RUNTIME__' sh -s
 '@
 $Remote = $RemoteTemplate.Replace("__REMOTE_DIR__", $RemoteDir).Replace("__APPLY__", $ApplyFlag).Replace("__RUNTIME__", $RuntimeFlag)
-$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router, $Remote)
+$SshArgs = @("-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes", "-o", "UserKnownHostsFile=$KnownHostsFile", "--", $Router, $Remote)
 
 $Payload | ssh @SshArgs
 if ($LASTEXITCODE -ne 0) {

@@ -10,8 +10,8 @@ if [ -z "$router" ]; then
 fi
 
 remote_path="${SUBSCRIPTION_REMOTE_PATH:-/jffs/home-edge-bootstrap-state/SUBSCRIPTION.local}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 
 case "$remote_path" in
   /jffs/?*) ;;
@@ -102,4 +102,4 @@ echo "subscription_file=$remote_path"
 echo "subscription_bytes=$bytes"
 '
 remote_script=$(printf '%s' "$remote_script" | sed "s#__REMOTE_PATH__#$remote_path#g")
-printf '%s\n' "$url" | ssh $ssh_opts -- "$router" "$remote_script"
+printf '%s\n' "$url" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" "$remote_script"

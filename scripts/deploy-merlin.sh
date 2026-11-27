@@ -24,6 +24,14 @@ if [ -z "$router" ]; then
   exit 2
 fi
 
+invalid_router() {
+  echo 'deploy-merlin: expected a safe SSH target USER@HOST' >&2
+  exit 2
+}
+case "$router" in -*|*[!A-Za-z0-9_.@-]*) invalid_router ;; esac
+case "$router" in ?*@?*) ;; *) invalid_router ;; esac
+case "${router#*@}" in [!A-Za-z0-9]*|*@*|*..*|*.) invalid_router ;; esac
+
 remote_dir="${REMOTE_DIR:-/jffs/home-edge-bootstrap}"
 apply="${APPLY:-0}"
 runtime_install="${BOOTSTRAP_INSTALL_RUNTIME:-0}"
@@ -42,10 +50,10 @@ validate_bool BOOTSTRAP_REPLACE_PROJECT "$replace_project"
 if [ "$replace_project" = 1 ] || [ -n "$project_confirmation" ]; then
   [ "$replace_project" = 1 ] && [ "$project_confirmation" = REPLACE ] || { echo "Project replacement requires BOOTSTRAP_REPLACE_PROJECT=1 and BOOTSTRAP_PROJECT_CONFIRMATION=REPLACE" >&2; exit 2; }
 fi
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 ssh_timeout="${SSH_CONNECT_TIMEOUT_SEC:-8}"
 ssh_command="${HOME_EDGE_SSH_COMMAND:-ssh}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 repo=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 bundle_dir="${DEPLOY_BUNDLE_DIR:-$repo/bundle}"
 archive_items="README.md README.zh-CN.md bootstrap.sh adapters config docs scripts tools"
@@ -170,7 +178,7 @@ echo "runtime_space_preflight_state=ready"
 '
   runtime_space_preflight=$(printf '%s' "$runtime_space_preflight" |
     sed "s#__REQUIRED_KIB__#$runtime_space_required_kib#g; s#__PAYLOAD_BYTES__#$runtime_payload_bytes#g")
-  printf '%s\n' "$runtime_space_preflight" | "$ssh_command" $ssh_opts -- "$router" 'sh -s' || exit $?
+  printf '%s\n' "$runtime_space_preflight" | "$ssh_command" $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'sh -s' || exit $?
 fi
 
 mode="BOOTSTRAP_APPLY=1 BOOTSTRAP_INSTALL_RUNTIME=0"
@@ -210,17 +218,11 @@ trap cleanup_deploy EXIT
 trap handle_deploy_signal HUP INT TERM
 
 acquire_deploy_lock() {
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$lock_dir" 2>/dev/null; then
-    owner_pid=$(cat "$lock_dir/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$lock_dir/operation" 2>/dev/null || echo unknown)
-      echo "deploy-merlin: global write lock held by pid=$owner_pid operation=$operation" >&2
-      exit 1
-    fi
-    rm -f "$lock_dir/started_at" "$lock_dir/pid" "$lock_dir/operation" 2>/dev/null || true
-    rmdir "$lock_dir" 2>/dev/null || { echo "deploy-merlin: stale deployment lock cannot be cleared" >&2; exit 1; }
-    mkdir "$lock_dir" 2>/dev/null || { echo "deploy-merlin: deployment lock was reacquired" >&2; exit 1; }
-    echo "deploy-merlin: recovered stale deployment lock" >&2
+    echo "deploy-merlin: global write lock held or unavailable; inspect the existing owner before recovery" >&2
+    exit 1
   fi
   lock_held=1
   date +%s >"$lock_dir/started_at" || { echo "deploy-merlin: cannot record write lock start" >&2; exit 1; }
@@ -309,7 +311,6 @@ rollback_deploy() {
 acquire_deploy_lock
 __INSTALLATION_LIBRARY__
 HOME_EDGE_INSTALLATION_DIR="$remote_dir"
-HOME_EDGE_INSTALLATION_ROUTER="__ROUTER__"
 HOME_EDGE_INSTALLATION_FIXTURE_ROOT=''
 home_edge_inspect_installation
 home_edge_require_project_replacement "__REPLACE_PROJECT__" "__PROJECT_CONFIRMATION__" || exit 1
@@ -370,8 +371,9 @@ echo "rollback_available=$([ -d "$previous" ] && echo 1 || echo 0)"
 HOME_EDGE_REMOTE_SCRIPT
 )
 remote_script=$(printf '%s' "$remote_script" |
-  sed "s#__REMOTE_DIR__#$remote_dir#g; s#__MODE__#$mode#g; s#__RUNTIME_FOLLOWS__#$runtime_install#g; s#__ROUTER__#$router#g; s#__REPLACE_PROJECT__#$replace_project#g; s#__PROJECT_CONFIRMATION__#$project_confirmation#g")
+  sed "s#__REMOTE_DIR__#$remote_dir#g; s#__MODE__#$mode#g; s#__RUNTIME_FOLLOWS__#$runtime_install#g; s#__REPLACE_PROJECT__#$replace_project#g; s#__PROJECT_CONFIRMATION__#$project_confirmation#g")
 remote_script="${remote_script%%__INSTALLATION_LIBRARY__*}$installation_library${remote_script#*__INSTALLATION_LIBRARY__}"
+remote_script=$(printf "HOME_EDGE_INSTALLATION_ROUTER='%s'\n%s\n" "$router" "$remote_script")
 
 # Stage first so provenance hashes the exact bytes sent to the router.
 tmp_parent=${TMPDIR:-/tmp}
@@ -398,7 +400,7 @@ send_archive_script() {
   printf '%s' "${script%%__PAYLOAD__*}" >"$archive.remote.sh" || return $?
   fold -w 76 "$archive.base64" >>"$archive.remote.sh" || return $?
   printf '\n%s\n' "${script#*__PAYLOAD__}" >>"$archive.remote.sh" || return $?
-  "$ssh_command" $ssh_opts -- "$router" 'sh -s' <"$archive.remote.sh"
+  "$ssh_command" $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'sh -s' <"$archive.remote.sh"
 }
 # Keep transport artifacts outside the source tree whose bytes provenance covers.
 deploy_archive="$deploy_stage/project.tgz"
@@ -559,7 +561,7 @@ echo "runtime_deploy_state=applied"
   else
     runtime_status=$?
     echo "deploy-merlin: runtime stage failed; restoring the prior staged control plane" >&2
-    printf '%s\n' "$runtime_rollback_script" | "$ssh_command" $ssh_opts -- "$router" 'sh -s' || {
+    printf '%s\n' "$runtime_rollback_script" | "$ssh_command" $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'sh -s' || {
       echo "deploy-merlin: runtime stage failed and control-plane rollback could not be verified" >&2
       exit 1
     }

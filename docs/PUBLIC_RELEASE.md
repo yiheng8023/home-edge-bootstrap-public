@@ -18,12 +18,12 @@ automatically selected node is not evidence of stable egress identity.
 
 ## Exact Release Surface
 
-A versioned release contains exactly nine contracted files. For `v0.1.12`, they are:
+A versioned release contains exactly nine contracted files. For `v0.1.13`, they are:
 
-- `home-edge-bootstrap-v0.1.12-source.zip`
-- `home-edge-bootstrap-v0.1.12-source.tar.gz`
-- `home-edge-bootstrap-v0.1.12-offline.zip`
-- `home-edge-bootstrap-v0.1.12-offline.tar.gz`
+- `home-edge-bootstrap-v0.1.13-source.zip`
+- `home-edge-bootstrap-v0.1.13-source.tar.gz`
+- `home-edge-bootstrap-v0.1.13-offline.zip`
+- `home-edge-bootstrap-v0.1.13-offline.tar.gz`
 - `mihomo-v1.19.32-source-complete.tar.gz`
 - `shellcrash-1.9.4-source-complete.tar.gz`
 - `SBOM.spdx.json`

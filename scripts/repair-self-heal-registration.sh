@@ -10,9 +10,9 @@ if [ -z "$router" ]; then
 fi
 
 log_path="${LOG_PATH:-/tmp/home-edge-repair-self-heal-registration.log}"
-known_hosts_file="${KNOWN_HOSTS_FILE:-/tmp/home-edge-bootstrap-known-hosts}"
+known_hosts_file="${KNOWN_HOSTS_FILE:-${HOME:?HOME is required}/.ssh/known_hosts}"
 ssh_timeout="${SSH_CONNECT_TIMEOUT_SEC:-8}"
-ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$known_hosts_file}"
+ssh_opts="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=$ssh_timeout -o ConnectionAttempts=1 -o StrictHostKeyChecking=yes}"
 mkdir -p "$(dirname "$log_path")" "$(dirname "$known_hosts_file")"
 
 remote_script='set -eu
@@ -22,7 +22,7 @@ sh "$reconciler" --install'
 
 printf '%s\n' "Lifecycle registration repair log: $log_path"
 # shellcheck disable=SC2086
-printf '%s' "$remote_script" | ssh $ssh_opts -- "$router" 'tr -d "\r" | sh -s' >"$log_path" 2>&1
+printf '%s' "$remote_script" | ssh $ssh_opts -o "UserKnownHostsFile=$known_hosts_file" -- "$router" 'tr -d "\r" | sh -s' >"$log_path" 2>&1
 status=$?
 if [ "$status" -eq 0 ]; then
   cat "$log_path"

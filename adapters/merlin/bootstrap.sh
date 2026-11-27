@@ -57,7 +57,6 @@ runtime_max_backups="${BOOTSTRAP_RUNTIME_MAX_BACKUPS:-3}"
 
 runtime_init_fixture="${BOOTSTRAP_RUNTIME_INIT_FIXTURE:-0}"
 write_lock_dir="${HOME_EDGE_WRITE_LOCK_DIR:-/tmp/home-edge-bootstrap-write.lock}"
-write_lock_stale_sec="${HOME_EDGE_WRITE_LOCK_STALE_SEC:-1800}"
 write_lock_already_held="${HOME_EDGE_WRITE_LOCK_HELD:-0}"
 write_lock_acquired=0
 
@@ -90,23 +89,11 @@ acquire_write_lock() {
   [ "$write_lock_already_held" != "1" ] || { log "inherited global write lock"; return 0; }
   case "$write_lock_dir" in /tmp/?*) ;; *) die "HOME_EDGE_WRITE_LOCK_DIR must be below /tmp" ;; esac
   case "$write_lock_dir" in *[!A-Za-z0-9_./-]*|*/../*|*/..|*/./*|*/.) die "unsafe HOME_EDGE_WRITE_LOCK_DIR" ;; esac
-  case "$write_lock_stale_sec" in ""|*[!0-9]*|0) write_lock_stale_sec=1800 ;; esac
 
+  # mkdir is the ownership boundary. A missing or dead PID does not prove that
+  # no writer or transaction child is still using an existing lock.
   if ! mkdir "$write_lock_dir" 2>/dev/null; then
-    owner_pid=$(cat "$write_lock_dir/pid" 2>/dev/null || true)
-    if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
-      operation=$(cat "$write_lock_dir/operation" 2>/dev/null || echo unknown)
-      die "global write lock held by pid=$owner_pid operation=$operation"
-    fi
-    started=$(cat "$write_lock_dir/started_at" 2>/dev/null || true)
-    now=$(date +%s)
-    case "$started:$now" in *[!0-9:]*|:*|*:) age=0 ;; *) age=$((now - started)) ;; esac
-    if [ -z "$owner_pid" ] && [ "$age" -le "$write_lock_stale_sec" ]; then
-      die "global write lock has no verifiable owner and lease has not expired"
-    fi
-    rm -f "$write_lock_dir/started_at" "$write_lock_dir/pid" "$write_lock_dir/operation" 2>/dev/null || true
-    rmdir "$write_lock_dir" 2>/dev/null || die "stale global write lock cannot be cleared"
-    mkdir "$write_lock_dir" 2>/dev/null || die "global write lock was reacquired"
+    die "global write lock held or unavailable; inspect the existing owner before recovery"
   fi
   write_lock_acquired=1
   date +%s >"$write_lock_dir/started_at" || die "cannot record write lock start"
@@ -602,7 +589,7 @@ fi
 
 if [ "$apply" = "1" ]; then
   HOME_EDGE_RECONCILE_ROOT="${BOOTSTRAP_RECONCILE_ROOT:-}" \
-    HOME_EDGE_WRITE_LOCK_DIR="$write_lock_dir" HOME_EDGE_WRITE_LOCK_STALE_SEC="$write_lock_stale_sec" \
+    HOME_EDGE_WRITE_LOCK_DIR="$write_lock_dir" \
     HOME_EDGE_WRITE_LOCK_HELD=1 \
     sh "$reconcile_dst" --install || die "self-heal lifecycle registration failed"
   HOME_EDGE_STATE_ROOT="$state_dir" SUBSCRIPTION_POLICY_FILE="$policy_dst" \
