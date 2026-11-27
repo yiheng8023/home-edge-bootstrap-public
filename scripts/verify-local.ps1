@@ -1,7 +1,8 @@
 param(
   [string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
   [string]$SbomPath = "",
-  [switch]$SbomOnly
+  [switch]$SbomOnly,
+  [switch]$RequireServiceInstallerShell
 )
 
 $ErrorActionPreference = "Stop"
@@ -149,7 +150,8 @@ if (-not (Test-Path -LiteralPath $ServiceInstallerFixture -PathType Leaf)) { thr
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $ServiceInstallerShellReady = $false
 if ($ServiceHasSh) {
-  & sh -c 'which openssl >/dev/null 2>&1 && which gzip >/dev/null 2>&1 && python3 -c "import sys; sys.exit(sys.version_info[0] != 3)" >/dev/null 2>&1'
+  # Windows PowerShell 5.1 strips embedded double quotes from native arguments.
+  & sh -c 'command -v openssl >/dev/null 2>&1 && command -v gzip >/dev/null 2>&1 && (python3 --version 2>&1 | grep -q ''^Python 3[.]'' || python --version 2>&1 | grep -q ''^Python 3[.]'')'
   $ServiceInstallerShellReady = $LASTEXITCODE -eq 0
 }
 if ($ServiceInstallerShellReady) {
@@ -158,7 +160,9 @@ if ($ServiceInstallerShellReady) {
   & sh $ServiceInstallerShellFixture
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
-else { Write-Host "enable_service_health_shell_fixture_tests=skipped_missing_dependency" }
+elseif ($RequireServiceInstallerShell) {
+  throw 'Required Shell service installer fixtures need Git sh, OpenSSL, gzip, and Python 3.'
+} else { Write-Host "enable_service_health_shell_fixture_tests=skipped_missing_dependency" }
 
 Write-Host ""
 Write-Host "## Service Health Go Module Tests"
